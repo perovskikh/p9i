@@ -30,11 +30,8 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # Healthcheck removed - MCP server doesn't expose /health
+    # Use: curl -X POST http://localhost:8000/mcp/json-rpc -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
   # PostgreSQL — persistent data (prompts, versions, projects, keys)
   db:

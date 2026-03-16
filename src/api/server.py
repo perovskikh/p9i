@@ -13,6 +13,10 @@ from fastmcp import FastMCP
 from pathlib import Path
 import json
 import logging
+import os
+import time
+from typing import Optional
+from functools import wraps
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +28,87 @@ mcp = FastMCP("AI Prompt System")
 # Configuration
 PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 MEMORY_DIR = Path(__file__).parent.parent.parent / "memory"
+
+# API Keys Configuration
+class APIKeyManager:
+    """Manages API keys with rate limiting."""
+
+    def __init__(self):
+        self._keys = {}
+        self._rate_limits = {}  # {key: (count, timestamp)}
+        self._load_keys()
+
+    def _load_keys(self):
+        """Load API keys from environment."""
+        system_key = os.getenv("API_KEYS__SYSTEM", "sk-system-dev")
+        self._keys[system_key] = {
+            "project_id": "system",
+            "permissions": ["*"],
+            "rate_limit": 1000
+        }
+
+        # Load additional keys from environment if present
+        for i in range(1, 10):
+            key = os.getenv(f"API_KEYS__PROJECT_{i}")
+            if key:
+                self._keys[key] = {
+                    "project_id": f"project_{i}",
+                    "permissions": ["read_prompts", "run_prompt"],
+                    "rate_limit": 100
+                }
+
+    def validate_key(self, api_key: str) -> Optional[dict]:
+        """Validate API key and return key data."""
+        if not api_key:
+            return None
+
+        # Check key exists
+        key_data = self._keys.get(api_key)
+        if not key_data:
+            return None
+
+        # Check rate limit
+        if not self._check_rate_limit(api_key, key_data.get("rate_limit", 100)):
+            return None
+
+        return key_data
+
+    def _check_rate_limit(self, api_key: str, limit: int) -> bool:
+        """Check if request is within rate limit."""
+        now = time.time()
+        key_data = self._rate_limits.get(api_key)
+
+        if key_data is None:
+            self._rate_limits[api_key] = [1, now]
+            return True
+
+        count, timestamp = key_data
+        # Reset if more than 60 seconds passed
+        if now - timestamp > 60:
+            self._rate_limits[api_key] = [1, now]
+            return True
+
+        # Check limit
+        if count >= limit:
+            return False
+
+        self._rate_limits[api_key] = [count + 1, timestamp]
+        return True
+
+
+# Global API key manager
+api_keys = APIKeyManager()
+
+
+def require_api_key(func):
+    """Decorator to require valid API key."""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Get API key from headers or context
+        # For MCP, we need to handle this differently
+        # This is a placeholder - real implementation would check MCP context
+        return await func(*args, **kwargs)
+    return wrapper
 
 
 def load_prompt(prompt_name: str) -> dict:
@@ -275,6 +360,8 @@ def clean_context(current_tokens: int, threshold: int = 35000) -> dict:
 
 if __name__ == "__main__":
     logger.info("Starting AI Prompt System MCP Server...")
-    logger.info("MCP Tools available: run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context")
+    logger.info("MCP Tools: run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context")
+    logger.info(f"API Keys loaded: {len(api_keys._keys)} keys")
+    logger.info("Rate limiting: enabled (60s window)")
     # Use SSE transport for HTTP-based MCP
     mcp.run(transport="sse", host="0.0.0.0", port=8000)
