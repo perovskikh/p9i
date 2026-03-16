@@ -95,9 +95,90 @@ class APIKeyManager:
         self._rate_limits[api_key] = [count + 1, timestamp]
         return True
 
+    def check_permission(self, api_key: str, permission: str) -> bool:
+        """Check if API key has specific permission."""
+        key_data = self._keys.get(api_key)
+        if not key_data:
+            return False
+
+        permissions = key_data.get("permissions", [])
+        # Admin (*) has all permissions
+        if "*" in permissions:
+            return True
+
+        return permission in permissions
+
 
 # Global API key manager
 api_keys = APIKeyManager()
+
+
+# ============================================================================
+# AUDIT LOGGING
+# ============================================================================
+
+class AuditLogger:
+    """Audit logger for tracking API actions."""
+
+    def __init__(self):
+        self._logs = []  # In-memory logs (in production, would use database)
+        self._max_logs = 10000
+
+    def log(self, action: str, api_key: str = None, resource_type: str = None,
+            resource_id: int = None, details: dict = None, ip_address: str = None):
+        """Log an action."""
+        entry = {
+            "timestamp": time.time(),
+            "action": action,
+            "api_key": api_key[:10] + "..." if api_key and len(api_key) > 10 else api_key,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "details": details,
+            "ip_address": ip_address
+        }
+
+        self._logs.append(entry)
+
+        # Keep only last N logs
+        if len(self._logs) > self._max_logs:
+            self._logs = self._logs[-self._max_logs:]
+
+        # Log to standard logger
+        logger.info(f"AUDIT: {action} | key={entry.get('api_key')} | resource={resource_type}")
+
+    def get_logs(self, limit: int = 100) -> list:
+        """Get recent audit logs."""
+        return self._logs[-limit:]
+
+    def get_logs_by_action(self, action: str, limit: int = 100) -> list:
+        """Get logs by action type."""
+        return [log for log in self._logs if log["action"] == action][-limit:]
+
+    def get_logs_by_key(self, api_key: str, limit: int = 100) -> list:
+        """Get logs by API key."""
+        return [log for log in self._logs if api_key in log.get("api_key", "")][-limit:]
+
+    def clear_logs(self):
+        """Clear all logs."""
+        self._logs = []
+        logger.info("Audit logs cleared")
+
+
+# Global audit logger
+audit_logger = AuditLogger()
+
+
+# Audit action constants
+class AuditActions:
+    PROMPT_EXECUTED = "prompt_executed"
+    CHAIN_EXECUTED = "chain_executed"
+    MEMORY_SAVED = "memory_saved"
+    MEMORY_READ = "memory_read"
+    PROMPTS_LISTED = "prompts_listed"
+    PROJECT_ADAPTED = "project_adapted"
+    CONTEXT_CLEANED = "context_cleaned"
+    API_KEY_VALIDATED = "api_key_validated"
+    RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
 
 
 def require_api_key(func):
@@ -163,6 +244,14 @@ def run_prompt(prompt_name: str, input_data: dict) -> dict:
     """
     try:
         prompt = load_prompt(prompt_name)
+
+        # Audit logging
+        audit_logger.log(
+            action=AuditActions.PROMPT_EXECUTED,
+            resource_type="prompt",
+            details={"prompt_name": prompt_name, "input_keys": list(input_data.keys())}
+        )
+
         # In a real implementation, this would call an LLM
         # For now, return the prompt structure
         return {
@@ -228,6 +317,14 @@ def list_prompts() -> dict:
         dict: List of prompts
     """
     registry = load_registry()
+
+    # Audit logging
+    audit_logger.log(
+        action=AuditActions.PROMPTS_LISTED,
+        resource_type="registry",
+        details={"count": len(registry.get("prompts", []))}
+    )
+
     return {
         "status": "success",
         "registry_version": registry.get("registry_version", "unknown"),
