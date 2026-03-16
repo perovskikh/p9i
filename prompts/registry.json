@@ -1,4 +1,337 @@
 {
   "registry_version": "1.0",
-  "prompts": []
+  "prompts": [
+    {
+      "name": "promt-agent-init",
+      "file": "promt-agent-init.md",
+      "version": "1.0",
+      "type": "CodeShift",
+      "layer": "Discovery",
+      "tags": [
+        "initialization",
+        "agent"
+      ]
+    },
+    {
+      "name": "promt-verification",
+      "file": "promt-verification.md",
+      "version": "3.4",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "verification",
+        "adr",
+        "code"
+      ]
+    },
+    {
+      "name": "promt-consolidation",
+      "file": "promt-consolidation.md",
+      "version": "2.5",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "consolidation",
+        "dedup",
+        "adr"
+      ]
+    },
+    {
+      "name": "promt-index-update",
+      "file": "promt-index-update.md",
+      "version": "2.6",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "index",
+        "adr",
+        "sync"
+      ]
+    },
+    {
+      "name": "promt-feature-add",
+      "file": "promt-feature-add.md",
+      "version": "1.5",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "feature",
+        "adr",
+        "context7"
+      ]
+    },
+    {
+      "name": "promt-feature-remove",
+      "file": "promt-feature-remove.md",
+      "version": "1.5",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "feature",
+        "deprecation",
+        "adr"
+      ]
+    },
+    {
+      "name": "promt-adr-template-migration",
+      "file": "promt-adr-template-migration.md",
+      "version": "1.4",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "adr",
+        "migration",
+        "template"
+      ]
+    },
+    {
+      "name": "promt-adr-implementation-planner",
+      "file": "promt-adr-implementation-planner.md",
+      "version": "2.3",
+      "type": "CodeShift",
+      "layer": "Planning",
+      "tags": [
+        "adr",
+        "planning",
+        "critical-path"
+      ]
+    },
+    {
+      "name": "promt-bug-fix",
+      "file": "promt-bug-fix.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "bug",
+        "fix",
+        "debugging"
+      ]
+    },
+    {
+      "name": "promt-refactoring",
+      "file": "promt-refactoring.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "refactoring",
+        "cleanup"
+      ]
+    },
+    {
+      "name": "promt-security-audit",
+      "file": "promt-security-audit.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "security",
+        "audit"
+      ]
+    },
+    {
+      "name": "promt-db-baseline-governance",
+      "file": "promt-db-baseline-governance.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "database",
+        "sql",
+        "baseline"
+      ]
+    },
+    {
+      "name": "promt-ci-cd-pipeline",
+      "file": "promt-ci-cd-pipeline.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "ci-cd",
+        "pipeline",
+        "automation"
+      ]
+    },
+    {
+      "name": "promt-onboarding",
+      "file": "promt-onboarding.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "onboarding",
+        "new-developer"
+      ]
+    },
+    {
+      "name": "promt-sync-optimization",
+      "file": "promt-sync-optimization.md",
+      "version": "1.8",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "sync",
+        "audit",
+        "optimization"
+      ]
+    },
+    {
+      "name": "promt-quality-test",
+      "file": "promt-quality-test.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "qa",
+        "testing",
+        "quality"
+      ]
+    },
+    {
+      "name": "promt-versioning-policy",
+      "file": "promt-versioning-policy.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Meta",
+      "tags": [
+        "versioning",
+        "policy",
+        "semver"
+      ]
+    },
+    {
+      "name": "promt-workflow-orchestration",
+      "file": "promt-workflow-orchestration.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "orchestration",
+        "workflow",
+        "chain"
+      ]
+    },
+    {
+      "name": "promt-sync-report-export",
+      "file": "promt-sync-report-export.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "sync",
+        "export",
+        "report"
+      ]
+    },
+    {
+      "name": "promt-copilot-instructions-update",
+      "file": "promt-copilot-instructions-update.md",
+      "version": "2.1",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "copilot",
+        "sync",
+        "github"
+      ]
+    },
+    {
+      "name": "promt-system-evolution",
+      "file": "promt-system-evolution.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Meta",
+      "tags": [
+        "evolution",
+        "system",
+        "migration"
+      ]
+    },
+    {
+      "name": "promt-documentation-refactoring-standards-2026",
+      "file": "promt-documentation-refactoring-standards-2026.md",
+      "version": "1.2",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "documentation",
+        "refactoring",
+        "diataxis"
+      ]
+    },
+    {
+      "name": "promt-documentation-quality-compression",
+      "file": "promt-documentation-quality-compression.md",
+      "version": "1.1",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "documentation",
+        "compression",
+        "quality"
+      ]
+    },
+    {
+      "name": "promt-project-stack-dump",
+      "file": "promt-project-stack-dump.md",
+      "version": "1.1",
+      "type": "Universal",
+      "layer": "Discovery",
+      "tags": [
+        "universal",
+        "stack",
+        "dump"
+      ]
+    },
+    {
+      "name": "promt-mvp-baseline-generator-universal",
+      "file": "promt-mvp-baseline-generator-universal.md",
+      "version": "1.3",
+      "type": "Universal",
+      "layer": "Planning",
+      "tags": [
+        "universal",
+        "mvp",
+        "baseline"
+      ]
+    },
+    {
+      "name": "promt-project-adaptation",
+      "file": "promt-project-adaptation.md",
+      "version": "1.1",
+      "type": "Universal",
+      "layer": "Discovery",
+      "tags": [
+        "universal",
+        "adaptation",
+        "onboarding"
+      ]
+    },
+    {
+      "name": "promt-readme-sync",
+      "file": "promt-readme-sync.md",
+      "version": "1.0",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "sync",
+        "readme",
+        "registry"
+      ]
+    },
+    {
+      "name": "promt-project-rules-sync",
+      "file": "promt-project-rules-sync.md",
+      "version": "1.1",
+      "type": "CodeShift",
+      "layer": "Operations",
+      "tags": [
+        "sync",
+        "rules",
+        "project"
+      ]
+    }
+  ]
 }

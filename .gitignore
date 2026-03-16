@@ -64,5 +64,4 @@ Thumbs.db
 # Project specific
 config/api-keys.yaml
 memory/
-prompts/*.md
-!prompts/.gitkeep
+# Note: prompts/*.md ARE tracked - don't add to gitignore
