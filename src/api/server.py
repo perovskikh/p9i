@@ -455,6 +455,43 @@ def clean_context(current_tokens: int, threshold: int = 35000) -> dict:
     }
 
 
+@mcp.tool
+def get_available_mcp_tools() -> dict:
+    """
+    Get list of available MCP tools in this server.
+
+    Returns:
+        dict: List of tools with descriptions
+    """
+    tools = [
+        {"name": "run_prompt", "description": "Execute a single prompt"},
+        {"name": "run_prompt_chain", "description": "Execute full chain (ideation → finish)"},
+        {"name": "list_prompts", "description": "List all available prompts"},
+        {"name": "get_project_memory", "description": "Get project memory/context"},
+        {"name": "save_project_memory", "description": "Save project memory"},
+        {"name": "adapt_to_project", "description": "Auto-detect stack and adapt prompts"},
+        {"name": "clean_context", "description": "Clean context when token limit exceeded"},
+        {"name": "get_available_mcp_tools", "description": "Get this list of tools"}
+    ]
+
+    audit_logger.log(
+        action=AuditActions.PROMPTS_LISTED,
+        resource_type="tools",
+        details={"count": len(tools)}
+    )
+
+    return {
+        "status": "success",
+        "server": "AI Prompt System",
+        "version": "1.0.0",
+        "tools": tools,
+        "external_integrations": {
+            "context7": "Use Context7 MCP for documentation",
+            "github": "Use GitHub MCP for repository operations"
+        }
+    }
+
+
 if __name__ == "__main__":
     logger.info("Starting AI Prompt System MCP Server...")
     logger.info("MCP Tools: run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context")
