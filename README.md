@@ -100,8 +100,12 @@ python -m src.api.server
 ## Тестирование
 
 ```bash
-# Внутри контейнера
-docker exec ai-prompt-system-mcp-server-1 python -c "
+# Смонтировать .env и проект
+docker run --rm -i \
+  -v $PWD/.env:/app/.env \
+  -v $PWD:/project \
+  -v $PWD/memory:/app/memory \
+  ai-prompt-system-mcp-server:latest python -c "
 from src.api.server import list_prompts, run_prompt
 
 # Тест 1: Список промтов
@@ -109,8 +113,9 @@ result = list_prompts()
 print(f'Prompts: {result[\"count\"]}')
 
 # Тест 2: Выполнение промта
-result = run_prompt('promt-verification', {'test': 'data'})
+result = run_prompt('promt-verification', {'project': 'test', 'action': 'list'})
 print(f'Status: {result[\"status\"]}')
+print(f'Model: {result[\"model\"]}')
 "
 ```
 
