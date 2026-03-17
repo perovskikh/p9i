@@ -172,6 +172,28 @@ ai-prompt-system: ✓ Connected
 - `clean_context` — очистка контекста
 - `get_available_mcp_tools` — список инструментов
 
+### Примеры использования
+
+#### Определить стек проекта
+
+```bash
+# Нужно примонтировать проект для доступа к файлам
+docker run --rm -i \
+  -v $PWD/.env:/app/.env \
+  -v $PWD:/project \
+  ai-prompt-system-mcp-server:latest \
+  python -c "from src.api.server import adapt_to_project; import json; print(json.dumps(adapt_to_project('/project'), indent=2))"
+```
+
+#### Выполнить промт
+
+```bash
+docker run --rm -i \
+  -v $PWD/.env:/app/.env \
+  ai-prompt-system-mcp-server:latest \
+  python -c "from src.api.server import run_prompt; import asyncio; print(asyncio.run(run_prompt('promt-verification', {'project': 'test'})))"
+```
+
 Подробнее: [MCP_INTEGRATION.md](MCP_INTEGRATION.md)
 
 ---
