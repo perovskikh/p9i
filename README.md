@@ -80,12 +80,13 @@ python -m src.api.server
 
 ---
 
-## MCP Tools (9 инструментов)
+## MCP Tools (10 инструментов)
 
 После запуска доступны инструменты:
 
 | Инструмент | Описание |
 |------------|----------|
+| `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
 | `run_prompt` | Выполнить один промт |
 | `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
 | `list_prompts` | Список доступных промтов (29 штук) |
@@ -95,6 +96,43 @@ python -m src.api.server
 | `clean_context` | Очистка контекста при превышении лимита токенов |
 | `context7_lookup` | Получить Context7 library ID для документации |
 | `get_available_mcp_tools` | Список доступных инструментов |
+
+---
+
+## Естественный язык: `use ai-prompts`
+
+Главная фича — **универсальный триггер** `ai_prompts`:
+
+```
+"Добавь в README.md секцию с примерами. use ai-prompts"
+"Найди и исправь баги в коде. use ai-prompts"
+"Создай API эндпоинт для пользователей. use ai-prompts"
+"Сделай рефакторинг функции авторизации. use ai-prompts"
+```
+
+**Как работает:**
+1. Парсит намерение из запроса
+2. Автоматически выбирает нужный промт из 28
+3. Выполняет и возвращает результат
+
+**Поддерживаемые намерения:**
+
+| Ключевое слово | Промт |
+|---------------|-------|
+| `readme`, `документац` | promt-readme-sync |
+| `feature`, `добавить`, `создать` | promt-feature-add |
+| `bug`, `исправить`, `фикс` | promt-bug-fix |
+| `refactor`, `рефакторинг` | promt-refactoring |
+| `test`, `тест` | promt-quality-test |
+| `security`, `безопасност` | promt-security-audit |
+| `verify`, `проверит` | promt-verification |
+| `adapt`, `адаптац` | promt-project-adaptation |
+| `rules`, `правила` | promt-project-rules-sync |
+| `ci-cd`, `pipeline` | promt-ci-cd-pipeline |
+| `database`, `db` | promt-db-baseline-governance |
+| `version`, `версион` | promt-versioning-policy |
+| `adr`, `decision` | promt-adr-implementation-planner |
+| `remove`, `удалить` | promt-feature-remove |
 
 ---
 

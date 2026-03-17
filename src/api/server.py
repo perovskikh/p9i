@@ -259,6 +259,184 @@ def save_memory(project_id: str, data: dict) -> None:
 
 
 @mcp.tool
+async def ai_prompts(request: str, context: dict = None) -> dict:
+    """
+    Universal handler for 'use ai-prompts' pattern.
+
+    Parse natural language request and automatically select/execute
+    the appropriate prompt from the library.
+
+    Usage in Claude Code:
+        "Добавь в README.md секцию с примерами. use ai-prompts"
+        "Найди и исправь баги в коде. use ai-prompts"
+        "Создай API эндпоинт для пользователей. use ai-prompts"
+
+    Args:
+        request: Natural language request (what you want to do)
+        context: Optional context (file paths, project info, etc.)
+
+    Returns:
+        dict: Execution result with selected prompt and generated content
+
+    Pattern:
+        "action target. use ai-prompts"
+        - action: что сделать (добавить, найти, создать, исправить, etc.)
+        - target: над чем (README.md, API, функцию, баг, etc.)
+    """
+    try:
+        # Load registry for prompt selection
+        registry = load_registry()
+        prompts_list = registry.get("prompts", [])
+
+        # Intent keywords mapping to prompts
+        INTENT_MAP = {
+            # File/Documentation operations
+            "readme": "promt-readme-sync",
+            "добавить в readme": "promt-feature-add",
+            "обновить readme": "promt-readme-sync",
+            "переписать readme": "promt-documentation-refactoring-standards-2026",
+            "документац": "promt-documentation-refactoring-standards-2026",
+            "докstring": "promt-documentation-quality-compression",
+
+            # Code operations
+            "feature": "promt-feature-add",
+            "добавить функц": "promt-feature-add",
+            "создать компонент": "promt-feature-add",
+            "new feature": "promt-feature-add",
+            "add feature": "promt-feature-add",
+
+            # Bug/fix operations
+            "bug": "promt-bug-fix",
+            "исправить": "promt-bug-fix",
+            "фикс": "promt-bug-fix",
+            "fix bug": "promt-bug-fix",
+            "баг": "promt-bug-fix",
+
+            # Refactoring
+            "refactor": "promt-refactoring",
+            "рефакторинг": "promt-refactoring",
+            "улучшить код": "promt-refactoring",
+
+            # Security
+            "security": "promt-security-audit",
+            "безопасност": "promt-security-audit",
+            "audit": "promt-security-audit",
+
+            # Testing
+            "test": "promt-quality-test",
+            "тест": "promt-quality-test",
+            "quality": "promt-quality-test",
+
+            # Verification
+            "verify": "promt-verification",
+            "проверит": "promt-verification",
+            "верифик": "promt-verification",
+
+            # Onboarding/adaptation
+            "adapt": "promt-project-adaptation",
+            "адаптац": "promt-project-adaptation",
+            "onboard": "promt-onboarding",
+
+            # Rules/sync
+            "rules": "promt-project-rules-sync",
+            "правила": "promt-project-rules-sync",
+            "sync": "promt-sync-optimization",
+
+            # CI/CD
+            "ci-cd": "promt-ci-cd-pipeline",
+            "pipeline": "promt-ci-cd-pipeline",
+            "deploy": "promt-ci-cd-pipeline",
+
+            # Database
+            "database": "promt-db-baseline-governance",
+            "db": "promt-db-baseline-governance",
+            "миграц": "promt-db-baseline-governance",
+
+            # Versioning
+            "version": "promt-versioning-policy",
+            "версион": "promt-versioning-policy",
+
+            # ADR
+            "adr": "promt-adr-implementation-planner",
+            "decision": "promt-adr-implementation-planner",
+
+            # Remove feature
+            "remove": "promt-feature-remove",
+            "удалить": "promt-feature-remove",
+            "deprecate": "promt-feature-remove",
+        }
+
+        request_lower = request.lower()
+
+        # Find matching prompt
+        selected_prompt = None
+        matched_keyword = None
+        for keyword, prompt_name in INTENT_MAP.items():
+            if keyword in request_lower:
+                selected_prompt = prompt_name
+                matched_keyword = keyword
+                break
+
+        # Default to feature-add if no match
+        if not selected_prompt:
+            selected_prompt = "promt-feature-add"
+            matched_keyword = "default"
+
+        # Build input data from request and context
+        input_data = {
+            "request": request,
+            "context": context or {},
+        }
+
+        # Add file/project info if provided in context
+        if context:
+            input_data.update(context)
+
+        # Extract simple info from request
+        if "readme" in request_lower:
+            input_data["file"] = "README.md"
+        elif ".md" in request_lower:
+            # Try to extract filename
+            import re
+            match = re.search(r'(\S+\.md)', request)
+            if match:
+                input_data["file"] = match.group(1)
+
+        # Execute the selected prompt
+        prompt = load_prompt(selected_prompt)
+        result = await get_prompt_executor().execute(prompt["content"], input_data)
+
+        # Audit logging
+        audit_logger.log(
+            action=AuditActions.PROMPT_EXECUTED,
+            resource_type="ai_prompts",
+            details={
+                "request": request[:100],
+                "selected_prompt": selected_prompt,
+                "matched_keyword": matched_keyword
+            }
+        )
+
+        return {
+            "status": result.get("status", "success"),
+            "request": request,
+            "selected_prompt": selected_prompt,
+            "matched_keyword": matched_keyword,
+            "model": result.get("model", "unknown"),
+            "content": result.get("content", ""),
+            "error": result.get("error"),
+            "usage": result.get("usage", {}),
+            "hint": f"Used '{matched_keyword}' intent → {selected_prompt}"
+        }
+
+    except FileNotFoundError as e:
+        return {"status": "error", "error": str(e)}
+    except Exception as e:
+        logger.error(f"Error in ai_prompts: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
 async def run_prompt(prompt_name: str, input_data: dict) -> dict:
     """
     Execute a single prompt through LLM.
@@ -589,6 +767,7 @@ def get_available_mcp_tools() -> dict:
         dict: List of tools with descriptions
     """
     tools = [
+        {"name": "ai_prompts", "description": "Natural language prompt router (use ai-prompts)"},
         {"name": "run_prompt", "description": "Execute a single prompt"},
         {"name": "run_prompt_chain", "description": "Execute full chain (ideation → finish)"},
         {"name": "list_prompts", "description": "List all available prompts"},
@@ -625,7 +804,7 @@ def get_available_mcp_tools() -> dict:
 
 if __name__ == "__main__":
     logger.info("Starting AI Prompt System MCP Server...")
-    logger.info("MCP Tools: run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context, context7_lookup")
+    logger.info("MCP Tools: ai_prompts, run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context, context7_lookup")
     logger.info(f"API Keys loaded: {len(api_keys._keys)} keys")
     logger.info("Rate limiting: enabled (60s window)")
 
