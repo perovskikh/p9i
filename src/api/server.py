@@ -364,6 +364,13 @@ async def ai_prompts(request: str, context: dict = None) -> dict:
             "remove": "promt-feature-remove",
             "удалить": "promt-feature-remove",
             "deprecate": "promt-feature-remove",
+
+            # Prompt creation (meta)
+            "создай промт": "promt-prompt-creator",
+            "добавь промт": "promt-prompt-creator",
+            "new prompt": "promt-prompt-creator",
+            "prompt creator": "promt-prompt-creator",
+            "шаблон": "promt-prompt-creator",
         }
 
         request_lower = request.lower()

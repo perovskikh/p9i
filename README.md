@@ -89,7 +89,7 @@ python -m src.api.server
 | `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
 | `run_prompt` | Выполнить один промт |
 | `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
-| `list_prompts` | Список доступных промтов (29 штук) |
+| `list_prompts` | Список доступных промтов (30 штук) |
 | `get_project_memory` | Получить память проекта |
 | `save_project_memory` | Сохранить память проекта |
 | `adapt_to_project` | Автоопределение стека проекта |
@@ -112,7 +112,7 @@ python -m src.api.server
 
 **Как работает:**
 1. Парсит намерение из запроса
-2. Автоматически выбирает нужный промт из 28
+2. Автоматически выбирает нужный промт из 30
 3. Выполняет и возвращает результат
 
 **Поддерживаемые намерения:**
@@ -133,6 +133,7 @@ python -m src.api.server
 | `version`, `версион` | promt-versioning-policy |
 | `adr`, `decision` | promt-adr-implementation-planner |
 | `remove`, `удалить` | promt-feature-remove |
+| `создай промт`, `new prompt` | promt-prompt-creator |
 
 ---
 
@@ -293,6 +294,31 @@ docker run --rm -i \
   -v $PWD/.env:/app/.env \
   ai-prompt-system-mcp-server:latest \
   python -c "from src.api.server import run_prompt; import asyncio; print(asyncio.run(run_prompt('promt-verification', {'project': 'test'})))"
+```
+
+#### Создать новый промт
+
+```bash
+docker run --rm -i \
+  -v $PWD/.env:/app/.env \
+  -v $PWD/prompts:/app/prompts \
+  ai-prompt-system-mcp-server:latest \
+  python -c "
+from src.api.server import ai_prompts
+import asyncio
+
+result = asyncio.run(ai_prompts(
+    request='Создай промт для автоматической генерации changelog из git commits',
+    context={}
+))
+print(result.get('content', '')[:500])
+"
+```
+
+**Или через `use ai-prompts`:**
+
+```
+"Создай промт для генерации changelog из git commits. use ai-prompts"
 ```
 
 Подробнее: [MCP_INTEGRATION.md](MCP_INTEGRATION.md)

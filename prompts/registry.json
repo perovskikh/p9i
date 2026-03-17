@@ -345,6 +345,19 @@
         "code-generation",
         "ai"
       ]
+    },
+    {
+      "name": "promt-prompt-creator",
+      "file": "promt-prompt-creator.md",
+      "version": "1.0",
+      "type": "Universal",
+      "layer": "Meta",
+      "tags": [
+        "prompt-creator",
+        "meta",
+        "template",
+        "generation"
+      ]
     }
   ]
 }
