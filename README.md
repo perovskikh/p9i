@@ -89,7 +89,7 @@ python -m src.api.server
 | `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
 | `run_prompt` | Выполнить один промт |
 | `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
-| `list_prompts` | Список доступных промтов (30 штук) |
+| `list_prompts` | Список доступных промтов (31 штук) |
 | `get_project_memory` | Получить память проекта |
 | `save_project_memory` | Сохранить память проекта |
 | `adapt_to_project` | Автоопределение стека проекта |
@@ -134,6 +134,7 @@ python -m src.api.server
 | `adr`, `decision` | promt-adr-implementation-planner |
 | `remove`, `удалить` | promt-feature-remove |
 | `создай промт`, `new prompt` | promt-prompt-creator |
+| `адаптируй`, `init ai-promts`, `новый проект` | promt-system-adapt |
 
 ---
 

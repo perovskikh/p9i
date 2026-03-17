@@ -358,6 +358,19 @@
         "template",
         "generation"
       ]
+    },
+    {
+      "name": "promt-system-adapt",
+      "file": "promt-system-adapt.md",
+      "version": "1.0",
+      "type": "Universal",
+      "layer": "Discovery",
+      "tags": [
+        "adapt",
+        "initialization",
+        "auto-config",
+        "project-setup"
+      ]
     }
   ]
 }
