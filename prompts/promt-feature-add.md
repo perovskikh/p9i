@@ -7,7 +7,7 @@ status: active
 tags: [feature, adr, context7]
 ---
 
-# AI Agent Prompt: Добавление нового функционала в CodeShift
+# AI Agent Prompt: Добавление нового функционала в 
 
 **Version:** 1.5
 **Date:** 2026-03-06
@@ -39,7 +39,7 @@ tags: [feature, adr, context7]
 
 ## Когда использовать
 
-- При добавлении нового функционала в CodeShift (Telegram Bot, API, K8s, CI/CD)
+- При добавлении нового функционала в  (Telegram Bot, API, K8s, CI/CD)
 - При расширении ADR идеями из внешних документов (how-to, спецификации, design doc)
 - Когда требуется новое ADR-решение перед реализацией
 - При интеграции новой зависимости или сервиса в стек
@@ -51,7 +51,7 @@ tags: [feature, adr, context7]
 
 ## Mission Statement
 
-Ты — AI-агент, специализирующийся на **добавлении нового функционала** в проект CodeShift.
+Ты — AI-агент, специализирующийся на **добавлении нового функционала** в проект .
 Твоя задача — провести полный цикл: от исследования best practices до реализации и верификации соответствия ADR.
 
 **Примеры задач, которые решает этот промпт:**
@@ -137,7 +137,7 @@ tags: [feature, adr, context7]
 
 ### О проекте
 
-**CodeShift** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
+**** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
 
 **Стек:**
 - **Infrastructure:** Kubernetes (k3s/microk8s), Helm, Traefik, cert-manager

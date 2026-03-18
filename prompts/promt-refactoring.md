@@ -1,4 +1,4 @@
-# AI Agent Prompt: Рефакторинг кода CodeShift
+# AI Agent Prompt: Рефакторинг кода 
 
 **Version:** 1.2
 **Date:** 2026-03-06
@@ -41,7 +41,7 @@
 
 ## Mission Statement
 
-Ты — AI-агент, специализирующийся на **рефакторинге кода** в проекте CodeShift.
+Ты — AI-агент, специализирующийся на **рефакторинге кода** в проекте .
 Твоя задача — улучшить существующий код (читаемость, производительность, структуру)
 **без изменения функциональности** и с сохранением соответствия ADR-решениям.
 
@@ -128,7 +128,7 @@
 
 ### О проекте
 
-**CodeShift** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
+**** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
 
 **Стек:**
 - **Infrastructure:** Kubernetes (k3s/microk8s), Helm, Traefik, cert-manager

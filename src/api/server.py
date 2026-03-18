@@ -290,14 +290,6 @@ async def ai_prompts(request: str, context: dict = None) -> dict:
 
         # Intent keywords mapping to prompts
         INTENT_MAP = {
-            # File/Documentation operations
-            "readme": "promt-readme-sync",
-            "добавить в readme": "promt-feature-add",
-            "обновить readme": "promt-readme-sync",
-            "переписать readme": "promt-documentation-refactoring-standards-2026",
-            "документац": "promt-documentation-refactoring-standards-2026",
-            "докstring": "promt-documentation-quality-compression",
-
             # Code operations
             "feature": "promt-feature-add",
             "добавить функц": "promt-feature-add",
@@ -327,43 +319,19 @@ async def ai_prompts(request: str, context: dict = None) -> dict:
             "тест": "promt-quality-test",
             "quality": "promt-quality-test",
 
-            # Verification
-            "verify": "promt-verification",
-            "проверит": "promt-verification",
-            "верифик": "promt-verification",
-
             # Onboarding/adaptation
             "adapt": "promt-project-adaptation",
             "адаптац": "promt-project-adaptation",
             "onboard": "promt-onboarding",
-
-            # Rules/sync
-            "rules": "promt-project-rules-sync",
-            "правила": "promt-project-rules-sync",
-            "sync": "promt-sync-optimization",
 
             # CI/CD
             "ci-cd": "promt-ci-cd-pipeline",
             "pipeline": "promt-ci-cd-pipeline",
             "deploy": "promt-ci-cd-pipeline",
 
-            # Database
-            "database": "promt-db-baseline-governance",
-            "db": "promt-db-baseline-governance",
-            "миграц": "promt-db-baseline-governance",
-
             # Versioning
             "version": "promt-versioning-policy",
             "версион": "promt-versioning-policy",
-
-            # ADR
-            "adr": "promt-adr-implementation-planner",
-            "decision": "promt-adr-implementation-planner",
-
-            # Remove feature
-            "remove": "promt-feature-remove",
-            "удалить": "promt-feature-remove",
-            "deprecate": "promt-feature-remove",
 
             # Prompt creation (meta)
             "создай промт": "promt-prompt-creator",

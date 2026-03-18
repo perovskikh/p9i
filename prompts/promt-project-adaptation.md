@@ -464,7 +464,7 @@
 | `meta-promt-universal-prompt-generator.md` | Если нужно адаптировать другой промпт под этот specific project |
 | `promt-adr-implementation-planner.md` | После adaptation: построить план по Critical Path |
 | `promt-feature-add.md` | После adaptation: добавить feature из Should/Could в реализацию |
-| `promt-verification.md` (CodeShift-specific) | Для глубокой верификации ADR↔code (если это проект на базе CodeShift) |
+| `promt-verification.md` (-specific) | Для глубокой верификации ADR↔code (если это проект на базе ) |
 
 ---
 

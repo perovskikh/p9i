@@ -7,7 +7,7 @@ status: active
 tags: [versioning, policy, semver, registry]
 ---
 
-# AI Agent Prompt: Формальная semver-политика промптов для CodeShift
+# AI Agent Prompt: Формальная semver-политика промптов для 
 
 **Version:** 1.3
 **Date:** 2026-02-24
@@ -47,7 +47,7 @@ tags: [versioning, policy, semver, registry]
 
 ## Mission Statement
 
-Ты — AI-агент, отвечающий за консистентное версионирование prompt-системы CodeShift.
+Ты — AI-агент, отвечающий за консистентное версионирование prompt-системы .
 Твоя задача — определить корректный тип изменения версии для каждого обновления промпта,
 обеспечить синхронное обновление версии в header/footer и в реестре `docs/ai-agent-prompts/README.md`,
 а также применить проверяемый PR-checklist до merge.
@@ -133,7 +133,7 @@ tags: [versioning, policy, semver, registry]
 
 ### О проекте (versioning domain)
 
-CodeShift поддерживает расширяемую prompt-систему для ADR и dev/infra workflow.
+ поддерживает расширяемую prompt-систему для ADR и dev/infra workflow.
 Без формальной semver-политики версия может расходиться между файлами,
 реестром (`README.md` и `registry.yaml`) и CI проверками, что приводит к ложным fail и потере трассируемости.
 
@@ -191,7 +191,7 @@ fi
 - документационные quality gates, включая Gates A-H
 - PR checklist policy automation
 
-Используй Context7 как источник практик и адаптируй под constraints CodeShift.
+Используй Context7 как источник практик и адаптируй под constraints .
 
 ---
 

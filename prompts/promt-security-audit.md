@@ -1,4 +1,4 @@
-# AI Agent Prompt: Аудит безопасности CodeShift
+# AI Agent Prompt: Аудит безопасности 
 
 **Version:** 1.2
 **Date:** 2026-03-06
@@ -42,7 +42,7 @@
 
 ## Mission Statement
 
-Ты — AI-агент, специализирующийся на **аудите безопасности** проекта CodeShift.
+Ты — AI-агент, специализирующийся на **аудите безопасности** проекта .
 Твоя задача — выявить уязвимости, проверить соответствие best practices безопасности
 и обеспечить защиту платёжных данных и пользовательской информации.
 
@@ -125,7 +125,7 @@
 
 ### О проекте (Security-relevant)
 
-**CodeShift** — multi-tenant SaaS платформа с критичными security requirements:
+**** — multi-tenant SaaS платформа с критичными security requirements:
 
 | Компонент | Security Concern |
 |---|---|
@@ -461,7 +461,7 @@ grep -rn "image:" templates/*.yaml
 ### 7.2. Report Template
 
 ```markdown
-# Security Audit Report — CodeShift
+# Security Audit Report — 
 
 **Дата аудита:** YYYY-MM-DD
 **Тип аудита:** [Quick scan / Standard / Deep dive]

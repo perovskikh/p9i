@@ -87,7 +87,7 @@ current_prompts = list_prompts()
 ```python
 run_prompt("promt-prompt-creator", {
     "idea": f"промт для {lang}/{framework} специфики",
-    "category": "CodeShift",
+    "category": "",
     "context": context7_docs
 })
 ```

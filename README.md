@@ -29,6 +29,15 @@
 
 ---
 
+## Рефакторинг (v1.0)
+
+**Удалено 18 CodeShift-специфичных промтов**, теперь:
+- ✅ **13 универсальных промтов** для любых проектов
+- ✅ **`use ai-prompts`** работает как универсальный маршрутизатор
+- ✅ **`init ai-promts`** адаптирует систему под новый стек
+
+---
+
 ## Technology Stack
 
 | Компонент | Выбор |
@@ -89,7 +98,7 @@ python -m src.api.server
 | `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
 | `run_prompt` | Выполнить один промт |
 | `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
-| `list_prompts` | Список доступных промтов (31 штук) |
+| `list_prompts` | Список доступных промтов (13 штук) |
 | `get_project_memory` | Получить память проекта |
 | `save_project_memory` | Сохранить память проекта |
 | `adapt_to_project` | Автоопределение стека проекта |
@@ -112,28 +121,25 @@ python -m src.api.server
 
 **Как работает:**
 1. Парсит намерение из запроса
-2. Автоматически выбирает нужный промт из 31
+2. Автоматически выбирает нужный промт из 13
 3. Выполняет и возвращает результат
 
 **Поддерживаемые намерения:**
 
 | Ключевое слово | Промт |
 |---------------|-------|
-| `readme`, `документац` | promt-readme-sync |
 | `feature`, `добавить`, `создать` | promt-feature-add |
 | `bug`, `исправить`, `фикс` | promt-bug-fix |
 | `refactor`, `рефакторинг` | promt-refactoring |
 | `test`, `тест` | promt-quality-test |
+| `quality` | promt-quality-test |
 | `security`, `безопасност` | promt-security-audit |
-| `verify`, `проверит` | promt-verification |
+| `audit` | promt-security-audit |
 | `adapt`, `адаптац` | promt-project-adaptation |
-| `rules`, `правила` | promt-project-rules-sync |
-| `ci-cd`, `pipeline` | promt-ci-cd-pipeline |
-| `database`, `db` | promt-db-baseline-governance |
+| `onboard` | promt-onboarding |
+| `ci-cd`, `pipeline`, `deploy` | promt-ci-cd-pipeline |
 | `version`, `версион` | promt-versioning-policy |
-| `adr`, `decision` | promt-adr-implementation-planner |
-| `remove`, `удалить` | promt-feature-remove |
-| `создай промт`, `new prompt` | promt-prompt-creator |
+| `создай промт`, `new prompt`, `шаблон` | promt-prompt-creator |
 | `адаптируй`, `init ai-promts`, `новый проект` | promt-system-adapt |
 
 ---
@@ -333,7 +339,7 @@ ai-prompt-system/
 ├── src/
 │   └── api/
 │       └── server.py         # FastMCP сервер (8 tools)
-├── prompts/                  # Markdown промты (31 файл)
+├── prompts/                  # Markdown промты (13 файлов)
 │   └── README.md             # Гайд по использованию промтов
 ├── database/
 │   └── schema.sql           # PostgreSQL схема (6 таблиц)
@@ -347,7 +353,7 @@ ai-prompt-system/
 
 ---
 
-## Prompts (31 файл)
+## Prompts (13 файлов)
 
 | Категория | Количество |
 |-----------|------------|

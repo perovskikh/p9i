@@ -1,4 +1,4 @@
-# AI Agent Prompt: Prompt QA / Self-testing для CodeShift
+# AI Agent Prompt: Prompt QA / Self-testing для 
 
 **Version:** 1.2
 **Date:** 2026-02-25
@@ -41,7 +41,7 @@
 
 ## Mission Statement
 
-Ты — AI-агент контроля качества prompt-системы CodeShift.
+Ты — AI-агент контроля качества prompt-системы .
 Твоя задача — проверять качество выходов ключевых operational-промптов на стандартизированном наборе тест-кейсов,
 фиксировать результат в формате pass/fail и обеспечивать регулярный запуск проверок в CI.
 
@@ -122,7 +122,7 @@
 
 ### О проекте (Prompt QA домен)
 
-**CodeShift** — multi-tenant SaaS (Telegram Bot → YooKassa → Kubernetes → персональный code-server).
+**** — multi-tenant SaaS (Telegram Bot → YooKassa → Kubernetes → персональный code-server).
 Prompt QA здесь нужен, чтобы operational-промпты давали предсказуемые и проверяемые результаты,
 а не только проходили структурные guard-проверки.
 
@@ -175,7 +175,7 @@ make docs-prompt-guard
 - CI quality gates для Markdown/prompt workflows
 - report schema для machine-readable результатов
 
-Сверь применимость практик с проектными ограничениями CodeShift.
+Сверь применимость практик с проектными ограничениями .
 
 ---
 
