@@ -292,7 +292,7 @@ async def ai_prompts(request: str, context: dict = None) -> dict:
         INTENT_MAP = {
             # Code operations
             "feature": "promt-feature-add",
-            "добавить функц": "promt-feature-add",
+            "добавить функт": "promt-feature-add",
             "создать компонент": "promt-feature-add",
             "new feature": "promt-feature-add",
             "add feature": "promt-feature-add",

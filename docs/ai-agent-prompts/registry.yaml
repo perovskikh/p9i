@@ -1,0 +1,636 @@
+# AI Agent Prompts Registry
+# YAML-based source of truth for prompt metadata
+# Version: 1.0
+# Updated: 2026-03-15
+
+version: "1.0"
+
+prompts:
+  # Meta-prompts (управление системой правил)
+  - name: meta-promt-adr-system-generator
+    filename: meta-promt-adr-system-generator.md
+    version: "2.4"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: meta-promptness
+    depends_on: []
+    tags: [meta, adr, governance]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: meta-promt-adr-implementation-planner
+    filename: meta-promt-adr-implementation-planner.md
+    version: "2.1"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: meta-promptness
+    depends_on: []
+    tags: [meta, adr, planning]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: meta-promt-prompt-generation
+    filename: meta-promt-prompt-generation.md
+    version: "3.0"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: meta-promptness
+    depends_on: []
+    tags: [meta, generation, factory]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: meta-promt-universal-prompt-generator
+    filename: meta-promt-universal-prompt-generator.md
+    version: "1.1"
+    type: Universal
+    layer: Meta
+    status: active
+    directory: meta-promptness
+    depends_on: []
+    tags: [meta, universal, generation]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: meta-promt-sync-init-generator
+    filename: meta-promt-sync-init-generator.md
+    version: "1.0"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: meta-promptness
+    depends_on: []
+    tags: [meta, sync, generation]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  # Operational-prompts (рабочие задачи)
+  - name: promt-agent-init
+    filename: promt-agent-init.md
+    version: "1.0"
+    type: CodeShift
+    layer: Discovery
+    status: active
+    directory: .
+    depends_on: [meta-promt-adr-system-generator]
+    tags: [initialization, agent]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-verification
+    filename: promt-verification.md
+    version: "3.4"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-index-update]
+    tags: [verification, adr, code]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-consolidation
+    filename: promt-consolidation.md
+    version: "2.5"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [consolidation, dedup, adr]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-index-update
+    filename: promt-index-update.md
+    version: "2.6"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [index, adr, sync]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-feature-add
+    filename: promt-feature-add.md
+    version: "1.5"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-agent-init, promt-verification]
+    tags: [feature, adr, context7]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-feature-remove
+    filename: promt-feature-remove.md
+    version: "1.5"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [feature, deprecation, adr]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-adr-template-migration
+    filename: promt-adr-template-migration.md
+    version: "1.4"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-index-update]
+    tags: [adr, migration, template]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-adr-implementation-planner
+    filename: promt-adr-implementation-planner.md
+    version: "2.3"
+    type: CodeShift
+    layer: Planning
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [adr, planning, critical-path]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-bug-fix
+    filename: promt-bug-fix.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [bug, fix, debugging]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-refactoring
+    filename: promt-refactoring.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [refactoring, cleanup]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-security-audit
+    filename: promt-security-audit.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [security, audit]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-db-baseline-governance
+    filename: promt-db-baseline-governance.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [database, sql, baseline]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-ci-cd-pipeline
+    filename: promt-ci-cd-pipeline.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [ci-cd, pipeline, automation]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-onboarding
+    filename: promt-onboarding.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-project-stack-dump]
+    tags: [onboarding, new-developer]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-sync-optimization
+    filename: promt-sync-optimization.md
+    version: "1.8"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [meta-promt-adr-system-generator]
+    tags: [sync, audit, optimization]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-quality-test
+    filename: promt-quality-test.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [qa, testing, quality]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-versioning-policy
+    filename: promt-versioning-policy.md
+    version: "1.2"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [versioning, policy, semver]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-workflow-orchestration
+    filename: promt-workflow-orchestration.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-quality-test]
+    tags: [orchestration, workflow, chain]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-sync-report-export
+    filename: promt-sync-report-export.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [sync, export, report]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-copilot-instructions-update
+    filename: promt-copilot-instructions-update.md
+    version: "2.1"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [copilot, sync, github]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-system-evolution
+    filename: promt-system-evolution.md
+    version: "1.2"
+    type: CodeShift
+    layer: Meta
+    status: active
+    directory: .
+    depends_on: [meta-promt-adr-system-generator]
+    tags: [evolution, system, migration]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-documentation-refactoring-standards-2026
+    filename: promt-documentation-refactoring-standards-2026.md
+    version: "1.2"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-verification]
+    tags: [documentation, refactoring, diataxis]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-documentation-quality-compression
+    filename: promt-documentation-quality-compression.md
+    version: "1.1"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-documentation-refactoring-standards-2026]
+    tags: [documentation, compression, quality]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-project-stack-dump
+    filename: promt-project-stack-dump.md
+    version: "1.1"
+    type: Universal
+    layer: Discovery
+    status: active
+    directory: .
+    depends_on: []
+    tags: [universal, stack, dump]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-mvp-baseline-generator-universal
+    filename: promt-mvp-baseline-generator-universal.md
+    version: "1.3"
+    type: Universal
+    layer: Planning
+    status: active
+    directory: .
+    depends_on: [promt-project-stack-dump]
+    tags: [universal, mvp, baseline]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-project-adaptation
+    filename: promt-project-adaptation.md
+    version: "1.1"
+    type: Universal
+    layer: Discovery
+    status: active
+    directory: .
+    depends_on: [promt-mvp-baseline-generator-universal]
+    tags: [universal, adaptation, onboarding]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-readme-sync
+    filename: promt-readme-sync.md
+    version: "1.0"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [sync, readme, registry]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true
+
+  - name: promt-project-rules-sync
+    filename: promt-project-rules-sync.md
+    version: "1.1"
+    type: CodeShift
+    layer: Operations
+    status: active
+    directory: .
+    depends_on: [promt-sync-optimization]
+    tags: [sync, rules, project]
+    quality_gates:
+      skeleton_check: true
+      source_of_truth: true
+      dual_status: true
+      topic_slug: true
+      no_legacy: true
+      read_only_enforced: true
+      context7_used: true
+      no_duplication: true

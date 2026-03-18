@@ -1,0 +1,143 @@
+# Universal Prompt System — Project Configuration
+# Copy this file to your project root as 'project-config.yaml'
+# and customize with your project details
+
+# =============================================================================
+# PROJECT METADATA
+# =============================================================================
+
+project:
+  # Project name (used in generated docs)
+  name: "My Project"
+
+  # Project type (used for analysis focus)
+  # Options: web-app, api, library, cli, mobile, infrastructure, mixed
+  type: "web-app"
+
+  # Brief description (1-2 sentences)
+  description: "A brief description of what this project does"
+
+  # Primary language (for display purposes)
+  language: "en"
+
+# =============================================================================
+# TECHNOLOGY STACK
+# =============================================================================
+# Override auto-detection by specifying known technologies
+
+stack:
+  # Primary language
+  # language: "python" | "javascript" | "typescript" | "go" | "rust" | "java" | "csharp"
+  # language_version: "3.11"
+
+  # Framework (optional, auto-detected)
+  # framework: "fastapi" | "django" | "flask" | "express" | "nextjs" | "spring"
+  # framework_version: "1.0"
+
+  # Database (optional)
+  # database: "postgresql" | "mysql" | "mongodb" | "redis" | "sqlite"
+  # database_version: "14"
+
+  # Additional components
+  # cache: "redis"
+  # message_queue: "rabbitmq" | "kafka"
+  # container: "docker"
+  # orchestration: "kubernetes" | "docker-compose"
+
+  # Deployment (optional)
+  # hosting: "aws" | "gcp" | "azure" | "digitalocean" | "self-hosted"
+  # ci_cd: "github-actions" | "gitlab-ci" | "jenkins"
+
+# =============================================================================
+# BUSINESS CONTEXT
+# =============================================================================
+# Optional: Provide context to help tailor the analysis
+
+context:
+  # Team composition
+  # team_size: 1
+  # roles: ["backend", "frontend", "devops"]
+
+  # Timeline or goals
+  # timeline: "MVP in 2 weeks"
+  # goals:
+  #   - "Ship MVP"
+  #   - "Validate market"
+
+  # Target users (optional)
+  # users: "Developers" | "End users" | "Internal team"
+
+# =============================================================================
+# FOCUS AREAS
+# =============================================================================
+# Optional: Tell the adapter what to prioritize
+
+focus:
+  # Areas of interest (affects output emphasis)
+  # - "api-development"
+  # - "authentication"
+  # - "database-design"
+  # - "testing"
+  # - "performance"
+  # - "security"
+  # - "deployment"
+  # - "documentation"
+
+  # Known issues (will be highlighted in analysis)
+  # issues:
+  #   - "No tests yet"
+  #   - "Outdated dependencies"
+  #   - "Missing documentation"
+
+# =============================================================================
+# ENTRY POINTS
+# =============================================================================
+# Optional: Override auto-detected entry points
+
+entry_points:
+  # Main application entry
+  # main: "src/main.py" | "index.js" | "cmd/app/main.go"
+
+  # Test entry
+  # test: "tests/" | "test/"
+
+  # Configuration
+  # config: "config/" | "configs/"
+
+  # Documentation
+  # docs: "docs/"
+
+# =============================================================================
+# OUTPUT PREFERENCES
+# =============================================================================
+
+output:
+  # Where to write generated files
+  # Options: "docs/adaptation/" | "artifacts/" | "."
+  location: "docs/adaptation/"
+
+  # Filename prefix
+  prefix: "ANALYSIS"
+
+  # Include sections
+  include:
+    - "overview"
+    - "stack"
+    - "architecture"
+    - "setup"
+    - "risks"
+    - "next-steps"
+
+# =============================================================================
+# NOTES
+# =============================================================================
+# Any additional context or notes for the adapter
+
+notes: |
+  # Add any additional notes here
+  # This will be included in the analysis context
+
+  # Example:
+  # - This is a legacy project being modernized
+  # - Team prefers TypeScript over JavaScript
+  # - Current priority is stability over new features
