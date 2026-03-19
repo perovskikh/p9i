@@ -2,8 +2,8 @@
 
 | ADR # | Title | Status | Date | Focus |
 |---------|--------|--------|--------|
-| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Accepted** | 2026-03-13 | Foundational |
-| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Accepted** | 2026-03-18 | Tiered Architecture, MPV Integration, Legacy Cleanup |
+| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Superseded** | 2026-03-13 | Foundational |
+| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** | 2026-03-19 | Tiered Architecture, MPV Integration, Legacy Cleanup |
 
 ## Legend
 
