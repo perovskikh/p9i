@@ -8,16 +8,12 @@
   "prompts": [
     "promt-k8s-deploy-rollout.md",
     "promt-k8s-pod-debug.md",
-    "promt-k8s-helm-upgrade.md",
-    "promt-k8s-service-mesh.md",
-    "promt-k8s-storage-management.md"
+    "promt-k8s-helm-upgrade.md"
   ],
   "triggers": {
     "деплой, deploy, rollout": "promt-k8s-deploy-rollout.md",
     "debug, crashloop, pod": "promt-k8s-pod-debug.md",
-    "helm, upgrade, rollback": "promt-k8s-helm-upgrade.md",
-    "service mesh, istio": "promt-k8s-service-mesh.md",
-    "storage, pvc, volume": "promt-k8s-storage-management.md"
+    "helm, upgrade, rollback": "promt-k8s-helm-upgrade.md"
   },
   "dependencies": [],
   "tags": ["kubernetes", "k8s", "deployment", "helm", "devops"],

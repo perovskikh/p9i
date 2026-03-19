@@ -67,8 +67,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "dependencies": ["promt-debugging.md", "promt-testing.md", "promt-implementation.md", "promt-design.md", "promt-analysis.md", "promt-ideation.md"],
-      "created_at": "2026-03-18"
+      "dependencies": [
+        "promt-debugging.md",
+        "promt-testing.md",
+        "promt-implementation.md",
+        "promt-design.md",
+        "promt-analysis.md",
+        "promt-ideation.md"
+      ]
     },
     "promt-mvp-baseline-generator-universal.md": {
       "name": "promt-mvp-baseline-generator-universal.md",
@@ -78,8 +84,13 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Генерация MVP для любого стека технологий",
-      "tags": ["universal", "mvp", "baseline", "generator"]
+      "description": "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f MVP \u0434\u043b\u044f \u043b\u044e\u0431\u043e\u0433\u043e \u0441\u0442\u0435\u043a\u0430 \u0442\u0435\u0445\u043d\u043e\u043b\u043e\u0433\u0438\u0439",
+      "tags": [
+        "universal",
+        "mvp",
+        "baseline",
+        "generator"
+      ]
     },
     "promt-project-stack-dump.md": {
       "name": "promt-project-stack-dump.md",
@@ -89,8 +100,13 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Быстрый анализ любого проекта и полный статус",
-      "tags": ["universal", "stack", "dump", "discovery"]
+      "description": "\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u0430\u043d\u0430\u043b\u0438\u0437 \u043b\u044e\u0431\u043e\u0433\u043e \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u0438 \u043f\u043e\u043b\u043d\u044b\u0439 \u0441\u0442\u0430\u0442\u0443\u0441",
+      "tags": [
+        "universal",
+        "stack",
+        "dump",
+        "discovery"
+      ]
     },
     "promt-project-adaptation.md": {
       "name": "promt-project-adaptation.md",
@@ -100,8 +116,13 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Адаптация системы под конкретный проект",
-      "tags": ["universal", "adaptation", "onboarding", "auto-config"]
+      "description": "\u0410\u0434\u0430\u043f\u0442\u0430\u0446\u0438\u044f \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u043f\u043e\u0434 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u044b\u0439 \u043f\u0440\u043e\u0435\u043a\u0442",
+      "tags": [
+        "universal",
+        "adaptation",
+        "onboarding",
+        "auto-config"
+      ]
     },
     "promt-context7-generation.md": {
       "name": "promt-context7-generation.md",
@@ -111,8 +132,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Генерация кода на основе Context7 документации",
-      "tags": ["universal", "context7", "documentation", "code-generation", "ai"]
+      "description": "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f \u043a\u043e\u0434\u0430 \u043d\u0430 \u043e\u0441\u043d\u043e\u0432\u0435 Context7 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0438",
+      "tags": [
+        "universal",
+        "context7",
+        "documentation",
+        "code-generation",
+        "ai"
+      ]
     },
     "promt-prompt-creator.md": {
       "name": "promt-prompt-creator.md",
@@ -122,8 +149,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Создание новых промтов и мета-промтов",
-      "tags": ["universal", "prompt-creator", "meta", "template", "generation"]
+      "description": "\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u043d\u043e\u0432\u044b\u0445 \u043f\u0440\u043e\u043c\u0442\u043e\u0432 \u0438 \u043c\u0435\u0442\u0430-\u043f\u0440\u043e\u043c\u0442\u043e\u0432",
+      "tags": [
+        "universal",
+        "prompt-creator",
+        "meta",
+        "template",
+        "generation"
+      ]
     },
     "promt-system-adapt.md": {
       "name": "promt-system-adapt.md",
@@ -133,8 +166,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Автоматическая адаптация и настройка для новых проектов",
-      "tags": ["universal", "adapt", "initialization", "auto-config", "project-setup"]
+      "description": "\u0410\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0430\u044f \u0430\u0434\u0430\u043f\u0442\u0430\u0446\u0438\u044f \u0438 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0434\u043b\u044f \u043d\u043e\u0432\u044b\u0445 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432",
+      "tags": [
+        "universal",
+        "adapt",
+        "initialization",
+        "auto-config",
+        "project-setup"
+      ]
     },
     "promt-versioning-policy.md": {
       "name": "promt-versioning-policy.md",
@@ -144,8 +183,13 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Политика версионирования promts (Semantic Versioning)",
-      "tags": ["universal", "versioning", "policy", "semver"]
+      "description": "\u041f\u043e\u043b\u0438\u0442\u0438\u043a\u0430 \u0432\u0435\u0440\u0441\u0438\u043e\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f promts (Semantic Versioning)",
+      "tags": [
+        "universal",
+        "versioning",
+        "policy",
+        "semver"
+      ]
     },
     "promt-verification.md": {
       "name": "promt-verification.md",
@@ -155,8 +199,15 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Верификация качества кода и ADR",
-      "tags": ["universal", "verification", "adr", "code", "quality", "self-verification"]
+      "description": "\u0412\u0435\u0440\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430 \u043a\u043e\u0434\u0430 \u0438 ADR",
+      "tags": [
+        "universal",
+        "verification",
+        "adr",
+        "code",
+        "quality",
+        "self-verification"
+      ]
     },
     "promt-consolidation.md": {
       "name": "promt-consolidation.md",
@@ -166,8 +217,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Консолидация изменений и синхронизация ADR",
-      "tags": ["universal", "consolidation", "dedup", "sync", "adr"]
+      "description": "\u041a\u043e\u043d\u0441\u043e\u043b\u0438\u0434\u0430\u0446\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439 \u0438 \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f ADR",
+      "tags": [
+        "universal",
+        "consolidation",
+        "dedup",
+        "sync",
+        "adr"
+      ]
     },
     "promt-index-update.md": {
       "name": "promt-index-update.md",
@@ -177,8 +234,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Обновление индексов и документации",
-      "tags": ["universal", "index", "sync", "documentation", "readme"]
+      "description": "\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0438\u043d\u0434\u0435\u043a\u0441\u043e\u0432 \u0438 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0438",
+      "tags": [
+        "universal",
+        "index",
+        "sync",
+        "documentation",
+        "readme"
+      ]
     },
     "promt-readme-sync.md": {
       "name": "promt-readme-sync.md",
@@ -188,8 +251,13 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Синхронизация README.md с registry.json",
-      "tags": ["universal", "sync", "readme", "documentation"]
+      "description": "\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f README.md \u0441 registry.json",
+      "tags": [
+        "universal",
+        "sync",
+        "readme",
+        "documentation"
+      ]
     },
     "promt-project-rules-sync.md": {
       "name": "promt-project-rules-sync.md",
@@ -199,8 +267,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Синхронизация project rules с системой",
-      "tags": ["universal", "rules", "sync", "project", "configuration"]
+      "description": "\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f project rules \u0441 \u0441\u0438\u0441\u0442\u0435\u043c\u043e\u0439",
+      "tags": [
+        "universal",
+        "rules",
+        "sync",
+        "project",
+        "configuration"
+      ]
     },
     "promt-adr-implementation-planner.md": {
       "name": "promt-adr-implementation-planner.md",
@@ -210,8 +284,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Планирование и трекинг ADR implementation",
-      "tags": ["universal", "adr", "planning", "implementation", "tracking"]
+      "description": "\u041f\u043b\u0430\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0438 \u0442\u0440\u0435\u043a\u0438\u043d\u0433 ADR implementation",
+      "tags": [
+        "universal",
+        "adr",
+        "planning",
+        "implementation",
+        "tracking"
+      ]
     },
     "promt-adr-template-migration.md": {
       "name": "promt-adr-template-migration.md",
@@ -221,8 +301,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Миграция на новые форматы ADR template",
-      "tags": ["universal", "adr", "template", "migration", "standards"]
+      "description": "\u041c\u0438\u0433\u0440\u0430\u0446\u0438\u044f \u043d\u0430 \u043d\u043e\u0432\u044b\u0435 \u0444\u043e\u0440\u043c\u0430\u0442\u044b ADR template",
+      "tags": [
+        "universal",
+        "adr",
+        "template",
+        "migration",
+        "standards"
+      ]
     },
     "promt-ci-cd-pipeline.md": {
       "name": "promt-ci-cd-pipeline.md",
@@ -232,8 +318,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "CI/CD pipeline настройки и автоматизация",
-      "tags": ["universal", "ci-cd", "pipeline", "automation", "deployment"]
+      "description": "CI/CD pipeline \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0438 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0437\u0430\u0446\u0438\u044f",
+      "tags": [
+        "universal",
+        "ci-cd",
+        "pipeline",
+        "automation",
+        "deployment"
+      ]
     },
     "promt-onboarding.md": {
       "name": "promt-onboarding.md",
@@ -243,8 +335,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Onboarding новых разработчиков и пользователей",
-      "tags": ["universal", "onboarding", "team", "documentation", "getting-started"]
+      "description": "Onboarding \u043d\u043e\u0432\u044b\u0445 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439",
+      "tags": [
+        "universal",
+        "onboarding",
+        "team",
+        "documentation",
+        "getting-started"
+      ]
     },
     "promt-bug-fix.md": {
       "name": "promt-bug-fix.md",
@@ -254,8 +352,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Исправление багов и отладка кода",
-      "tags": ["universal", "bug", "fix", "debug", "troubleshooting"]
+      "description": "\u0418\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0431\u0430\u0433\u043e\u0432 \u0438 \u043e\u0442\u043b\u0430\u0434\u043a\u0430 \u043a\u043e\u0434\u0430",
+      "tags": [
+        "universal",
+        "bug",
+        "fix",
+        "debug",
+        "troubleshooting"
+      ]
     },
     "promt-refactoring.md": {
       "name": "promt-refactoring.md",
@@ -265,8 +369,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Рефакторинг кода для улучшения структуры",
-      "tags": ["universal", "refactoring", "cleanup", "optimization", "code-quality"]
+      "description": "\u0420\u0435\u0444\u0430\u043a\u0442\u043e\u0440\u0438\u043d\u0433 \u043a\u043e\u0434\u0430 \u0434\u043b\u044f \u0443\u043b\u0443\u0447\u0448\u0435\u043d\u0438\u044f \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u044b",
+      "tags": [
+        "universal",
+        "refactoring",
+        "cleanup",
+        "optimization",
+        "code-quality"
+      ]
     },
     "promt-security-audit.md": {
       "name": "promt-security-audit.md",
@@ -276,8 +386,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Аудит безопасности и best practices",
-      "tags": ["universal", "security", "audit", "compliance", "best-practices"]
+      "description": "\u0410\u0443\u0434\u0438\u0442 \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u0438 \u0438 best practices",
+      "tags": [
+        "universal",
+        "security",
+        "audit",
+        "compliance",
+        "best-practices"
+      ]
     },
     "promt-quality-test.md": {
       "name": "promt-quality-test.md",
@@ -287,8 +403,15 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "QA и тестирование качества",
-      "tags": ["universal", "qa", "testing", "quality", "validation", "e2e"]
+      "description": "QA \u0438 \u0442\u0435\u0441\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u0430",
+      "tags": [
+        "universal",
+        "qa",
+        "testing",
+        "quality",
+        "validation",
+        "e2e"
+      ]
     },
     "promt-workflow-orchestration.md": {
       "name": "promt-workflow-orchestration.md",
@@ -298,8 +421,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Оркестрация workflow и цепочка задач",
-      "tags": ["universal", "workflow", "orchestration", "pipeline", "automation"]
+      "description": "\u041e\u0440\u043a\u0435\u0441\u0442\u0440\u0430\u0446\u0438\u044f workflow \u0438 \u0446\u0435\u043f\u043e\u0447\u043a\u0430 \u0437\u0430\u0434\u0430\u0447",
+      "tags": [
+        "universal",
+        "workflow",
+        "orchestration",
+        "pipeline",
+        "automation"
+      ]
     },
     "promt-sync-report-export.md": {
       "name": "promt-sync-report-export.md",
@@ -309,19 +438,14 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Экспорт отчётов синхронизации",
-      "tags": ["universal", "sync", "export", "report", "documentation"]
-    },
-    "promt-documentation-quality-compression.md": {
-      "name": "promt-documentation-quality-compression.md",
-      "file": "universal/ai_agent_prompts/deprecated/promt-documentation-compression-executor.md",
-      "version": "1.1",
-      "tier": "universal",
-      "immutable": false,
-      "overridable": true,
-      "created_at": "2026-03-18",
-      "description": "Компрессия и качество документации",
-      "tags": ["universal", "documentation", "quality", "compression"]
+      "description": "\u042d\u043a\u0441\u043f\u043e\u0440\u0442 \u043e\u0442\u0447\u0451\u0442\u043e\u0432 \u0441\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u0438",
+      "tags": [
+        "universal",
+        "sync",
+        "export",
+        "report",
+        "documentation"
+      ]
     },
     "promt-system-evolution.md": {
       "name": "promt-system-evolution.md",
@@ -331,8 +455,74 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
-      "description": "Эволюция системы и roadmap",
-      "tags": ["universal", "evolution", "roadmap", "architecture", "planning"]
+      "description": "\u042d\u0432\u043e\u043b\u044e\u0446\u0438\u044f \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u0438 roadmap",
+      "tags": [
+        "universal",
+        "evolution",
+        "roadmap",
+        "architecture",
+        "planning"
+      ]
+    },
+    "promt-k8s-deploy-rollout.md": {
+      "name": "promt-k8s-deploy-rollout.md",
+      "file": "packs/k8s-pack/promt-k8s-deploy-rollout.md",
+      "version": "1.0",
+      "tier": "pack",
+      "pack": "k8s-pack",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-19"
+    },
+    "promt-k8s-pod-debug.md": {
+      "name": "promt-k8s-pod-debug.md",
+      "file": "packs/k8s-pack/promt-k8s-pod-debug.md",
+      "version": "1.0",
+      "tier": "pack",
+      "pack": "k8s-pack",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-19"
+    },
+    "promt-k8s-helm-upgrade.md": {
+      "name": "promt-k8s-helm-upgrade.md",
+      "file": "packs/k8s-pack/promt-k8s-helm-upgrade.md",
+      "version": "1.0",
+      "tier": "pack",
+      "pack": "k8s-pack",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-19"
+    },
+    "promt-ci-github-actions.md": {
+      "name": "promt-ci-github-actions.md",
+      "file": "packs/ci-cd-pack/promt-ci-github-actions.md",
+      "version": "1.0",
+      "tier": "pack",
+      "pack": "ci-cd-pack",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-19"
+    },
+    "promt-feature-add.md": {
+      "name": "promt-feature-add.md",
+      "file": "universal/ai_agent_prompts/promt-feature-add.md",
+      "version": "1.0",
+      "tier": "universal",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-19"
+    },
+    "promt-documentation-compression-executor.md": {
+      "name": "promt-documentation-compression-executor.md",
+      "file": "universal/ai_agent_prompts/deprecated/promt-documentation-compression-executor.md",
+      "version": "1.1",
+      "tier": "universal",
+      "deprecated": true,
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-18"
     }
-  }
+  },
+  "total_prompts": 34
 }
