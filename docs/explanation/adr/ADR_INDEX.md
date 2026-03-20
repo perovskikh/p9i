@@ -4,7 +4,7 @@
 |---------|--------|--------|--------|
 | ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Superseded** | 2026-03-13 | Foundational, 16 prompts flat |
 | ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** | 2026-03-19 | Tiered: 25 universal + 7 mpv + 4 pack |
-| ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Proposed** | 2026-03-20 | Files + Lazy Loading vs PostgreSQL |
+| ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Accepted** | 2026-03-20 | Files + Lazy Loading vs PostgreSQL |
 
 ## Legend
 
