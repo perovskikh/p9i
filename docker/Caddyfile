@@ -1,22 +1,13 @@
 # Caddyfile for AI Prompt System
-# Automatic HTTPS with Let's Encrypt
+# HTTP only - HTTPS requires proper DNS configuration
 
 {
-    email admin@coderweb.ru
-    # Auto HTTP → HTTPS
-    http_port 80
-    https_port 443
+    admin off
 }
 
-# Production domain (after DNS is configured)
-# mcp.coderweb.ru {
-#     reverse_proxy mcp-server:8000
-#     encode gzip
-#     header { Strict-Transport-Security "max-age=31536000" }
-# }
-
-# Development - HTTP only (no TLS until DNS configured)
-http://coderweb.ru, http://localhost, http://mcp.localhost {
+# MCP Server via HTTP (port 80)
+# For HTTPS, configure DNS A record first
+mcp.coderweb.ru, ai.coderweb.ru, localhost {
     reverse_proxy mcp-server:8000
     encode gzip
 }
