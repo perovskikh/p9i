@@ -2,26 +2,21 @@
 # Automatic HTTPS with Let's Encrypt
 
 {
-    email admin@example.com
+    email admin@coderweb.ru
+    # Auto HTTP → HTTPS
+    http_port 80
+    https_port 443
 }
 
-# MCP Server with HTTPS
-mcp.localhost {
+# Production domain (after DNS is configured)
+# mcp.coderweb.ru {
+#     reverse_proxy mcp-server:8000
+#     encode gzip
+#     header { Strict-Transport-Security "max-age=31536000" }
+# }
+
+# Development - HTTP only (no TLS until DNS configured)
+http://coderweb.ru, http://localhost, http://mcp.localhost {
     reverse_proxy mcp-server:8000
     encode gzip
-
-    # Security headers
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        X-XSS-Protection "1; mode=block"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
 }
-
-# Development (uncomment for local HTTPS)
-# mcp localhost:8443 {
-#     reverse_proxy mcp-server:8000
-#     tls self_signed
-# }
