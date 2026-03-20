@@ -16,8 +16,10 @@ logger = logging.getLogger(__name__)
 class PromptExecutor:
     """Executes prompts through LLM."""
 
-    def __init__(self, model: str = "MiniMax-Text-01", temperature: float = 0.7):
-        self.model = model
+    def __init__(self, model: str = None, temperature: float = 0.7):
+        # Use environment variable or auto-detect via LLM client
+        import os
+        self.model = model or os.getenv("LLM_MODEL", "auto")
         self.temperature = temperature
         self._client: Optional[LLMClient] = None
 
