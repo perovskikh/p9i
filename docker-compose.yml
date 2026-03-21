@@ -36,6 +36,11 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    extra_hosts:
+      - "api.context7.com:76.76.21.21"
     # Healthcheck removed - MCP server doesn't expose /health
     # Use: curl -X POST http://localhost:8000/mcp/json-rpc -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
