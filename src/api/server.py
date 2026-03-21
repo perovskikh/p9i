@@ -1216,12 +1216,15 @@ async def context7_query(library: str, query: str) -> dict:
     """
     Query Context7 documentation API directly.
 
+    Note: The Context7 API (api.context7.com) is currently unavailable (404).
+    This tool now returns instructions for using Claude Code's built-in Context7 MCP.
+
     Args:
         library: Library name (e.g., "fastapi", "react")
         query: Question about the library
 
     Returns:
-        dict: Documentation results from Context7
+        dict: Documentation results or instructions for Claude Code MCP
     """
     # First get library ID
     lookup_result = context7_lookup(library, query)
@@ -1230,8 +1233,24 @@ async def context7_query(library: str, query: str) -> dict:
     if not library_id:
         return lookup_result
 
-    # Query Context7 API
-    return await _context7_query_docs(library_id, query or f"How to use {library}?")
+    # Since API is unavailable, return instructions for Claude Code MCP
+    return {
+        "status": "unavailable",
+        "message": "Context7 API endpoint is unavailable (404). Use Claude Code's built-in Context7 MCP instead.",
+        "library": library,
+        "library_id": library_id,
+        "query": query,
+        "instructions": {
+            "step 1": "Use mcp__context7__resolve-library-id to get library ID",
+            "step 2": "Use mcp__context7__query-docs with library_id and query",
+            "example": f"mcp__context7__query-docs library_id={library_id} query=\"{query}\""
+        },
+        "alternative": {
+            "tool": "mcp__context7__query-docs",
+            "library_id": library_id,
+            "query": query
+        }
+    }
 
 
 @mcp.tool
