@@ -1138,9 +1138,9 @@ def context7_lookup(library: str, query: str = None) -> dict:
 
 async def _context7_query_docs(library_id: str, query: str) -> dict:
     """
-    Query Context7 API for documentation.
+    Query Context7 MCP for documentation.
 
-    Uses Context7's MCP protocol via HTTP SSE.
+    Uses Context7's MCP protocol via HTTP at https://mcp.context7.com/mcp
     """
     import httpx
 
@@ -1149,50 +1149,85 @@ async def _context7_query_docs(library_id: str, query: str) -> dict:
         return {"status": "error", "error": "CONTEXT7_API_KEY not configured"}
 
     try:
-        # Context7 MCP endpoint
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # First resolve library ID if needed
+        # Context7 MCP endpoint - uses JSON-RPC over HTTP
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # First resolve library ID if needed (using MCP tool)
             if not library_id.startswith("/"):
-                # Search for library
-                search_url = "https://api.context7.com/v1/libraries/search"
-                search_resp = await client.get(
-                    search_url,
-                    params={"q": library_id},
-                    headers={"Authorization": f"Bearer {context7_api_key}"}
+                # Use resolve-library-id MCP tool
+                resolve_resp = await client.post(
+                    "https://mcp.context7.com/mcp",
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "tools/call",
+                        "params": {
+                            "name": "resolve-library-id",
+                            "arguments": {
+                                "libraryName": library_id,
+                                "query": query
+                            }
+                        },
+                        "id": 1
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Accept": "application/json, text/event-stream"
+                    }
                 )
+                if resolve_resp.status_code == 200:
+                    data = resolve_resp.json()
+                    if "result" in data and "content" in data["result"]:
+                        # Extract library ID from MCP response
+                        for item in data["result"]["content"]:
+                            if item.get("type") == "text":
+                                import json
+                                try:
+                                    text_data = json.loads(item["text"])
+                                    if text_data.get("results"):
+                                        library_id = text_data["results"][0]["libraryId"]
+                                except:
+                                    pass
 
-                if search_resp.status_code == 200:
-                    data = search_resp.json()
-                    if data.get("results"):
-                        library_id = data["results"][0]["id"]
-                    else:
-                        return {"status": "error", "error": f"Library not found: {library_id}"}
-
-            # Query documentation
-            query_url = f"https://api.context7.com/v1/library{library_id}/query"
+            # Query documentation using MCP tool
             query_resp = await client.post(
-                query_url,
-                json={"query": query},
+                "https://mcp.context7.com/mcp",
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                        "name": "query-docs",
+                        "arguments": {
+                            "libraryId": library_id,
+                            "query": query
+                        }
+                    },
+                    "id": 2
+                },
                 headers={
-                    "Authorization": f"Bearer {context7_api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream"
                 }
             )
 
             if query_resp.status_code == 200:
                 data = query_resp.json()
-                return {
-                    "status": "success",
-                    "library_id": library_id,
-                    "results": data.get("chunks", [])[:5],  # Top 5 results
-                    "query": query
-                }
+                # Parse MCP response
+                if "result" in data and "content" in data["result"]:
+                    results = []
+                    for item in data["result"]["content"]:
+                        if item.get("type") == "text":
+                            results.append(item["text"])
+                    return {
+                        "status": "success",
+                        "library_id": library_id,
+                        "results": results[:5],
+                        "query": query
+                    }
+                return {"status": "error", "error": "Invalid MCP response format"}
             else:
-                return {"status": "error", "error": f"API error: {query_resp.status_code}"}
+                return {"status": "error", "error": f"MCP error: {query_resp.status_code}"}
 
     except Exception as e:
-        logger.error(f"Context7 API error: {e}")
-        # Check if it's a DNS error or API error - suggest MCP alternative
+        logger.error(f"Context7 MCP error: {e}")
         error_str = str(e)
         if "Name or service not known" in error_str or "nodename nor servname" in error_str or "ConnectError" in error_str or "404" in error_str:
             return {
@@ -1214,17 +1249,16 @@ async def _context7_query_docs(library_id: str, query: str) -> dict:
 @mcp.tool
 async def context7_query(library: str, query: str) -> dict:
     """
-    Query Context7 documentation API directly.
+    Query Context7 documentation via MCP.
 
-    Note: The Context7 API (api.context7.com) is currently unavailable (404).
-    This tool now returns instructions for using Claude Code's built-in Context7 MCP.
+    Uses Context7 MCP at https://mcp.context7.com/mcp
 
     Args:
         library: Library name (e.g., "fastapi", "react")
         query: Question about the library
 
     Returns:
-        dict: Documentation results or instructions for Claude Code MCP
+        dict: Documentation results from Context7
     """
     # First get library ID
     lookup_result = context7_lookup(library, query)
@@ -1233,24 +1267,8 @@ async def context7_query(library: str, query: str) -> dict:
     if not library_id:
         return lookup_result
 
-    # Since API is unavailable, return instructions for Claude Code MCP
-    return {
-        "status": "unavailable",
-        "message": "Context7 API endpoint is unavailable (404). Use Claude Code's built-in Context7 MCP instead.",
-        "library": library,
-        "library_id": library_id,
-        "query": query,
-        "instructions": {
-            "step 1": "Use mcp__context7__resolve-library-id to get library ID",
-            "step 2": "Use mcp__context7__query-docs with library_id and query",
-            "example": f"mcp__context7__query-docs library_id={library_id} query=\"{query}\""
-        },
-        "alternative": {
-            "tool": "mcp__context7__query-docs",
-            "library_id": library_id,
-            "query": query
-        }
-    }
+    # Query Context7 MCP
+    return await _context7_query_docs(library_id, query or f"How to use {library}?")
 
 
 @mcp.tool
