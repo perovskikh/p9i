@@ -1,13 +1,143 @@
-name: ADR Validation
+name: ADR Validation + Diátaxis Compliance
 
 on:
   pull_request:
     branches: [main, develop]
     paths:
-      - 'docs/explanation/adr/**'
+      - 'docs/**'
       - 'src/**'
+      - 'prompts/**'
 
 jobs:
+  validate-diataxis:
+    name: Diátaxis 2026 Documentation Standards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Validate Diátaxis Structure
+        run: |
+          echo "=== Diátaxis 2026 Validation ==="
+
+          # 1. Check Anti-Patterns (ЗАПРЕЩЕНО)
+          echo ""
+          echo "1. Checking Anti-Patterns..."
+          ANTI_PATTERNS=$(find docs -name "PHASE_*.md" -o -name "*_COMPLETE.md" -o -name "*_SUMMARY.md" -o -name "*_REPORT.md" -o -name "*_PLAN.md" 2>/dev/null | wc -l)
+          if [ "$ANTI_PATTERNS" -gt 0 ]; then
+            echo "❌ FAILED: Found $ANTI_PATTERNS Anti-Pattern files:"
+            find docs -name "PHASE_*.md" -o -name "*_COMPLETE.md" -o -name "*_SUMMARY.md" -o -name "*_REPORT.md" -o -name "*_PLAN.md" | sed 's/^/   - /'
+            exit 1
+          else
+            echo "✅ PASSED: No Anti-Pattern files found"
+          fi
+
+          # 2. Check Diátaxis directories exist
+          echo ""
+          echo "2. Checking Diátaxis structure..."
+          for dir in tutorials how-to reference explanation; do
+            if [ -d "docs/$dir" ]; then
+              echo "   ✅ docs/$dir/ exists"
+            else
+              echo "   ⚠️  docs/$dir/ missing (recommended)"
+            fi
+          done
+
+          # 3. Check ADR structure
+          echo ""
+          echo "3. Checking ADR files..."
+          ADR_COUNT=$(find docs -name "ADR-*.md" 2>/dev/null | wc -l)
+          echo "   Found $ADR_COUNT ADR files"
+
+          # 4. Count files by category
+          echo ""
+          echo "4. Documentation file counts:"
+          echo "   tutorials: $(find docs/tutorials -name '*.md' 2>/dev/null | wc -l)"
+          echo "   how-to: $(find docs/how-to -name '*.md' 2>/dev/null | wc -l)"
+          echo "   reference: $(find docs/reference -name '*.md' 2>/dev/null | wc -l)"
+          ADR_IN_EXPLANATION=$(find docs/explanation -name 'ADR-*.md' 2>/dev/null | wc -l)
+          echo "   explanation/adr: $ADR_IN_EXPLANATION"
+
+          echo ""
+          echo "=== Diátaxis Validation Complete ==="
+
+      - name: Check new .md files in PR
+        run: |
+          echo "=== Checking new/modified .md files ==="
+
+          # Get list of changed/added .md files
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.md' 2>/dev/null | grep -v '.baseline-lock' || echo "")
+          else
+            FILES=$(git diff --name-only --diff-filter=AM -- '*.md' 2>/dev/null | grep -v '.baseline-lock' || echo "")
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "No new .md files in this change"
+            exit 0
+          fi
+
+          echo "New/modified .md files:"
+          echo "$FILES"
+
+          # Check each new file
+          for FILE in $FILES; do
+            if [ ! -f "$FILE" ]; then
+              continue
+            fi
+
+            echo ""
+            echo "Checking: $FILE"
+
+            # Check if file is in correct Diátaxis location
+            case "$FILE" in
+              docs/tutorials/*)
+                echo "   ✅ In tutorials/ - OK"
+                ;;
+              docs/how-to/*)
+                echo "   ✅ In how-to/ - OK"
+                ;;
+              docs/reference/*)
+                # Check if manually edited (should be AUTO-GENERATED)
+                if grep -q "<!-- AUTO-GENERATED" "$FILE" 2>/dev/null || grep -q "DO NOT EDIT" "$FILE" 2>/dev/null; then
+                  echo "   ✅ In reference/ (AUTO-GENERATED marker found)"
+                else
+                  echo "   ⚠️  reference/ should be AUTO-GENERATED - add AUTO-GENERATED marker"
+                fi
+                ;;
+              docs/explanation/adr/*)
+                # Check ADR format
+                if grep -q "^# ADR-" "$FILE" || grep -q "^# Architecture Decision Record" "$FILE"; then
+                  echo "   ✅ In explanation/adr/ - ADR format OK"
+                else
+                  echo "   ❌ ADR files must have '# ADR-NNN:' header"
+                  exit 1
+                fi
+                ;;
+              docs/explanation/*)
+                echo "   ✅ In explanation/ - OK"
+                ;;
+              docs/*)
+                # Files in root docs/ that aren't in subdirs
+                echo "   ❌ File should be in Diátaxis subdirectory (tutorials/how-to/reference/explanation)"
+                exit 1
+                ;;
+              prompts/*|README.md|MCP_INTEGRATION.md|SYSTEM_ARCHITECTURE.md)
+                echo "   ✅ Prompts or project doc - OK"
+                ;;
+              *)
+                echo "   ⚠️  Unknown location - review manually"
+                ;;
+            esac
+          done
+
+          echo ""
+          echo "=== All new .md files validated ==="
+
   validate-adr:
     name: Validate ADR Structure
     runs-on: ubuntu-latest
@@ -80,8 +210,8 @@ print('✅ Registry consistent')
 
   ai-bottleneck-analysis:
     name: AI Bottleneck Analysis
-    needs: [validate-adr, check-consistency]
-    if: always() && (needs.validate-adr.result == 'success' || needs.check-consistency.result == 'success')
+    needs: [validate-diataxis, validate-adr, check-consistency]
+    if: always() && (needs.validate-diataxis.result == 'success' || needs.validate-adr.result == 'success' || needs.check-consistency.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
