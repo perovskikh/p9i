@@ -12,7 +12,7 @@
 | PostgreSQL | ✅ Healthy | 5432 |
 | Redis | ✅ Healthy | 6379 |
 
-**Последнее тестирование:** 2026-03-19 — MiniMax-M2.5 ✅
+**Последнее тестирование:** 2026-03-21 — MiniMax-M2.5 ✅
 
 ### ADR-002 Реализация
 
@@ -23,8 +23,9 @@
 | Phase 3 | ✅ Complete | 7 MPV stage prompts |
 | Phase 4 | ✅ Complete | Plugin Packs (k8s-pack, ci-cd-pack) |
 | Phase 5 | ✅ Complete | JWT Auth, RBAC, HTTPS Proxy |
+| Phase 6 | ✅ Complete | Context7 MCP Integration |
 
-**Всего промтов:** 31 | **Plugin Packs:** 2
+**Всего промтов:** 40 | **Universal:** 38 | **Core:** 1 | **MPV:** 7
 
 ---
 
@@ -99,7 +100,7 @@ python -m src.api.server
 
 ---
 
-## MCP Tools (10 инструментов)
+## MCP Tools (14 инструментов)
 
 После запуска доступны инструменты:
 
@@ -108,12 +109,16 @@ python -m src.api.server
 | `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
 | `run_prompt` | Выполнить один промт |
 | `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
-| `list_prompts` | Список доступных промтов (31 штука) |
+| `list_prompts` | Список доступных промтов (40 штук) |
 | `get_project_memory` | Получить память проекта |
 | `save_project_memory` | Сохранить память проекта |
 | `adapt_to_project` | Автоопределение стека проекта |
 | `clean_context` | Очистка контекста при превышении лимита токенов |
 | `context7_lookup` | Получить Context7 library ID для документации |
+| `context7_query` | Запросить документацию через Context7 MCP |
+| `generate_jwt_token` | Сгенерировать JWT токен |
+| `validate_jwt_token` | Валидировать JWT токен |
+| `revoke_jwt_token` | Отозвать JWT токен |
 | `get_available_mcp_tools` | Список доступных инструментов |
 
 ---
@@ -146,13 +151,13 @@ prompts/
 │   ├── system-prompts/     # Базовые системные промты
 │   └── registry.json       # Baseline lock: 1.0.0
 ├── universal/              # Универсальные промты
-│   ├── ai_agent_prompts/   # Agent промты (31 штука)
+│   ├── ai_agent_prompts/   # Agent промты (38 штук)
 │   ├── mpv_stages/         # MVP Stage промты (7 штук)
 │   └── registry.json
 ├── packs/                   # Plugin Packs
 │   ├── k8s-pack/           # Kubernetes операции
 │   └── ci-cd-pack/        # CI/CD pipelines
-└── registry.json           # Общий реестр (31 промт)
+└── registry.json           # Общий реестр (40 промтов)
 ```
 
 ### Baseline Verification
@@ -166,15 +171,30 @@ curl http://localhost:8001/verify-baseline
 
 ## Context7 Integration
 
-Система интегрирована с **Context7 MCP** для получения актуальной документации.
+Система интегрирована с **Context7 MCP** (`https://mcp.context7.com/mcp`) для получения актуальной документации.
 
 ### Быстрый пример
 
 ```python
 # Получить Context7 ID для библиотеки
 context7_lookup(library="fastapi", query="create API endpoint")
-# => library_id: /tiangolo/fastapi
-# => mcp call: mcp__context7__query_docs(library_id="/tiangolo/fastapi", query="...")
+# => library_id: /fastapi/fastapi
+
+# Запросить документацию напрямую
+context7_query(library="fastapi", query="create API endpoint")
+# => results: [документация с примерами кода]
+```
+
+### JWT Authentication
+
+Система использует JWT токены для аутентификации:
+
+```python
+# Сгенерировать токен
+generate_jwt_token(subject="user", role="developer", expiry_hours=24)
+
+# Использовать с запросом
+ai_prompts("добавь функцию", jwt_token="eyJ...")
 ```
 
 ---
@@ -254,7 +274,7 @@ pytest --cov=src
 ai-prompt-system/
 ├── src/
 │   ├── api/
-│   │   └── server.py         # FastMCP сервер (10 tools)
+│   │   └── server.py         # FastMCP сервер (14 tools)
 │   ├── services/
 │   │   ├── executor.py       # PromptExecutor
 │   │   ├── llm_client.py     # LLM клиент (MultiMax, ZAI, OpenRouter)
