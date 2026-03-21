@@ -759,6 +759,33 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "проведи исследование": "promt-bottleneck-analysis-2026",
             "проанализируй": "promt-documentation-refactoring-standards-2026",
             "аудит": "promt-documentation-refactoring-standards-2026",
+
+            # GitHub MCP - PR, Issues, CI/CD
+            "github": "promt-github-mcp",
+            "pull request": "promt-github-mcp",
+            "merge request": "promt-github-mcp",
+            "pr ": "promt-github-mcp",
+            "merge pr": "promt-github-mcp",
+            "create pr": "promt-github-mcp",
+            "создай pr": "promt-github-mcp",
+            "мердж": "promt-github-mcp",
+            "pull request": "promt-github-mcp",
+            "github issue": "promt-github-mcp",
+            "create issue": "promt-github-mcp",
+            "создай issue": "promt-github-mcp",
+            "github actions": "promt-github-mcp",
+            "ci cd": "promt-github-mcp",
+            "workflow": "promt-github-mcp",
+            "deploy": "promt-github-mcp",
+
+            # GitMCP - понимание репозиториев
+            "gitmcp": "promt-gitmcp",
+            "изучи репозиторий": "promt-gitmcp",
+            "изучи библиотеку": "promt-gitmcp",
+            "понять код": "promt-gitmcp",
+            "repository analysis": "promt-gitmcp",
+            "understand repo": "promt-gitmcp",
+            "learn library": "promt-gitmcp",
         }
 
         request_lower = request.lower()

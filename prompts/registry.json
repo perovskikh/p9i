@@ -595,7 +595,42 @@
       ],
       "created_at": "2026-03-20",
       "description": "Исследование bottleneck с генерацией документации по стандартам 2026"
+    },
+    "promt-github-mcp.md": {
+      "name": "promt-github-mcp.md",
+      "file": "universal/ai_agent_prompts/promt-github-mcp.md",
+      "version": "1.0",
+      "tier": "universal",
+      "immutable": false,
+      "overridable": true,
+      "tags": [
+        "github",
+        "mcp",
+        "pr",
+        "issues",
+        "ci-cd",
+        "automation"
+      ],
+      "created_at": "2026-03-21",
+      "description": "Интеграция с GitHub MCP для управления PR, issues, CI/CD"
+    },
+    "promt-gitmcp.md": {
+      "name": "promt-gitmcp.md",
+      "file": "universal/ai_agent_prompts/promt-gitmcp.md",
+      "version": "1.0",
+      "tier": "universal",
+      "immutable": false,
+      "overridable": true,
+      "tags": [
+        "gitmcp",
+        "repository",
+        "documentation",
+        "code-analysis",
+        "hallucination-prevention"
+      ],
+      "created_at": "2026-03-21",
+      "description": "Интеграция с GitMCP для понимания чужих репозиториев"
     }
   },
-  "total_prompts": 36
+  "total_prompts": 38
 }
