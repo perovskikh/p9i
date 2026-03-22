@@ -54,4 +54,4 @@ Use this prompt when you encounter ADR duplicate topics or need to:
 ---
 
 **Example Request:**
-"fix duplicate ADR topic slug '002' use ai-prompts"
+"fix duplicate ADR topic slug '002' use p9i"

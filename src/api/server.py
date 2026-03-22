@@ -629,15 +629,15 @@ def save_memory(project_id: str, data: dict) -> None:
 @mcp.tool
 async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) -> dict:
     """
-    Universal handler for 'use ai-prompts' pattern.
+    Universal handler for 'use p9i' pattern.
 
     Parse natural language request and automatically select/execute
     the appropriate prompt from the library.
 
     Usage in Claude Code:
-        "Добавь в README.md секцию с примерами. use ai-prompts"
-        "Найди и исправь баги в коде. use ai-prompts"
-        "Создай API эндпоинт для пользователей. use ai-prompts"
+        "Добавь в README.md секцию с примерами. use p9i"
+        "Найди и исправь баги в коде. use p9i"
+        "Создай API эндпоинт для пользователей. use p9i"
 
     Args:
         request: Natural language request (e.g., "добавь функцию")
@@ -650,7 +650,7 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
         dict: Execution result with selected prompt and generated content
 
     Pattern:
-        "action target. use ai-prompts"
+        "action target. use p9i"
         - action: что сделать (добавить, найти, создать, исправить, etc.)
         - target: над чем (README.md, API, функцию, баг, etc.)
     """
@@ -1298,6 +1298,168 @@ async def context7_query(library: str, query: str) -> dict:
     return await _context7_query_docs(library_id, query or f"How to use {library}?")
 
 
+async def _github_mcp_call(tool_name: str, arguments: dict) -> dict:
+    """Call GitHub MCP tool."""
+    import httpx
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_mcp_url = os.getenv("GITHUB_MCP_URL", "https://api.githubcopilot.com/mcp/")
+
+    if not github_token:
+        return {"status": "error", "error": "GITHUB_TOKEN not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                github_mcp_url,
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                        "name": tool_name,
+                        "arguments": arguments
+                    },
+                    "id": 1
+                },
+                headers={
+                    "Authorization": f"Bearer {github_token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream"
+                }
+            )
+
+            if resp.status_code != 200:
+                return {"status": "error", "error": f"GitHub MCP error: {resp.status_code}"}
+
+            # Parse SSE response
+            text = resp.text
+            lines = text.split('\n')
+
+            for line in lines:
+                if line.startswith('data: '):
+                    data_str = line[6:]
+                    try:
+                        import json
+                        obj = json.loads(data_str)
+                        logger.info(f"GitHub MCP response: {obj.keys()}")
+
+                        # Check for error in response
+                        if 'error' in obj:
+                            err = obj['error']
+                            return {
+                                "status": "error",
+                                "error": f"GitHub MCP error: {err.get('message', err)}"
+                            }
+
+                        # Check for text content in result
+                        if 'result' in obj:
+                            result = obj['result']
+                            if isinstance(result, dict) and 'content' in result:
+                                # MCP tool result format
+                                results = []
+                                for item in result['content']:
+                                    if item.get('type') == 'text':
+                                        results.append(item['text'])
+                                return {
+                                    "status": "success",
+                                    "tool": tool_name,
+                                    "results": results
+                                }
+                            elif isinstance(result, dict):
+                                # Direct dict result - convert to string
+                                return {
+                                    "status": "success",
+                                    "tool": tool_name,
+                                    "results": [str(result)]
+                                }
+                            elif isinstance(result, list):
+                                # List result
+                                return {
+                                    "status": "success",
+                                    "tool": tool_name,
+                                    "results": result
+                                }
+                            else:
+                                return {
+                                    "status": "success",
+                                    "tool": tool_name,
+                                    "results": [str(result)]
+                                }
+                    except Exception as e:
+                        logger.error(f"Parse error: {e}")
+
+            return {"status": "error", "error": "No results from GitHub MCP"}
+
+    except Exception as e:
+        logger.error(f"GitHub MCP error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def github_mcp_list_repos(query: str = "") -> dict:
+    """List GitHub repositories accessible to the token.
+
+    Args:
+        query: Search query for repositories (optional)
+    """
+    if query:
+        return await _github_mcp_call("search_repositories", {"query": query})
+    return await _github_mcp_call("search_repositories", {})
+
+
+@mcp.tool
+async def github_mcp_create_pr(
+    owner: str,
+    repo: str,
+    title: str,
+    body: str,
+    head: str,
+    base: str = "main"
+) -> dict:
+    """Create a pull request on GitHub."""
+    return await _github_mcp_call("create_pull_request", {
+        "owner": owner,
+        "repo": repo,
+        "title": title,
+        "body": body,
+        "head": head,
+        "base": base
+    })
+
+
+@mcp.tool
+async def github_mcp_create_issue(
+    owner: str,
+    repo: str,
+    title: str,
+    body: str = ""
+) -> dict:
+    """Create an issue on GitHub."""
+    return await _github_mcp_call("issue_write", {
+        "owner": owner,
+        "repo": repo,
+        "title": title,
+        "body": body,
+        "method": "create"
+    })
+
+
+@mcp.tool
+async def github_mcp_list_issues(
+    owner: str,
+    repo: str,
+    state: str = "open"
+) -> dict:
+    """List issues on a GitHub repository."""
+    return await _github_mcp_call("list_issues", {
+        "owner": owner,
+        "repo": repo,
+        "state": state
+    })
+
+
 @mcp.tool
 def clean_context(current_tokens: int, threshold: int = 35000) -> dict:
     """
@@ -1386,7 +1548,7 @@ def get_available_mcp_tools() -> dict:
         dict: List of tools with descriptions
     """
     tools = [
-        {"name": "ai_prompts", "description": "Natural language prompt router (use ai-prompts)"},
+        {"name": "ai_prompts", "description": "Natural language prompt router (use p9i)"},
         {"name": "run_prompt", "description": "Execute a single prompt"},
         {"name": "run_prompt_chain", "description": "Execute full chain (ideation → finish)"},
         {"name": "list_prompts", "description": "List all available prompts"},
@@ -1396,6 +1558,14 @@ def get_available_mcp_tools() -> dict:
         {"name": "clean_context", "description": "Clean context when token limit exceeded"},
         {"name": "context7_lookup", "description": "Get Context7 library ID for documentation lookup"},
         {"name": "context7_query", "description": "Query Context7 documentation API directly"},
+        {"name": "github_mcp_list_repos", "description": "List/search GitHub repositories"},
+        {"name": "github_mcp_create_issue", "description": "Create a GitHub issue"},
+        {"name": "github_mcp_list_issues", "description": "List GitHub issues"},
+        {"name": "github_mcp_create_pr", "description": "Create a pull request"},
+        {"name": "execute_bash", "description": "Execute bash command"},
+        {"name": "generate_jwt_token", "description": "Generate JWT token"},
+        {"name": "validate_jwt_token", "description": "Validate JWT token"},
+        {"name": "revoke_jwt_token", "description": "Revoke JWT token"},
         {"name": "get_available_mcp_tools", "description": "Get this list of tools"}
     ]
 
@@ -1417,7 +1587,11 @@ def get_available_mcp_tools() -> dict:
                 "example": "context7_lookup('fastapi', 'how to create API endpoint')",
                 "mcp_call": "mcp__context7__query-docs"
             },
-            "github": "Use GitHub MCP for repository operations"
+            "github": {
+                "description": "Use GitHub MCP for repository operations",
+                "tools": ["github_mcp_list_repos", "github_mcp_create_issue", "github_mcp_list_issues", "github_mcp_create_pr"],
+                "example": "github_mcp_list_repos('claude') or github_mcp_create_issue('owner', 'repo', 'title', 'body')"
+            }
         }
     }
 

@@ -21,7 +21,7 @@ User Pull Request
 │ 4. ai-auto-fix → Critical fixes auto-apply │
 └────────────────────────────────────────────────────┘
                 ↓
-        ai-prompts router (mcp__ai-prompt-system__ai_prompts)
+        p9i router (mcp__ai-prompt-system__ai_prompts)
                 ↓
         promt-verification.md
         promt-automated-code-fix.md

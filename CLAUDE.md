@@ -229,8 +229,8 @@ To use with Claude Code, add to `~/.claude/settings.json`:
 
 **Usage Example:**
 ```
-"Добавь функцию авторизации в users.py. use ai-prompts"
-"Найди баги в коде обработки ошибок. use ai-prompts"
+"Добавь функцию авторизации в users.py. use p9i"
+"Найди баги в коде обработки ошибок. use p9i"
 ```
 
 ## Documentation

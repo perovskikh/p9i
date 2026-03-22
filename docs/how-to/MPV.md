@@ -91,7 +91,7 @@ run_prompt("promt-k8s-deploy-rollout", {
 })
 
 ✅ Стало:
-"задеплой в k8s"   use ai-prompts
+"задеплой в k8s"   use p9i
 ```
 
 ---
@@ -291,7 +291,7 @@ run_prompt_chain("добавь авторизацию через JWT", [
 Или просто:
 
 ```
-"нужна авторизация через JWT"   use ai-prompts
+"нужна авторизация через JWT"   use p9i
 ```
 
 Роутер сам определит что это новая фича → запустит конвейер с нужного этапа.
@@ -428,12 +428,12 @@ claude mcp add \
 ### Использование
 
 ```
-"нужна фича JWT авторизации"      use ai-prompts  →  полный конвейер
-"задеплой в k8s"                  use ai-prompts  →  k8s-pack
-"создай карту Roblox"             use ai-prompts  →  gamedev-pack
-"проведи рефакторинг src/api/"    use ai-prompts  →  codeshift-refactor
-"обнови README"                   use ai-prompts  →  readme-sync
-"верифицируй соответствие ADR"    use ai-prompts  →  verification
+"нужна фича JWT авторизации"      use p9i  →  полный конвейер
+"задеплой в k8s"                  use p9i  →  k8s-pack
+"создай карту Roblox"             use p9i  →  gamedev-pack
+"проведи рефакторинг src/api/"    use p9i  →  codeshift-refactor
+"обнови README"                   use p9i  →  readme-sync
+"верифицируй соответствие ADR"    use p9i  →  verification
 ```
 
 ---
@@ -618,12 +618,12 @@ install_pack("k8s-pack")
 install_pack("ci-cd-pack")
 
 # 3. Адаптировать под проект
-"проанализируй мой проект и адаптируй систему"   use ai-prompts
+"проанализируй мой проект и адаптируй систему"   use p9i
 
 # 4. Работать — полный конвейер запускается одной фразой
-"нужна фича JWT авторизации"     use ai-prompts
-"задеплой в k8s"                 use ai-prompts
-"верифицируй соответствие ADR"   use ai-prompts
+"нужна фича JWT авторизации"     use p9i
+"задеплой в k8s"                 use p9i
+"верифицируй соответствие ADR"   use p9i
 ```
 
 ---
