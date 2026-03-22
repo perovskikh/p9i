@@ -149,14 +149,18 @@ def call_mcp_tool(tool_name: str, arguments: dict = None) -> dict:
 
 def get_tools() -> dict:
     """Get list of available MCP tools."""
-    result = call_mcp_tool("get_available_mcp_tools")
-    return result.get("result", {}).get("content", [{}])[0].get("text", "{}")
+    try:
+        return get_available_mcp_tools()
+    except Exception as e:
+        return {"tools": [], "error": str(e)}
 
 
 def get_prompts() -> dict:
     """Get list of prompts."""
-    result = call_mcp_tool("list_prompts")
-    return result.get("result", {}).get("content", [{}])[0].get("text", "{}")
+    try:
+        return list_prompts()
+    except Exception as e:
+        return {"count": 0, "prompts": [], "error": str(e)}
 
 
 # Sidebar navigation
@@ -188,9 +192,9 @@ if selected_page == "🏠 Dashboard":
     # Dashboard page
     st.title("📊 p9i Dashboard")
 
-    # Get system info
-    tools_result = json.loads(get_tools())
-    prompts_result = json.loads(get_prompts())
+    # Get system info - call directly
+    tools_result = get_tools()
+    prompts_result = get_prompts()
 
     tools_count = len(tools_result.get("tools", []))
     prompts_count = prompts_result.get("count", 0)
@@ -274,7 +278,7 @@ elif selected_page == "📝 Prompts":
     # Search prompts
     search = st.text_input("🔍 Search prompts", placeholder="Type to search...")
 
-    prompts_result = json.loads(get_prompts())
+    prompts_result = get_prompts()
     prompts = prompts_result.get("prompts", [])
 
     # Filter by search
@@ -292,7 +296,7 @@ elif selected_page == "📝 Prompts":
 elif selected_page == "🔧 Tools":
     st.title("🔧 MCP Tools")
 
-    tools_result = json.loads(get_tools())
+    tools_result = get_tools()
     tools = tools_result.get("tools", [])
 
     # Search tools
@@ -341,9 +345,10 @@ elif selected_page == "🎨 UI/UX Gen":
         style = st.text_input("Style", placeholder="primary, secondary, ghost...")
         if st.button("Generate TailwindCSS"):
             result = call_mcp_tool("generate_tailwind", {"component": component, "style": style})
-            if "result" in result:
-                content = json.loads(result["result"]["content"][0]["text"])
-                st.code(content.get("code", ""), language="html")
+            if result.get("status") == "success":
+                st.code(result.get("code", ""), language="html")
+            elif result.get("error"):
+                st.error(result.get("error"))
 
     with tab2:
         st.subheader("shadcn/ui Component")
@@ -351,9 +356,10 @@ elif selected_page == "🎨 UI/UX Gen":
         variant = st.selectbox("Variant", ["default", "outline", "ghost", "secondary"])
         if st.button("Generate shadcn/ui"):
             result = call_mcp_tool("generate_shadcn", {"component": comp2, "variant": variant})
-            if "result" in result:
-                content = json.loads(result["result"]["content"][0]["text"])
-                st.code(content.get("code", ""), language="tsx")
+            if result.get("status") == "success":
+                st.code(result.get("code", ""), language="tsx")
+            elif result.get("error"):
+                st.error(result.get("error"))
 
     with tab3:
         st.subheader("Textual TUI")
@@ -361,9 +367,10 @@ elif selected_page == "🎨 UI/UX Gen":
         tui_style = st.text_input("Style", key="tui", placeholder="dark, light...")
         if st.button("Generate Textual"):
             result = call_mcp_tool("generate_textual", {"component": tui_type, "style": tui_style})
-            if "result" in result:
-                content = json.loads(result["result"]["content"][0]["text"])
-                st.code(content.get("code", ""), language="python")
+            if result.get("status") == "success":
+                st.code(result.get("code", ""), language="python")
+            elif result.get("error"):
+                st.error(result.get("error"))
 
     with tab4:
         st.subheader("Tauri Desktop App")
@@ -371,9 +378,10 @@ elif selected_page == "🎨 UI/UX Gen":
         template = st.selectbox("Template", ["basic", "react", "vue", "svelte"])
         if st.button("Generate Tauri"):
             result = call_mcp_tool("generate_tauri", {"app_name": app_name, "template": template})
-            if "result" in result:
-                content = json.loads(result["result"]["content"][0]["text"])
-                st.code(content.get("code", ""), language="bash")
+            if result.get("status") == "success":
+                st.code(result.get("code", ""), language="bash")
+            elif result.get("error"):
+                st.error(result.get("error"))
 
 elif selected_page == "📐 Figma":
     st.title("📐 Figma Integration")
@@ -419,9 +427,10 @@ elif selected_page == "📐 Figma":
         target = st.selectbox("Target", ["tailwind", "shadcn", "html"])
         if st.button("Convert to Code"):
             result = call_mcp_tool("figma_to_code", {"file_key": file_key5, "target": target})
-            if "result" in result:
-                content = json.loads(result["result"]["content"][0]["text"])
-                st.code(content.get("code", ""), language="html")
+            if result.get("status") == "success":
+                st.code(result.get("code", ""), language="html")
+            elif result.get("error"):
+                st.error(result.get("error"))
 
 elif selected_page == "🔐 JWT":
     st.title("🔐 JWT Management")
@@ -443,10 +452,11 @@ elif selected_page == "🔐 JWT":
             "expiry_hours": expiry,
             "admin_key": API_KEY
         })
-        if "result" in result:
-            content = json.loads(result["result"]["content"][0]["text"])
+        if result.get("status") == "success":
             st.success("Token generated!")
-            st.code(content.get("token", ""), language="text")
+            st.code(result.get("token", ""), language="text")
+        elif result.get("error"):
+            st.error(result.get("error"))
         else:
             st.error(str(result))
 
