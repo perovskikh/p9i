@@ -180,7 +180,7 @@ selected_page = st.sidebar.radio("Navigation", list(pages.keys()))
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Connection")
-st.sidebar.markdown(f"**MCP URL:** `{MCP_URL}`")
+st.sidebar.markdown("**Mode:** Direct Import")
 st.sidebar.markdown(f"**API Key:** `{API_KEY[:10]}...`")
 
 # Main content
@@ -484,7 +484,7 @@ elif selected_page == "⚙️ Settings":
 
     | Variable | Value |
     |----------|-------|
-    | MCP_URL | `http://localhost:8000` |
+    | Mode | Direct Import |
     | API_KEY | `sk-system-dev` |
     | LLM_PROVIDER | `minimax` |
     | JWT_ENABLED | `true` |
