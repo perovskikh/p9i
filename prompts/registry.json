@@ -79,7 +79,7 @@
     "promt-mvp-baseline-generator-universal.md": {
       "name": "promt-mvp-baseline-generator-universal.md",
       "file": "universal/ai_agent_prompts/promt-mvp-baseline-generator-universal.md",
-      "version": "1.3",
+      "version": "1.3.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -95,7 +95,7 @@
     "promt-project-stack-dump.md": {
       "name": "promt-project-stack-dump.md",
       "file": "universal/ai_agent_prompts/promt-project-stack-dump.md",
-      "version": "1.1",
+      "version": "1.1.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -111,7 +111,7 @@
     "promt-project-adaptation.md": {
       "name": "promt-project-adaptation.md",
       "file": "universal/ai_agent_prompts/promt-project-adaptation.md",
-      "version": "1.1",
+      "version": "1.1.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -194,7 +194,7 @@
     "promt-verification.md": {
       "name": "promt-verification.md",
       "file": "universal/ai_agent_prompts/promt-verification.md",
-      "version": "3.4",
+      "version": "3.4.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -212,7 +212,7 @@
     "promt-consolidation.md": {
       "name": "promt-consolidation.md",
       "file": "universal/ai_agent_prompts/promt-consolidation-simple.md",
-      "version": "2.5",
+      "version": "2.5.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -229,7 +229,7 @@
     "promt-index-update.md": {
       "name": "promt-index-update.md",
       "file": "universal/ai_agent_prompts/promt-index-update.md",
-      "version": "2.6",
+      "version": "2.6.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -262,7 +262,7 @@
     "promt-project-rules-sync.md": {
       "name": "promt-project-rules-sync.md",
       "file": "universal/ai_agent_prompts/promt-project-rules-sync.md",
-      "version": "1.1",
+      "version": "1.1.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -279,7 +279,7 @@
     "promt-adr-implementation-planner.md": {
       "name": "promt-adr-implementation-planner.md",
       "file": "universal/ai_agent_prompts/promt-adr-implementation-planner.md",
-      "version": "2.3",
+      "version": "2.3.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -296,7 +296,7 @@
     "promt-adr-template-migration.md": {
       "name": "promt-adr-template-migration.md",
       "file": "universal/ai_agent_prompts/promt-adr-template-migration.md",
-      "version": "1.4",
+      "version": "1.4.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -516,7 +516,7 @@
     "promt-documentation-compression-executor.md": {
       "name": "promt-documentation-compression-executor.md",
       "file": "universal/ai_agent_prompts/deprecated/promt-documentation-compression-executor.md",
-      "version": "1.1",
+      "version": "1.1.0",
       "tier": "universal",
       "deprecated": true,
       "immutable": false,
@@ -545,7 +545,7 @@
     "promt-documentation-refactoring-standards-2026.md": {
       "name": "promt-documentation-refactoring-standards-2026.md",
       "file": "universal/ai_agent_prompts/promt-documentation-refactoring-standards-2026.md",
-      "version": "1.7",
+      "version": "1.7.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
