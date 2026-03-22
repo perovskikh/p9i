@@ -1,75 +1,36 @@
-#!/usr/bin/env python3
-import sys
-import os
-import re
-from pathlib import Path
-
-ADR_DIR = "docs/explanation/adr"
-MAX_ADR_NUMBER = 999
-
-def get_adr_files():
-    adr_dir = Path(ADR_DIR)
-    if not adr_dir.exists():
-        return []
-    return sorted([f for f in adr_dir.glob("*.md") if f.name not in ["ADR_INDEX.md", "IMPLEMENTATION_REPORT_*.md", "FINAL-REVIEW*.md"]])
-
-def parse_adr_number(filename):
-    match = re.match(r'^ADR[-_]?(\d+)-', filename)
-    return int(match.group(1)) if match else None
-
-def validate_adr_numbering(files):
-    numbers = []
-    issues = []
-    for f in files:
-        num = parse_adr_number(f.name)
-        if num is not None:
-            if num in numbers:
-                issues.append(f"Duplicate ADR number {num} in {f.name}")
-            else:
-                numbers.append(num)
-    return (len(issues) == 0, issues)
-
-def check_duplicate_topics(files):
-    slugs = {}
-    issues = []
-    for f in files:
-        match = re.match(r'^ADR[-_]?(\d+)-([^-]+)-', f.name)
-        if match:
-            slug = match.group(1).lower()
-            if slug in slugs:
-                issues.append(f"Duplicate topic {slug} in {f.name}")
-            else:
-                slugs[slug] = f.name
-    return (len(issues) == 0, issues)
-
-def main():
-    files = get_adr_files()
-    if not files:
-        print("No ADR files found")
-        return 0
-
-    is_valid_num, num_issues = validate_adr_numbering(files)
-    is_valid_slug, slug_issues = check_duplicate_topics(files)
-
-    if not (is_valid_num and is_valid_slug):
-        if num_issues:
-            print("ADR Numbering Issues:")
-            for issue in num_issues:
-                print(f"  {issue}")
-        if slug_issues:
-            print("Duplicate Topic Issues:")
-            for issue in slug_issues:
-                print(f"  {issue}")
-        return 1
-
-    numbers = [parse_adr_number(f.name) for f in files]
-    current_max = max(numbers) if numbers else 0
-
-    print("ADR validation passed")
-    print(f"Checked {len(files)} ADR files")
-    print(f"Current ADR range: ADR-001 to ADR-{current_max:03d}")
-
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main())
+# Pre-commit hooks for p9i
+repos:
+  - repo: local
+    hooks:
+      - id: adr-numbering
+        name: ADR numbering validation
+        entry: python3
+        args:
+          - -c
+          - |
+            import sys
+            import re
+            from pathlib import Path
+            ADR_DIR = 'docs/explanation/adr'
+            files = sorted(Path(ADR_DIR).glob('*.md'))
+            files = [f for f in files if f.name not in ['ADR_INDEX.md']]
+            numbers = []
+            slugs = {}
+            issues = []
+            for f in files:
+                match = re.match(r'^ADR[-_]?(\d+)-([^-]+)-', f.name)
+                if match:
+                    num, slug = int(match.group(1)), match.group(2).lower()
+                    if num in numbers:
+                        issues.append(f'Duplicate ADR number {num}: {f.name}')
+                    numbers.append(num)
+                    if slug in slugs:
+                        issues.append(f'Duplicate topic {slug}: {f.name} vs {slugs[slug]}')
+                    slugs[slug] = f.name
+            if issues:
+                for i in issues: print(i)
+                sys.exit(1)
+            print(f'ADR validation passed: {len(files)} files')
+        language: system
+        pass_filenames: false
+        stages: [commit-msg]
