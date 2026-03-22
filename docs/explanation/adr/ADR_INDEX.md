@@ -6,7 +6,8 @@
 | ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** ✅ | 2026-03-19 | Tiered: core + universal + packs |
 | ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Accepted** | 2026-03-20 | Files + Lazy Loading vs PostgreSQL |
 | ADR-004 | [Deep-Project Integration - Prompt Orchestration](ADR-004-deep-project-integration.md) | **Proposed** | 2026-03-22 | AI Interview, Decomposition, DAG |
-| ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** | 2026-03-22 | TailwindCSS, shadcn, Figma, Textual, Tauri |
+| ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** | 2026-03-22 | TailwindCSS, shadcn, Textual, Tauri |
+| ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** | 2026-03-22 | Figma API, design-to-code, tokens |
 
 ## Legend
 
@@ -65,6 +66,6 @@
 ---
 
 **Last Updated:** 2026-03-22
-**Total ADRs:** 5
+**Total ADRs:** 6
 **Active ADRs:** 5 (0 Deprecated)
 **Next ADR Number:** ADR-006

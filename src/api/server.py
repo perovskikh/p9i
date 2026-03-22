@@ -1925,6 +1925,215 @@ Output: Project structure and main files (Cargo.toml, src-tauri/.conf, index.htm
         return {"status": "error", "error": str(e)}
 
 
+# ============================================================
+# Figma Integration (ADR-006)
+# ============================================================
+
+@mcp.tool()
+async def get_figma_file(
+    file_key: str,
+    jwt_token: str = None
+) -> dict:
+    """
+    Get Figma file structure and metadata.
+
+    Args:
+        file_key: Figma file key (from URL: figma.com/file/FILE_KEY/...)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: File structure with pages, frames, and components
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.figma import get_figma_client
+
+        client = await get_figma_client()
+
+        if not client.token:
+            return {"status": "error", "error": "FIGMA_TOKEN not configured"}
+
+        result = await client.get_file(file_key)
+
+        doc = result.get("document", {})
+        pages = []
+
+        for page in doc.get("children", []):
+            pages.append({
+                "id": page.get("id"),
+                "name": page.get("name"),
+                "type": page.get("type"),
+                "childCount": len(page.get("children", []))
+            })
+
+        return {
+            "status": "success",
+            "file_key": file_key,
+            "name": result.get("name", "Untitled"),
+            "lastModified": result.get("lastModified"),
+            "thumbnailUrl": result.get("thumbnailUrl"),
+            "pages": pages,
+            "version": result.get("version")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def get_figma_components(
+    file_key: str,
+    jwt_token: str = None
+) -> dict:
+    """
+    Get all components from Figma file.
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.figma import get_figma_client
+
+        client = await get_figma_client()
+
+        if not client.token:
+            return {"status": "error", "error": "FIGMA_TOKEN not configured"}
+
+        result = await client.get_file_components(file_key)
+
+        return {
+            "status": "success",
+            "file_key": file_key,
+            "components": result.get("components", []),
+            "total": result.get("total", 0)
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def get_figma_styles(
+    file_key: str,
+    jwt_token: str = None
+) -> dict:
+    """
+    Get design tokens from Figma file.
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.figma import get_figma_client
+
+        client = await get_figma_client()
+
+        if not client.token:
+            return {"status": "error", "error": "FIGMA_TOKEN not configured"}
+
+        styles = await client.get_file_styles(file_key)
+        colors = await client.get_color_styles(file_key)
+
+        return {
+            "status": "success",
+            "file_key": file_key,
+            "styles": styles,
+            "colors": colors
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def export_figma_nodes(
+    file_key: str,
+    node_ids: list,
+    format: str = "png",
+    scale: float = 2.0,
+    jwt_token: str = None
+) -> dict:
+    """
+    Export Figma nodes as images.
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.figma import get_figma_client
+
+        client = await get_figma_client()
+
+        if not client.token:
+            return {"status": "error", "error": "FIGMA_TOKEN not configured"}
+
+        result = await client.export_images(file_key, node_ids, format, scale)
+
+        return {
+            "status": "success",
+            "file_key": file_key,
+            "format": format,
+            "scale": scale,
+            "images": result.get("images", {})
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def figma_to_code(
+    file_key: str,
+    node_ids: list = None,
+    target: str = "tailwind",
+    jwt_token: str = None
+) -> dict:
+    """
+    Convert Figma design to code using AI.
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.figma import get_figma_client
+
+        client = await get_figma_client()
+
+        if not client.token:
+            return {"status": "error", "error": "FIGMA_TOKEN not configured"}
+
+        file_data = await client.get_file(file_key)
+        name = file_data.get("name", "Untitled")
+        colors = await client.get_color_styles(file_key)
+
+        context = f"""Convert this Figma design to {target} code.
+
+Figma File: {name}
+Color Palette:"""
+
+        for color in colors[:10]:
+            context += f"\n- {color.get('hex')}: {color.get('name')}"
+
+        context += f"\n\nTarget: {target}\nOutput: Complete {target} code"""
+
+        executor = get_prompt_executor()
+        result = await executor.execute(context, {"file_key": file_key})
+
+        return {
+            "status": "success",
+            "file_key": file_key,
+            "file_name": name,
+            "target": target,
+            "colors_extracted": len(colors),
+            "code": result.get("content", "")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 @mcp.tool
 def execute_bash(command: str, cwd: str = "/app") -> dict:
     """
@@ -2001,6 +2210,12 @@ def get_available_mcp_tools() -> dict:
         {"name": "generate_shadcn", "description": "Generate shadcn/ui component"},
         {"name": "generate_textual", "description": "Generate Textual TUI component"},
         {"name": "generate_tauri", "description": "Generate Tauri desktop app scaffold"},
+        # Figma tools (ADR-006)
+        {"name": "get_figma_file", "description": "Get Figma file structure"},
+        {"name": "get_figma_components", "description": "Get components from Figma file"},
+        {"name": "get_figma_styles", "description": "Get design tokens from Figma"},
+        {"name": "export_figma_nodes", "description": "Export Figma nodes as images"},
+        {"name": "figma_to_code", "description": "Convert Figma to TailwindCSS/shadcn code"},
         {"name": "context7_lookup", "description": "Get Context7 library ID for documentation lookup"},
         {"name": "context7_query", "description": "Query Context7 documentation API directly"},
         {"name": "github_mcp_list_repos", "description": "List/search GitHub repositories"},
@@ -2041,6 +2256,12 @@ def get_available_mcp_tools() -> dict:
                 "description": "UI/UX code generation (ADR-005)",
                 "tools": ["generate_tailwind", "generate_shadcn", "generate_textual", "generate_tauri"],
                 "example": "generate_tailwind('button', 'primary button with hover state')"
+            },
+            "figma": {
+                "description": "Figma API integration (ADR-006)",
+                "tools": ["get_figma_file", "get_figma_components", "get_figma_styles", "export_figma_nodes", "figma_to_code"],
+                "env_var": "FIGMA_TOKEN",
+                "example": "get_figma_file('abc123xyz') or figma_to_code('abc123xyz', target='tailwind')"
             }
         }
     }
