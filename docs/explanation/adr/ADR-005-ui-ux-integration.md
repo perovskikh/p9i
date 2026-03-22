@@ -1,7 +1,7 @@
 # ADR-005: UI/UX Integration Strategy
 
 ## Status
-**Proposed** | 2026-03-22
+**Implemented** | 2026-03-22
 
 ## Context
 
@@ -56,6 +56,32 @@ TAURI_TOKEN=your_token         # Tauri authentication
 
 # Mobile
 FLUTTER_TOKEN=your_token       # Flutter/Expo authentication
+```
+
+## Implementation
+
+### MCP Tools (4 new)
+
+| Tool | Description |
+|------|-------------|
+| `generate_tailwind` | Generate TailwindCSS component |
+| `generate_shadcn` | Generate shadcn/ui component |
+| `generate_textual` | Generate Textual TUI component |
+| `generate_tauri` | Generate Tauri desktop app scaffold |
+
+### Architecture
+
+- Uses LLM to generate code based on component description
+- Integrated with prompt executor for consistent output
+- Added to `get_available_mcp_tools` list (total 28 tools)
+- Added to external_integrations section
+
+### Testing
+
+```bash
+# Test Tailwind generation
+generate_tailwind('button', 'primary button with hover effect')
+# Returns: HTML with TailwindCSS classes
 ```
 
 ## Alternatives Considered

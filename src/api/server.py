@@ -1766,6 +1766,165 @@ def checkpoint_load(
     }
 
 
+# ============================================================================
+# UI/UX TOOLS (ADR-005: UI/UX Integration)
+# ============================================================================
+
+@mcp.tool
+async def generate_tailwind(
+    component: str,
+    style: str = "modern",
+    jwt_token: str = None
+) -> dict:
+    """
+    Generate TailwindCSS classes for UI components.
+
+    Args:
+        component: Component name (button, card, input, etc.)
+        style: Style variant (modern, minimal, brutal, etc.)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Generated TailwindCSS code
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    prompt = f"""Generate TailwindCSS classes for a {component} component.
+
+Style: {style}
+Output: Complete HTML with TailwindCSS classes"""
+
+    try:
+        executor = get_prompt_executor()
+        result = await executor.execute(prompt, {"component": component, "style": style})
+        return {
+            "status": "success",
+            "component": component,
+            "style": style,
+            "code": result.get("content", "")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def generate_shadcn(
+    component: str,
+    framework: str = "react",
+    jwt_token: str = None
+) -> dict:
+    """
+    Generate shadcn/ui components.
+
+    Args:
+        component: Component name
+        framework: Framework (react, vue, svelte)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Generated shadcn/ui component code
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    prompt = f"""Generate a shadcn/ui {component} component for {framework}.
+
+Output: Complete component code with TypeScript types"""
+
+    try:
+        executor = get_prompt_executor()
+        result = await executor.execute(prompt, {"component": component, "framework": framework})
+        return {
+            "status": "success",
+            "component": component,
+            "framework": framework,
+            "code": result.get("content", "")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def generate_textual(
+    widget: str,
+    theme: str = "dark",
+    jwt_token: str = None
+) -> dict:
+    """
+    Generate Textual (Python) CLI interfaces.
+
+    Args:
+        widget: Widget type (button, input, table, etc.)
+        theme: Theme (dark, light)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Generated Textual Python code
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    prompt = f"""Generate a Textual framework Python widget for {widget}.
+
+Theme: {theme}
+Output: Complete Python code with Textual"""
+
+    try:
+        executor = get_prompt_executor()
+        result = await executor.execute(prompt, {"widget": widget, "theme": theme})
+        return {
+            "status": "success",
+            "widget": widget,
+            "theme": theme,
+            "code": result.get("content", "")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def generate_tauri(
+    app_name: str,
+    template: str = "basic",
+    jwt_token: str = None
+) -> dict:
+    """
+    Generate Tauri desktop app scaffolding.
+
+    Args:
+        app_name: Application name
+        template: Template (basic, react, vue, svelte)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Generated Tauri project structure
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    prompt = f"""Generate a Tauri desktop app structure for '{app_name}'.
+
+Template: {template}
+Output: Project structure and main files (Cargo.toml, src-tauri/.conf, index.html)"""
+
+    try:
+        executor = get_prompt_executor()
+        result = await executor.execute(prompt, {"app_name": app_name, "template": template})
+        return {
+            "status": "success",
+            "app_name": app_name,
+            "template": template,
+            "code": result.get("content", "")
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 @mcp.tool
 def execute_bash(command: str, cwd: str = "/app") -> dict:
     """
@@ -1837,6 +1996,11 @@ def get_available_mcp_tools() -> dict:
         {"name": "generate_spec", "description": "Auto-generate spec documentation"},
         {"name": "checkpoint_save", "description": "Save session checkpoint"},
         {"name": "checkpoint_load", "description": "Load session checkpoint"},
+        # UI/UX tools (ADR-005)
+        {"name": "generate_tailwind", "description": "Generate TailwindCSS component"},
+        {"name": "generate_shadcn", "description": "Generate shadcn/ui component"},
+        {"name": "generate_textual", "description": "Generate Textual TUI component"},
+        {"name": "generate_tauri", "description": "Generate Tauri desktop app scaffold"},
         {"name": "context7_lookup", "description": "Get Context7 library ID for documentation lookup"},
         {"name": "context7_query", "description": "Query Context7 documentation API directly"},
         {"name": "github_mcp_list_repos", "description": "List/search GitHub repositories"},
@@ -1872,6 +2036,11 @@ def get_available_mcp_tools() -> dict:
                 "description": "Use GitHub MCP for repository operations",
                 "tools": ["github_mcp_list_repos", "github_mcp_create_issue", "github_mcp_list_issues", "github_mcp_create_pr"],
                 "example": "github_mcp_list_repos('claude') or github_mcp_create_issue('owner', 'repo', 'title', 'body')"
+            },
+            "ui_ux_generation": {
+                "description": "UI/UX code generation (ADR-005)",
+                "tools": ["generate_tailwind", "generate_shadcn", "generate_textual", "generate_tauri"],
+                "example": "generate_tailwind('button', 'primary button with hover state')"
             }
         }
     }
