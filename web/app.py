@@ -281,8 +281,10 @@ elif selected_page == "📝 Prompts":
     prompts_result = get_prompts()
     prompts = prompts_result.get("prompts", [])
 
-    # Ensure prompts is a list
-    if not isinstance(prompts, list):
+    # Ensure prompts is a list (handle dict case)
+    if isinstance(prompts, dict):
+        prompts = list(prompts.values())
+    elif not isinstance(prompts, list):
         prompts = []
 
     # Filter by search
@@ -302,6 +304,10 @@ elif selected_page == "🔧 Tools":
 
     tools_result = get_tools()
     tools = tools_result.get("tools", [])
+
+    # Ensure tools is a list
+    if not isinstance(tools, list):
+        tools = []
 
     # Search tools
     search = st.text_input("🔍 Search tools", placeholder="Type to search...")
