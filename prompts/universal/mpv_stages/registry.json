@@ -8,7 +8,7 @@
     "promt-ideation.md": {
       "name": "promt-ideation.md",
       "file": "promt-ideation.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 1,
       "stage_name": "Idea Generation",
@@ -21,7 +21,7 @@
     "promt-analysis.md": {
       "name": "promt-analysis.md",
       "file": "promt-analysis.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 2,
       "stage_name": "Requirements Analysis",
@@ -35,7 +35,7 @@
     "promt-design.md": {
       "name": "promt-design.md",
       "file": "promt-design.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 3,
       "stage_name": "Architecture Planning",
@@ -49,7 +49,7 @@
     "promt-implementation.md": {
       "name": "promt-implementation.md",
       "file": "promt-implementation.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 4,
       "stage_name": "Code Generation",
@@ -63,7 +63,7 @@
     "promt-testing.md": {
       "name": "promt-testing.md",
       "file": "promt-testing.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 5,
       "stage_name": "Quality Validation",
@@ -77,7 +77,7 @@
     "promt-debugging.md": {
       "name": "promt-debugging.md",
       "file": "promt-debugging.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 6,
       "stage_name": "Self-Correction",
@@ -91,7 +91,7 @@
     "promt-finish.md": {
       "name": "promt-finish.md",
       "file": "promt-finish.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "stage_number": 7,
       "stage_name": "Documentation & Delivery",

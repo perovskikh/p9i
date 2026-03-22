@@ -8,7 +8,7 @@
     "promt-ideation.md": {
       "name": "promt-ideation.md",
       "file": "universal/mpv_stages/promt-ideation.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -17,7 +17,7 @@
     "promt-analysis.md": {
       "name": "promt-analysis.md",
       "file": "universal/mpv_stages/promt-analysis.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -26,7 +26,7 @@
     "promt-design.md": {
       "name": "promt-design.md",
       "file": "universal/mpv_stages/promt-design.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -35,7 +35,7 @@
     "promt-implementation.md": {
       "name": "promt-implementation.md",
       "file": "universal/mpv_stages/promt-implementation.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -44,7 +44,7 @@
     "promt-testing.md": {
       "name": "promt-testing.md",
       "file": "universal/mpv_stages/promt-testing.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -53,7 +53,7 @@
     "promt-debugging.md": {
       "name": "promt-debugging.md",
       "file": "universal/mpv_stages/promt-debugging.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -62,7 +62,7 @@
     "promt-finish.md": {
       "name": "promt-finish.md",
       "file": "universal/mpv_stages/promt-finish.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "mpv_stage",
       "immutable": false,
       "overridable": true,
@@ -127,7 +127,7 @@
     "promt-context7-generation.md": {
       "name": "promt-context7-generation.md",
       "file": "universal/ai_agent_prompts/promt-context7-generation.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -144,7 +144,7 @@
     "promt-prompt-creator.md": {
       "name": "promt-prompt-creator.md",
       "file": "universal/ai_agent_prompts/promt-prompt-creator.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -161,7 +161,7 @@
     "promt-system-adapt.md": {
       "name": "promt-system-adapt.md",
       "file": "universal/ai_agent_prompts/promt-system-adapt.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -178,7 +178,7 @@
     "promt-versioning-policy.md": {
       "name": "promt-versioning-policy.md",
       "file": "universal/ai_agent_prompts/promt-versioning-policy.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -246,7 +246,7 @@
     "promt-readme-sync.md": {
       "name": "promt-readme-sync.md",
       "file": "universal/ai_agent_prompts/promt-readme-sync.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -313,7 +313,7 @@
     "promt-ci-cd-pipeline.md": {
       "name": "promt-ci-cd-pipeline.md",
       "file": "universal/ai_agent_prompts/promt-ci-cd-pipeline.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -330,7 +330,7 @@
     "promt-onboarding.md": {
       "name": "promt-onboarding.md",
       "file": "universal/ai_agent_prompts/promt-onboarding.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -347,7 +347,7 @@
     "promt-bug-fix.md": {
       "name": "promt-bug-fix.md",
       "file": "universal/ai_agent_prompts/promt-bug-fix.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -364,7 +364,7 @@
     "promt-refactoring.md": {
       "name": "promt-refactoring.md",
       "file": "universal/ai_agent_prompts/promt-refactoring.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -381,7 +381,7 @@
     "promt-security-audit.md": {
       "name": "promt-security-audit.md",
       "file": "universal/ai_agent_prompts/promt-security-audit.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -398,7 +398,7 @@
     "promt-quality-test.md": {
       "name": "promt-quality-test.md",
       "file": "universal/ai_agent_prompts/promt-quality-test.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -416,7 +416,7 @@
     "promt-workflow-orchestration.md": {
       "name": "promt-workflow-orchestration.md",
       "file": "universal/ai_agent_prompts/promt-workflow-orchestration.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -433,7 +433,7 @@
     "promt-sync-report-export.md": {
       "name": "promt-sync-report-export.md",
       "file": "universal/ai_agent_prompts/promt-sync-report-export.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -450,7 +450,7 @@
     "promt-system-evolution.md": {
       "name": "promt-system-evolution.md",
       "file": "universal/ai_agent_prompts/promt-system-evolution.md",
-      "version": "1.2",
+      "version": "1.2.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -467,7 +467,7 @@
     "promt-k8s-deploy-rollout.md": {
       "name": "promt-k8s-deploy-rollout.md",
       "file": "packs/k8s-pack/promt-k8s-deploy-rollout.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "pack",
       "pack": "k8s-pack",
       "immutable": false,
@@ -477,7 +477,7 @@
     "promt-k8s-pod-debug.md": {
       "name": "promt-k8s-pod-debug.md",
       "file": "packs/k8s-pack/promt-k8s-pod-debug.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "pack",
       "pack": "k8s-pack",
       "immutable": false,
@@ -487,7 +487,7 @@
     "promt-k8s-helm-upgrade.md": {
       "name": "promt-k8s-helm-upgrade.md",
       "file": "packs/k8s-pack/promt-k8s-helm-upgrade.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "pack",
       "pack": "k8s-pack",
       "immutable": false,
@@ -497,7 +497,7 @@
     "promt-ci-github-actions.md": {
       "name": "promt-ci-github-actions.md",
       "file": "packs/ci-cd-pack/promt-ci-github-actions.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "pack",
       "pack": "ci-cd-pack",
       "immutable": false,
@@ -507,7 +507,7 @@
     "promt-feature-add.md": {
       "name": "promt-feature-add.md",
       "file": "universal/ai_agent_prompts/promt-feature-add.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -526,7 +526,7 @@
     "promt-automated-code-fix.md": {
       "name": "promt-automated-code-fix.md",
       "file": "universal/ai_agent_prompts/promt-automated-code-fix.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -565,7 +565,7 @@
     "promt-documentation-agent-2026.md": {
       "name": "promt-documentation-agent-2026.md",
       "file": "universal/ai_agent_prompts/promt-documentation-agent-2026.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -581,7 +581,7 @@
     "promt-bottleneck-analysis-2026.md": {
       "name": "promt-bottleneck-analysis-2026.md",
       "file": "universal/ai_agent_prompts/promt-bottleneck-analysis-2026.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -599,7 +599,7 @@
     "promt-github-mcp.md": {
       "name": "promt-github-mcp.md",
       "file": "universal/ai_agent_prompts/promt-github-mcp.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
@@ -617,7 +617,7 @@
     "promt-gitmcp.md": {
       "name": "promt-gitmcp.md",
       "file": "universal/ai_agent_prompts/promt-gitmcp.md",
-      "version": "1.0",
+      "version": "1.0.0",
       "tier": "universal",
       "immutable": false,
       "overridable": true,
