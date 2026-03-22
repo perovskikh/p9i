@@ -1,18 +1,33 @@
-# AI Prompt System
+# p9i — AI Prompt System
 
-**MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.**
+> **p9i** (p=prompt, 9=#, i=index) — MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.
+
+| Команда | Описание |
+|---------|----------|
+| `use p9i` | Универсальный триггер на естественном языке |
+| `init p9i` | Инициализация в новом проекте |
 
 ---
 
-## Статус системы
+## Быстрый старт
 
-| Компонент | Статус | Порт |
-|-----------|--------|------|
-| MCP Server | ✅ Running | 8000 |
-| PostgreSQL | ✅ Healthy | 5432 |
-| Redis | ✅ Healthy | 6379 |
+```bash
+# Запуск (Docker)
+docker compose up -d
 
-**Последнее тестирование:** 2026-03-22 — MiniMax-M2.7 ✅
+# Или локально
+pip install -e . && python -m src.api.server
+```
+
+### Быстрые команды
+
+```bash
+# HTTP API
+curl -X POST http://localhost:8000/sse -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"ai_prompts","arguments":{"request":"добавь функцию"}},"id":1}'
+
+# Claude Code
+"Добавь функцию логирования. use p9i"
+```
 
 ### ADR-002 Реализация
 
@@ -72,99 +87,63 @@
 
 ---
 
-## Быстрый старт
+## MCP Tools (14)
 
-### Docker Compose (рекомендуется)
-
-```bash
-# Клонировать репозиторий
-git clone https://github.com/perovskikh/p9i.git
-cd p9i
-
-# Запустить полный стек
-docker compose up -d
-
-# Проверить статус
-docker compose ps
-```
-
-### Локальный запуск
-
-```bash
-# Установка зависимостей
-pip install -e .
-
-# Запуск сервера
-python -m src.api.server
-```
-
----
-
-## MCP Tools (14 инструментов)
-
-После запуска доступны инструменты:
-
-| Инструмент | Описание |
-|------------|----------|
-| `ai_prompts` | Универсальный маршрутизатор (пиши на естественном языке) |
-| `run_prompt` | Выполнить один промт |
-| `run_prompt_chain` | Выполнить цепочку (ideation → finish) |
-| `list_prompts` | Список доступных промтов (40 штук) |
-| `get_project_memory` | Получить память проекта |
-| `save_project_memory` | Сохранить память проекта |
-| `adapt_to_project` | Автоопределение стека проекта |
-| `clean_context` | Очистка контекста при превышении лимита токенов |
-| `context7_lookup` | Получить Context7 library ID для документации |
-| `context7_query` | Запросить документацию через Context7 MCP |
-| `generate_jwt_token` | Сгенерировать JWT токен |
-| `validate_jwt_token` | Валидировать JWT токен |
-| `revoke_jwt_token` | Отозвать JWT токен |
-| `get_available_mcp_tools` | Список доступных инструментов |
+| Инструмент | Назначение |
+|------------|------------|
+| `ai_prompts` | Универсальный маршрутизатор (`use p9i`) |
+| `run_prompt` / `run_prompt_chain` | Выполнение промтов |
+| `list_prompts` | Список 40 промтов |
+| `get/save_project_memory` | Память проекта |
+| `adapt_to_project` | Автоопределение стека |
+| `context7_lookup/query` | Документация (Context7) |
+| `generate/validate/revoke_jwt_token` | JWT аутентификация |
+| `get_available_mcp_tools` | Список инструментов |
 
 ---
 
 ## Естественный язык: `use p9i`
 
-Главная фича — **универсальный триггер** `ai_prompts`:
+Универсальный триггер работает на русском и английском:
 
 ```
-"Добавь в README.md секцию с примерами. use p9i"
-"Найди и исправь баги в коде. use p9i"
-"Создай API эндпоинт для пользователей. use p9i"
-"Сделай рефакторинг функции авторизации. use p9i"
+"Добавь функцию авторизации. use p9i"
+"Найди баги в обработке ошибок. use p9i"
+"Создай API эндпоинт. use p9i"
+"Рефакторинг функции. use p9i"
+"init p9i" → адаптация к проекту
 ```
 
-**Как работает:**
-1. Парсит намерение из запроса
-2. Автоматически выбирает нужный промт
-3. Выполняет и возвращает результат
+**Маршрутизация по ключевым словам:**
+
+| Ключевое слово | Промт | Назначение |
+|----------------|-------|------------|
+| `добавить`, `new feature` | promt-feature-add | Новая функциональность |
+| `баг`, `исправить`, `fix` | promt-bug-fix | Исправление багов |
+| `рефакторинг`, `refactor` | promt-refactoring | Рефакторинг |
+| `test`, `тест` | promt-quality-test | Тестирование |
+| `security`, `безопасност` | promt-security-audit | Аудит безопасности |
+| `init p9i`, `адаптируй` | promt-system-adapt | Адаптация к проекту |
 
 ---
 
-## Структура промтов
+## Архитектура промтов
 
-Система использует **tiered архитектуру**:
+**Tiered структура** (приоритет загрузки):
 
 ```
 prompts/
-├── core/                    # Baseline промты (SHA256 верификация)
-│   ├── system-prompts/     # Базовые системные промты
-│   └── registry.json       # Baseline lock: 1.0.0
-├── universal/              # Универсальные промты
-│   ├── ai_agent_prompts/   # Agent промты (38 штук)
-│   ├── mpv_stages/         # MVP Stage промты (7 штук)
-│   └── registry.json
-├── packs/                   # Plugin Packs
-│   ├── k8s-pack/           # Kubernetes операции
-│   └── ci-cd-pack/        # CI/CD pipelines
-└── registry.json           # Общий реестр (40 промтов)
+├── core/                  # Baseline (SHA256, 1.0.0 lock)
+├── universal/             # 40 промтов
+│   ├── ai_agent_prompts/  # Agent промты
+│   └── mpv_stages/        # MVP Stage (7 штук)
+└── packs/                 # Plugin Packs (k8s, ci-cd)
 ```
 
 ### Baseline Verification
 
 ```bash
-# Проверить целостность baseline
-curl http://localhost:8001/verify-baseline
+curl http://localhost:8000/verify-baseline
 ```
 
 ---
@@ -383,26 +362,11 @@ pytest --cov=src
 
 ```
 p9i/
-├── src/
-│   ├── api/
-│   │   └── server.py         # FastMCP сервер (14 tools)
-│   ├── services/
-│   │   ├── executor.py       # PromptExecutor
-│   │   ├── llm_client.py     # LLM клиент (MultiMax, ZAI, OpenRouter)
-│   │   └── memory.py         # MemoryService
-│   ├── storage/
-│   │   ├── prompts.py        # Legacy storage
-│   │   └── prompts_v2.py    # Tiered storage с baseline
-│   └── middleware/
-│       └── baseline_verification.py
-├── prompts/                   # Markdown промты
-│   ├── core/                # Baseline промты
-│   ├── universal/           # Универсальные промты
-│   └── registry.json        # Реестр
-├── memory/                   # Память проектов
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
+├── src/api/server.py       # FastMCP (14 tools)
+├── src/services/          # executor, llm_client, memory
+├── prompts/               # 40 markdown промтов
+├── memory/                # Память проектов
+├── docker/                # Dockerfile, docker-compose
 └── README.md
 ```
 
@@ -426,51 +390,18 @@ API_KEYS__PROJECT_1=sk-project-1-key
 
 ## Документация (Diátaxis)
 
-Система следует **Diátaxis** стандартам документации 2026:
-
-| Category | Папка | Статус |
-|----------|-------|--------|
-| Tutorials | `docs/tutorials/` | Требует создания |
-| How-to | `docs/how-to/` | ✅ 5 файлов |
-| Reference | `docs/reference/` | AUTO-GENERATED |
-| Explanation | `docs/explanation/` | ✅ 4 ADR |
-
-### Структура docs/
-
-```
-docs/
-├── tutorials/     # Обучение с нуля
-├── how-to/        # Практические задачи
-│   ├── BOTTLENECKS_ANALYSIS.md
-│   ├── AUTO_FIX_IMPLEMENTATION.md
-│   ├── TECHNICAL_DEBT_TRACKER.md
-│   ├── MPV.md
-│   └── analysis-CodeShift-promt.md
-├── reference/     # API справка (AUTO-GENERATED)
-└── explanation/
-    └── adr/       # Architecture Decision Records
-        ├── ADR-001-system-genesis.md
-        ├── ADR-002-tiered-prompt-architecture-mpv-integration.md
-        └── ADR-003-prompt-storage-strategy.md
-```
+| Category | Папка |
+|----------|-------|
+| How-to | `docs/how-to/` |
+| Reference | `docs/reference/` (AUTO) |
+| Explanation | `docs/explanation/adr/` |
 
 ---
 
-## Документация
+## Ссылки
 
-| Файл | Описание |
-|------|----------|
-| [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) | Полная схема архитектуры |
-| [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | Подключение к Claude Code |
+- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTUREURE.md) — Архитектура
+- [MCP_INTEGRATION.md](MCP_INTEGRATION.md) — Claude Code
+- [GitHub](https://github.com/perovskikh/p9i)
 
----
-
-## Репозиторий
-
-https://github.com/perovskikh/p9i
-
----
-
-## Лицензия
-
-MIT License
+**MIT License**
