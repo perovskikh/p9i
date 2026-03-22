@@ -22,14 +22,27 @@ PROMPTS_DIR = Path("/app/prompts")
 
 def load_prompt(prompt_name: str) -> str:
     """Load prompt content from file."""
-    # Try different locations
-    for search_dir in [PROMPTS_DIR / "universal", PROMPTS_DIR / "agents", PROMPTS_DIR]:
+    # Direct search locations
+    search_dirs = [
+        PROMPTS_DIR,
+        PROMPTS_DIR / "universal",
+        PROMPTS_DIR / "agents",
+        PROMPTS_DIR / "universal" / "ai_agent_prompts",
+        PROMPTS_DIR / "universal" / "mpv_stages",
+        PROMPTS_DIR / "packs",
+    ]
+
+    # Subdirectories to check
+    subdirs = ["architect", "developer", "reviewer", "designer", "devops"]
+
+    for search_dir in search_dirs:
+        # Direct file check
         prompt_file = search_dir / f"{prompt_name}.md"
         if prompt_file.exists():
             return prompt_file.read_text()
 
-        # Also check subdirectories
-        for subdir in ["architect", "developer", "reviewer", "designer", "devops"]:
+        # Check subdirectories
+        for subdir in subdirs:
             prompt_file = search_dir / subdir / f"{prompt_name}.md"
             if prompt_file.exists():
                 return prompt_file.read_text()
@@ -63,13 +76,13 @@ class AgentOrchestrator:
     Manages agent interactions through shared memory.
     """
 
-    # Define available agents
+    # Define available agents - uses prompts from universal/ai_agent_prompts/
     AGENTS = {
         "architect": Agent(
             name="Architect",
             prompts=[
-                "promt-architect-design",
-                "promt-architect-review",
+                "promt-project-adaptation",  # Adapts to project stack
+                "promt-adr-implementation-planner",  # ADR planning
                 "create_adr"
             ],
             memory_key="architecture",
@@ -78,10 +91,10 @@ class AgentOrchestrator:
         "developer": Agent(
             name="Developer",
             prompts=[
-                "promt-feature-add",
-                "promt-bug-fix",
-                "promt-refactoring",
-                "promt-implementation"
+                "promt-feature-add",  # Add new features
+                "promt-bug-fix",     # Fix bugs
+                "promt-refactoring",  # Refactor code
+                "promt-implementation"  # General implementation
             ],
             memory_key="code",
             description="Code generation, features, bug fixes"
@@ -89,9 +102,9 @@ class AgentOrchestrator:
         "reviewer": Agent(
             name="Reviewer",
             prompts=[
-                "promt-llm-review",
-                "promt-security-audit",
-                "promt-quality-test"
+                "promt-llm-review",     # Code review
+                "promt-security-audit",  # Security check
+                "promt-quality-test"    # Quality testing
             ],
             memory_key="reviews",
             description="Code review, security, quality checks"
@@ -99,9 +112,7 @@ class AgentOrchestrator:
         "designer": Agent(
             name="Designer",
             prompts=[
-                "promt-ui-generator",
-                "generate_tailwind",
-                "generate_shadcn"
+                "promt-ui-generator",  # UI generation (covers Tailwind + shadcn)
             ],
             memory_key="design",
             description="UI/UX design and generation"
