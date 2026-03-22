@@ -221,7 +221,7 @@ if selected_page == "🏠 Dashboard":
     with col3:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-value">5</div>
+            <div class="stat-value">6</div>
             <div class="stat-label">ADRs</div>
         </div>
         """, unsafe_allow_html=True)
