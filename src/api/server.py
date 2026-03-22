@@ -66,7 +66,12 @@ logger = logging.getLogger(__name__)
 
 # JWT Configuration
 JWT_ENABLED = os.getenv("JWT_ENABLED", "false").lower() == "true"
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+# SECURITY: Require JWT_SECRET to be set in production
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    if JWT_ENABLED:
+        raise ValueError("JWT_SECRET environment variable must be set when JWT_ENABLED=true")
+    JWT_SECRET = "dev-only-secret"  # Only used when JWT is disabled
 
 # Import JWT service if enabled
 _jwt_service = None
@@ -85,7 +90,8 @@ if JWT_ENABLED:
     def generate_jwt_token(
         subject: str,
         role: str = "user",
-        expiry_hours: int = 24
+        expiry_hours: int = 24,
+        admin_key: str = None
     ) -> dict:
         """
         Generate a JWT access token for API authentication.
@@ -94,11 +100,21 @@ if JWT_ENABLED:
             subject: User or project identifier
             role: Role (admin, developer, user)
             expiry_hours: Token expiration in hours (default 24)
+            admin_key: Required admin key to generate tokens (from JWT_ADMIN_KEY env)
         """
         global _jwt_service
 
         if not JWT_ENABLED:
             return {"status": "error", "error": "JWT authentication is not enabled"}
+
+        # SECURITY: Require admin key for token generation
+        jwt_admin_key = os.getenv("JWT_ADMIN_KEY")
+        if jwt_admin_key and admin_key != jwt_admin_key:
+            return {"status": "error", "error": "Invalid admin key"}
+
+        # SECURITY: Prevent privilege escalation - only admin can create admin tokens
+        if role == "admin" and admin_key != jwt_admin_key:
+            return {"status": "error", "error": "Admin role requires valid admin key"}
 
         try:
             token = _jwt_service.generate_token(
@@ -665,73 +681,54 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
 
         # Intent keywords mapping to prompts
         INTENT_MAP = {
-            # Code operations (feature-add)
-            "feature": "promt-feature-add",
-            "добавить": "promt-feature-add",
-            "добавить функт": "promt-feature-add",
-            "создать": "promt-feature-add",
-            "создай": "promt-feature-add",
-            "создать компонент": "promt-feature-add",
-            "new feature": "promt-feature-add",
-            "add feature": "promt-feature-add",
-            "фича": "promt-feature-add",
-            "новую возможность": "promt-feature-add",
+            # === ORDER MATTERS: Longest/most specific first ===
 
-            # Bug/fix operations
-            "bug": "promt-bug-fix",
-            "исправить": "promt-bug-fix",
-            "исправь": "promt-bug-fix",
-            "исправить ошибку": "promt-bug-fix",
-            "фикс": "promt-bug-fix",
-            "fix bug": "promt-bug-fix",
-            "баг": "promt-bug-fix",
-            "ошибку": "promt-bug-fix",
-            "найди": "promt-bug-fix",
+            # GitHub MCP - PR, Issues, Workflows (MOST SPECIFIC FIRST)
+            "github actions": "promt-github-mcp",
+            "github issue": "promt-github-mcp",
+            "pull request": "promt-github-mcp",
+            "merge request": "promt-github-mcp",
+            "create pr": "promt-github-mcp",
+            "merge pr": "promt-github-mcp",
+            "create issue": "promt-github-mcp",
+            "workflow": "promt-github-mcp",
+            "мердж": "promt-github-mcp",
+            "создай pr": "promt-github-mcp",
+            "создай issue": "promt-github-mcp",
+            "gitmcp": "promt-gitmcp",
+            "изучи репозиторий": "promt-gitmcp",
+            "изучи библиотеку": "promt-gitmcp",
+            "understand repo": "promt-gitmcp",
+            "learn library": "promt-gitmcp",
+            "repository analysis": "promt-gitmcp",
 
-            # Refactoring
-            "refactor": "promt-refactoring",
-            "рефакторинг": "promt-refactoring",
-            "улучшить код": "promt-refactoring",
-            "улучшить": "promt-refactoring",
-            "улучши": "promt-refactoring",
-            "модернизируй": "promt-refactoring",
-            "перепиши": "promt-refactoring",
-            "оптимизируй": "promt-refactoring",
-            "упрости": "promt-refactoring",
-            "упрости код": "promt-refactoring",
+            # Claude Cookbook integration
+            "claude cookbook": "promt-claude-cookbook",
+            "claude api": "promt-claude-cookbook",
+            "anthropic api": "promt-claude-cookbook",
+            "tool calling": "promt-claude-cookbook",
+            "sub-agent": "promt-claude-cookbook",
+            "multimodal": "promt-claude-cookbook",
+            "json mode": "promt-claude-cookbook",
+            "rag": "promt-claude-cookbook",
+            "tool use": "promt-claude-cookbook",
+            "vision": "promt-claude-cookbook",
 
-            # Security
-            "security": "promt-security-audit",
-            "безопасност": "promt-security-audit",
-            "audit": "promt-security-audit",
-            "аудит": "promt-security-audit",
-            "уязвимост": "promt-security-audit",
+            # Bottleneck analysis & research (2026 docs standards)
+            "проведи исследование": "promt-bottleneck-analysis-2026",
+            "узкие места": "promt-bottleneck-analysis-2026",
+            "всех узких": "promt-bottleneck-analysis-2026",
+            "bottleneck": "promt-bottleneck-analysis-2026",
+            "исследуй": "promt-bottleneck-analysis-2026",
+            "проанализируй": "promt-documentation-refactoring-standards-2026",
 
-            # Testing
-            "test": "promt-quality-test",
-            "тест": "promt-quality-test",
-            "напиши тест": "promt-quality-test",
-            "quality": "promt-quality-test",
-            "проверь": "promt-quality-test",
-
-            # Onboarding/adaptation
-            "adapt": "promt-project-adaptation",
-            "адаптац": "promt-project-adaptation",
-            "onboard": "promt-onboarding",
-            "подключи": "promt-project-adaptation",
-
-            # CI/CD
-            "ci-cd": "promt-ci-cd-pipeline",
-            "ci cd": "promt-ci-cd-pipeline",
-            "pipeline": "promt-ci-cd-pipeline",
-            "deploy": "promt-ci-cd-pipeline",
-            "деплой": "promt-ci-cd-pipeline",
-            "github": "promt-ci-cd-pipeline",
-            "github actions": "promt-ci-cd-pipeline",
-
-            # Versioning
-            "version": "promt-versioning-policy",
-            "версион": "promt-versioning-policy",
+            # System adaptation
+            "инициализация p9i": "promt-system-adapt",
+            "подключи систему": "promt-system-adapt",
+            "init p9i": "promt-system-adapt",
+            "новый проект": "promt-system-adapt",
+            "new project": "promt-system-adapt",
+            "адаптируй": "promt-system-adapt",
 
             # Prompt creation (meta)
             "создай промт": "promt-prompt-creator",
@@ -740,63 +737,69 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "prompt creator": "promt-prompt-creator",
             "шаблон": "promt-prompt-creator",
 
-            # System adaptation
-            "адаптируй": "promt-system-adapt",
-            "подключи систему": "promt-system-adapt",
-            "init p9i": "promt-system-adapt",
-            "инициализация p9i": "promt-system-adapt",
-            "new project": "promt-system-adapt",
-            "новый проект": "promt-system-adapt",
+            # CI/CD (after GitHub to avoid conflict)
+            "ci-cd": "promt-ci-cd-pipeline",
+            "pipeline": "promt-ci-cd-pipeline",
+            "деплой": "promt-ci-cd-pipeline",
+            "github": "promt-ci-cd-pipeline",
 
-            # Bottleneck analysis & research (2026 docs standards)
-            "bottleneck": "promt-bottleneck-analysis-2026",
-            "узкие места": "promt-bottleneck-analysis-2026",
-            "узких мест": "promt-bottleneck-analysis-2026",
-            "всех узких": "promt-bottleneck-analysis-2026",
-            "исследование": "promt-bottleneck-analysis-2026",
-            "иследуй": "promt-bottleneck-analysis-2026",
-            "проведи исследование": "promt-bottleneck-analysis-2026",
-            "проанализируй": "promt-documentation-refactoring-standards-2026",
-            "аудит": "promt-documentation-refactoring-standards-2026",
+            # Versioning
+            "версион": "promt-versioning-policy",
+            "version": "promt-versioning-policy",
 
-            # GitHub MCP - PR, Issues, CI/CD
-            "github": "promt-github-mcp",
-            "pull request": "promt-github-mcp",
-            "merge request": "promt-github-mcp",
-            "pr ": "promt-github-mcp",
-            "merge pr": "promt-github-mcp",
-            "create pr": "promt-github-mcp",
-            "создай pr": "promt-github-mcp",
-            "мердж": "promt-github-mcp",
-            "pull request": "promt-github-mcp",
-            "github issue": "promt-github-mcp",
-            "create issue": "promt-github-mcp",
-            "создай issue": "promt-github-mcp",
-            "github actions": "promt-github-mcp",
-            "ci cd": "promt-github-mcp",
-            "workflow": "promt-github-mcp",
-            "deploy": "promt-github-mcp",
+            # Onboarding/adaptation
+            "подключи": "promt-project-adaptation",
+            "адаптац": "promt-project-adaptation",
+            "onboard": "promt-project-adaptation",
+            "adapt": "promt-project-adaptation",
 
-            # GitMCP - понимание репозиториев
-            "gitmcp": "promt-gitmcp",
-            "изучи репозиторий": "promt-gitmcp",
-            "изучи библиотеку": "promt-gitmcp",
-            "понять код": "promt-gitmcp",
-            "repository analysis": "promt-gitmcp",
-            "understand repo": "promt-gitmcp",
-            "learn library": "promt-gitmcp",
+            # Refactoring
+            "упрости код": "promt-refactoring",
+            "улучшить код": "promt-refactoring",
+            "рефакторинг": "promt-refactoring",
+            "модернизируй": "promt-refactoring",
+            "оптимизируй": "promt-refactoring",
+            "перепиши": "promt-refactoring",
+            "упрости": "promt-refactoring",
+            "улучшить": "promt-refactoring",
+            "улучши": "promt-refactoring",
+            "refactor": "promt-refactoring",
 
-            # Claude Cookbook integration
-            "claude cookbook": "promt-claude-cookbook",
-            "claude api": "promt-claude-cookbook",
-            "tool use": "promt-claude-cookbook",
-            "tool calling": "promt-claude-cookbook",
-            "vision": "promt-claude-cookbook",
-            "multimodal": "promt-claude-cookbook",
-            "rag": "promt-claude-cookbook",
-            "json mode": "promt-claude-cookbook",
-            "sub-agent": "promt-claude-cookbook",
-            "anthropic api": "promt-claude-cookbook",
+            # Bug/fix operations
+            "исправить ошибку": "promt-bug-fix",
+            "fix bug": "promt-bug-fix",
+            "найди": "promt-bug-fix",
+            "баг": "promt-bug-fix",
+            "фикс": "promt-bug-fix",
+            "ошибку": "promt-bug-fix",
+            "исправить": "promt-bug-fix",
+            "исправь": "promt-bug-fix",
+            "bug": "promt-bug-fix",
+
+            # Security (after documentation)
+            "уязвимост": "promt-security-audit",
+            "security": "promt-security-audit",
+            "безопасност": "promt-security-audit",
+            "audit": "promt-security-audit",
+
+            # Testing
+            "напиши тест": "promt-quality-test",
+            "проверь": "promt-quality-test",
+            "quality": "promt-quality-test",
+            "тест": "promt-quality-test",
+            "test": "promt-quality-test",
+
+            # Code operations (feature-add) - MUST BE LAST (most generic)
+            "создать компонент": "promt-feature-add",
+            "новую возможность": "promt-feature-add",
+            "add feature": "promt-feature-add",
+            "new feature": "promt-feature-add",
+            "фича": "promt-feature-add",
+            "добавить функт": "promt-feature-add",
+            "создай": "promt-feature-add",
+            "создать": "promt-feature-add",
+            "добавить": "promt-feature-add",
+            "feature": "promt-feature-add",
         }
 
         request_lower = request.lower()

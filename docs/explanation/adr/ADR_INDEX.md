@@ -2,9 +2,10 @@
 
 | ADR # | Title | Status | Date | Focus |
 |---------|--------|--------|--------|
-| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Superseded** | 2026-03-13 | Foundational, 16 prompts flat |
-| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** | 2026-03-19 | Tiered: 25 universal + 7 mpv + 4 pack |
+| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Deprecated** | 2026-03-13 | Foundational, superseded by ADR-002 |
+| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** ✅ | 2026-03-19 | Tiered: core + universal + packs |
 | ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Accepted** | 2026-03-20 | Files + Lazy Loading vs PostgreSQL |
+| ADR-004 | [Deep-Project Integration - Prompt Orchestration](ADR-004-deep-project-integration.md) | **Proposed** | 2026-03-22 | AI Interview, Decomposition, DAG |
 
 ## Legend
 
@@ -18,7 +19,7 @@
 ### Active ADRs
 
 #### **ADR-001: System Genesis & Repository Standards**
-- **Status:** Accepted
+- **Status:** Deprecated (superseded by ADR-002)
 - **Decision:** Define initial flat structure and founding principles
 - **Date:** 2026-03-13
 - **Focus:** Foundational architecture, repository standards
@@ -61,7 +62,7 @@
 
 ---
 
-**Last Updated:** 2026-03-20
-**Total ADRs:** 3
-**Active ADRs:** 2 (1 Proposed)
-**Next ADR Number:** ADR-004
+**Last Updated:** 2026-03-22
+**Total ADRs:** 4
+**Active ADRs:** 3 (1 Deprecated)
+**Next ADR Number:** ADR-005
