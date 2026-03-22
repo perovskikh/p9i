@@ -21,7 +21,7 @@ User Pull Request
 │ 4. ai-auto-fix → Critical fixes auto-apply │
 └────────────────────────────────────────────────────┘
                 ↓
-        p9i router (mcp__ai-prompt-system__ai_prompts)
+        p9i router (mcp__p9i__ai_prompts)
                 ↓
         promt-verification.md
         promt-automated-code-fix.md
@@ -59,7 +59,7 @@ User Pull Request
 
 #### Job 3: `ai-bottleneck-analysis` (New)
 - **Trigger**: After validate-adr and check-consistency succeed
-- **Uses**: `mcp__ai-prompt-system__ai_prompts` router
+- **Uses**: `mcp__p9i__ai_prompts` router
 - **Prompts**: Automatically selects `promt-verification.md` or `promt-security-audit.md`
 - **Input**:
   - Changed files (git diff)

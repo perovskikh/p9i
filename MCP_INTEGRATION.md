@@ -49,7 +49,7 @@
 ### MCP не подключается
 ```bash
 # Проверить статус
-docker ps | grep ai-prompt-system
+docker ps | grep p9i
 
 # Перезапустить
 docker compose restart mcp-server

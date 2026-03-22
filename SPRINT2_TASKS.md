@@ -105,8 +105,8 @@ API Key → Permissions → Scopes → Resources
 
 ```bash
 # Применить schema
-docker exec -i ai-prompt-system-db-1 psql -U postgres -d ai_prompts < database/schema.sql
+docker exec -i p9i-db-1 psql -U postgres -d ai_prompts < database/schema.sql
 
 # Проверить tables
-docker exec -i ai-prompt-system-db-1 psql -U postgres -d ai_prompts -c "\dt"
+docker exec -i p9i-db-1 psql -U postgres -d ai_prompts -c "\dt"
 ```

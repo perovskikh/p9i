@@ -487,12 +487,12 @@ async def execute_stage(stage_name, workflow, context):
 
 ```bash
 # Execute built-in workflow
-mcp__ai-prompt-system__run_prompt_chain \
+mcp__p9i__run_prompt_chain \
   --idea "добавить OAuth аутентификацию через GitHub" \
   --stages ideation,analysis,design,implementation,testing,debugging,finish
 
 # Execute custom workflow
-mcp__ai-prompt-system__run_prompt \
+mcp__p9i__run_prompt \
   --prompt promt-workflow-orchestration.md \
   --workflow "feature_add_with_security" \
   --context '{"feature": "OAuth GitHub"}'

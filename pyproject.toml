@@ -1,6 +1,6 @@
 # pyproject.toml
 [project]
-name = "ai-prompt-system"
+name = "p9i"
 version = "1.0.0"
 description = "MCP-сервис для управления AI-промтами с полным циклом"
 requires-python = ">=3.10"

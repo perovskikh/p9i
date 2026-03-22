@@ -271,7 +271,7 @@ The `promt-automated-code-fix.md` prompt automatically identifies technical debt
 
 ```bash
 # Run analysis via p9i
-mcp__ai-prompt-system__ai_prompts request="проанализируй bottleneck-ы и найди технические долги" context='{
+mcp__p9i__ai_prompts request="проанализируй bottleneck-ы и найди технические долги" context='{
   "reference_doc": "docs/BOTTLENECKS_ANALYSIS.md"
 }'
 

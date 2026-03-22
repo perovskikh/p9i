@@ -4,9 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AI Prompt System is an MCP (Model Context Protocol) server for managing AI prompts through their full lifecycle: from idea to production implementation. It provides 10 MCP tools for prompt execution, chaining, versioning, and project memory management.
-
-The system supports natural language interaction through `p9i` (via MCP tool `ai_prompts`) which automatically routes requests to appropriate prompts based on intent keywords.
+p9i is an MCP (Model Context Protocol) server for managing AI prompts through their full lifecycle: from idea to production implementation. It provides 18 MCP tools for prompt execution, chaining, versioning, JWT authentication, and project memory management.
 
 ## Commands
 
@@ -34,7 +32,7 @@ MCP_TRANSPORT=sse python -m src.api.server
 pytest
 
 # Run specific test
-pytest tests/test_specific.py
+pytest tests/test_prompt_storage_v2.py
 
 # With coverage
 pytest --cov=src
@@ -75,34 +73,37 @@ docker run --rm -i \
 The system follows an MCP server architecture with the following key components:
 
 ```
-src/api/server.py         # FastMCP server with 10 tools (main entry point)
+src/api/server.py         # FastMCP server with 18 tools (main entry point)
 src/services/executor.py  # PromptExecutor - executes prompts through LLM
-src/services/llm_client.py  # LLMClient - multi-provider support
+src/services/llm_client.py  # LLMClient - multi-provider support (auto-detect priority)
 src/services/memory.py    # MemoryService - project context management
-src/storage/prompts.py    # PromptStorage - loads and manages prompts
-src/storage/database.py   # Database connection (PostgreSQL + Redis)
-prompts/                 # 13 markdown prompt files with registry.json
-memory/                  # Project context/memory storage (per-project JSON files)
-config/                  # YAML configs for settings and API keys
-docker/                  # Dockerfile and docker-compose.yml
+src/storage/prompts_v2.py  # PromptStorageV2 - tiered prompt loading
+src/middleware/jwt_auth.py  # JWT authentication with RBAC
+src/middleware/rbac.py     # Role-based access control
 ```
 
-### MCP Tools (10 total)
+### MCP Tools (18 total)
 
-1. `ai_prompts` - **Natural language router** - Parse intent and auto-select appropriate prompt
-2. `run_prompt` - Execute a single prompt through LLM
-3. `run_prompt_chain` - Execute multi-stage prompt chain (ideation → finish)
-4. `list_prompts` - List available prompts from registry
-5. `get_project_memory` - Get project context/memory
-6. `save_project_memory` - Save project context
-7. `adapt_to_project` - Auto-detect project stack (Python/JS, frameworks, DB)
-8. `clean_context` - Clean context when token limit exceeded
-9. `context7_lookup` - Get Context7 library ID for documentation lookup
-10. `get_available_mcp_tools` - List all available tools
+Primary tools:
+- `p9i` - **Natural language router** - Parse intent and auto-select appropriate prompt
+- `run_prompt` / `run_prompt_chain` - Execute single or multi-stage prompt chains
+- `list_prompts` / `get_prompt` - List and retrieve prompts from tiered storage
+- `get_project_memory` / `save_project_memory` - Project context/memory management
+- `adapt_to_project` - Auto-detect project stack (Python/JS, frameworks, DB)
+- `generate_jwt_token` / `validate_jwt_token` / `revoke_jwt_token` - JWT authentication
+- `verify_baseline` - SHA256 baseline verification
+- `get_available_mcp_tools` - List all available tools
+
+### Prompt Tier Architecture
+
+Prompts are loaded in priority order from tiered directories:
+1. `prompts/core/` - Baseline prompts (SHA256 locked, version 1.0.0)
+2. `prompts/universal/` - General purpose prompts (38 prompts)
+3. `prompts/packs/` - Plugin packs (k8s, ci-cd)
 
 ### AI Prompts Intent Map
 
-The `ai_prompts` tool routes natural language requests based on keywords:
+The `p9i` tool routes natural language requests based on keywords:
 
 | Keyword | Prompt | Purpose |
 |---------|--------|---------|
@@ -112,80 +113,19 @@ The `ai_prompts` tool routes natural language requests based on keywords:
 | `security`, `безопасност`, `audit` | promt-security-audit | Security audit |
 | `test`, `тест`, `quality` | promt-quality-test | Quality testing |
 | `ci-cd`, `pipeline`, `deploy` | promt-ci-cd-pipeline | CI/CD setup |
-| `version`, `версион` | promt-versioning-policy | Versioning policy |
 | `adapt`, `адаптац`, `onboard` | promt-project-adaptation | Project adaptation |
-| `создай промт`, `new prompt`, `шаблон` | promt-prompt-creator | Create prompts |
-| `адаптируй`, `init p9i`, `новый проект` | promt-system-adapt | Initialize system |
-
-### Transport Modes
-
-The server supports two transport modes controlled by `MCP_TRANSPORT` env var:
-
-- **stdio** (default) - For Claude Code MCP integration
-- **sse** - For HTTP-based MCP clients (runs on port 8000)
-
-### Data Flow
-
-- **Prompts**: Stored as `.md` files in `prompts/` directory, registered in `prompts/registry.json`
-- **Memory**: Per-project JSON files stored in `memory/{project_id}/context.json`
-- **API Keys**: Environment-based (`API_KEYS__SYSTEM`, `API_KEYS__PROJECT_{n}`)
-- **Rate Limiting**: 60-second sliding window per API key
-- **Audit Logging**: In-memory log of all API actions (max 10,000 entries)
-
-### Prompt Format
-
-Prompts support optional system/user section markers:
-
-```markdown
-system: System instructions here
-
-user: User prompt here
-
----
-
-# Alternative: first heading as system
-# Heading content treated as system prompt
-```
-
-If no sections are found, entire content is used as system prompt.
-
-### Storage Strategy
-
-- **PostgreSQL** (port 5432): Persistent data (prompts, versions, projects, API keys)
-- **Redis** (port 6379): Hot data, cache, pub/sub, rate limiting, sessions
-- **File system**: Prompts (markdown files), Memory (JSON files)
-
-The MCP server runs on port 8000 with SSE transport (stdio for Claude Code).
-
-### Key Classes
-
-- `APIKeyManager` (src/api/server.py) - Manages API keys with rate limiting (60s window), permissions
-- `AuditLogger` (src/api/server.py) - Tracks all API actions in memory (max 10,000 logs)
-- `PromptExecutor` (src/services/executor.py) - Executes prompts through LLM with chain support
-- `LLMClient` (src/services/llm_client.py) - Multi-provider LLM client with streaming
-- `MemoryService` (src/services/memory.py) - Manages project-specific context storage
-- `PromptStorage` (src/storage/prompts.py) - Loads prompts from markdown files + registry
-- FastMCP server instance created in `src/api/server.py`
+| `init p9i`, `адаптируй` | promt-system-adapt | Initialize system |
 
 ### LLM Integration
 
 The system executes prompts through multiple LLM providers with auto-detection:
 
 **Provider Priority** (auto-detected from `.env`):
-1. ZAI_API_KEY → GLM-4.7 (Z.ai, recommended)
-2. ZAI_API_KEY → GLM-4.5-Air (Z.ai, if 4.7 unavailable)
-3. OPENROUTER_API_KEY → hunter-alpha (free via OpenRouter)
-4. MINIMAX_API_KEY → MiniMax-M2.7
-5. DEEPSEEK_API_KEY → deepseek-chat or deepseek-reasoner
-6. ANTHROPIC_API_KEY → claude-sonnet-4-20250514 (direct)
-7. Fallback → hunter-alpha (free)
-
-**Supported Models:**
-- GLM-4.7, GLM-4.5-Air (via Z.ai)
-- MiniMax-M2.7 (via MiniMax)
-- deepseek-chat, deepseek-reasoner (via DeepSeek)
-- claude-sonnet-4-20250514 (via Anthropic or Z.ai)
-- openrouter/hunter-alpha (via OpenRouter, free)
+1. `ZAI_API_KEY` → GLM-4.7 (Z.ai, recommended)
+2. `OPENROUTER_API_KEY` → hunter-alpha (free via OpenRouter)
+3. `MINIMAX_API_KEY` → MiniMax-M2.7
+4. `DEEPSEEK_API_KEY` → deepseek-chat or deepseek-reasoner
+5. `ANTHROPIC_API_KEY` → claude-sonnet-4-20250514
 
 **API Keys** (loaded from `.env`):
 - `ZAI_API_KEY` - Primary (GLM models)
@@ -194,12 +134,25 @@ The system executes prompts through multiple LLM providers with auto-detection:
 - `MINIMAX_API_KEY` - MiniMax fallback
 - `DEEPSEEK_API_KEY` - DeepSeek fallback
 
-**LLMClient Features:**
-- Async requests with httpx
-- Streaming support for real-time output
-- Provider-specific payload formatting
-- Automatic context injection into system prompts
-- Error handling and response parsing
+### Transport Modes
+
+The server supports two transport modes controlled by `MCP_TRANSPORT` env var:
+- **stdio** (default) - For Claude Code MCP integration
+- **sse** - For HTTP-based MCP clients (runs on port 8000)
+
+### Storage Strategy
+
+- **PostgreSQL** (port 5432): Persistent data (prompts, versions, projects, API keys)
+- **Redis** (port 6379): Hot data, cache, pub/sub, rate limiting, sessions
+- **File system**: Prompts (markdown files), Memory (JSON files)
+
+### JWT Authentication & RBAC
+
+The system supports:
+- JWT token generation with expiry
+- Role-based access control (admin, developer, user, guest)
+- Tier-based access (core, universal, packs, project)
+- Rate limiting (60-second sliding window per API key)
 
 ## Integration with Claude Code
 
@@ -231,12 +184,15 @@ To use with Claude Code, add to `~/.claude/settings.json`:
 ```
 "Добавь функцию авторизации в users.py. use p9i"
 "Найди баги в коде обработки ошибок. use p9i"
+"init p9i" → адаптация к проекту
 ```
 
-## Documentation
+## Key Classes
 
-- `README.md` - Project overview and quick start
-- `prompts/README.md` - Guide to using prompts
-- `MCP_INTEGRATION.md` - Claude Code integration details
-- `SYSTEM_ARCHITECTURE.md` - Full system diagram
-- `pyproject.toml` - Project dependencies and tool configuration
+- `FastMCP` (src/api/server.py) - Main MCP server instance with 18 tools
+- `PromptExecutor` (src/services/executor.py) - Executes prompts through LLM with chain support
+- `LLMClient` (src/services/llm_client.py) - Multi-provider LLM client with streaming
+- `MemoryService` (src/services/memory.py) - Manages project-specific context storage
+- `PromptStorageV2` (src/storage/prompts_v2.py) - Tiered prompt loading with baseline verification
+- `JWTAuthService` (src/middleware/jwt_auth.py) - JWT token generation and validation
+- `DistributedRateLimiter` (src/services/redis_rate_limiter.py) - Redis-based rate limiting

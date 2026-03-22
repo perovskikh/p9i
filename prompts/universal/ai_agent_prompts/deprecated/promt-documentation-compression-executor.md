@@ -110,11 +110,11 @@ find docs/ -name "*.md" | sed 's|.*/||' | sort | uniq -d
 ```markdown
 # File 1: docs/how-to/setup.md
 ## Installation
-pip install ai-prompt-system
+pip install p9i
 
 # File 2: docs/how-to/installation.md
 ## Installation
-pip install ai-prompt-system
+pip install p9i
 ```
 
 **Решение:** Merge или удалить один файл
@@ -208,12 +208,12 @@ cat > docs/how-to/setup.md << 'EOF'
 
 ### Using pip
 ```bash
-pip install ai-prompt-system
+pip install p9i
 ```
 
 ### Using poetry
 ```bash
-poetry add ai-prompt-system
+poetry add p9i
 ```
 
 ## Setup

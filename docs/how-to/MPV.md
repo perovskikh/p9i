@@ -37,7 +37,7 @@
 Подключение через HTTPS:
 
 ```
-https://mcp.ai-prompt-system.dev/mcp
+https://mcp.p9i.dev/mcp
 ```
 
 ```
@@ -390,7 +390,7 @@ claude mcp add \
   --scope user \
   --header "AI_PROMPTS_API_KEY: your-api-key" \
   --transport http \
-  p9i https://mcp.ai-prompt-system.dev/mcp
+  p9i https://mcp.p9i.dev/mcp
 ```
 
 ### Подключение через конфиг
@@ -400,7 +400,7 @@ claude mcp add \
   "mcpServers": {
     "p9i": {
       "type": "http",
-      "url": "https://mcp.ai-prompt-system.dev/mcp",
+      "url": "https://mcp.p9i.dev/mcp",
       "headers": {
         "AI_PROMPTS_API_KEY": "your-api-key"
       }
@@ -611,7 +611,7 @@ claude mcp add \
   --scope user \
   --header "AI_PROMPTS_API_KEY: your-api-key" \
   --transport http \
-  p9i https://mcp.ai-prompt-system.dev/mcp
+  p9i https://mcp.p9i.dev/mcp
 
 # 2. Установить паки для своего стека
 install_pack("k8s-pack")

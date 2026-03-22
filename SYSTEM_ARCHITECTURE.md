@@ -12,7 +12,7 @@
                                               │   │     Claude Code (MCP Client)    │   │
                                               │   │                                  │   │
                                               │   │  mcpServers: {                   │   │
-                                              │   │    ai-prompt-system: {...},     │   │
+                                              │   │    p9i: {...},     │   │
                                               │   │    context7: {...},             │   │
                                               │   │    github: {...}                │   │
                                               │   │  }                               │   │
@@ -26,7 +26,7 @@
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
     ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-    │ ai-prompt-system │    │    Context7      │    │     GitHub      │    │   Web Search    │
+    │ p9i │    │    Context7      │    │     GitHub      │    │   Web Search    │
     │                  │    │                  │    │                  │    │                  │
     │ ┌──────────────┐ │    │ ┌──────────────┐ │    │ ┌──────────────┐ │    │ ┌──────────────┐ │
     │ │ run_prompt   │ │    │ │resolve-lib   │ │    │ │ get_issues   │ │    │ │   search     │ │
@@ -177,7 +177,7 @@ Workflow 3: MCP Integration (использование в Claude Code)
                     ┌─────────────────────────────────────────────────────────┐
                     │                  K8s (Production)                      │
                     │                                                          │
-                    │  ai-prompt-system Deployment (3 replicas)              │
+                    │  p9i Deployment (3 replicas)              │
                     │         │                    │                    │        │
                     │         ▼                    ▼                    ▼        │
                     │    Service              ConfigMap             Secret    │
@@ -224,7 +224,7 @@ Workflow 3: MCP Integration (использование в Claude Code)
 ║                                           REPOSITORY                                                       ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-                    https://github.com/perovskikh/ai-prompt-system
+                    https://github.com/perovskikh/p9i
 
                     ├── src/
                     │   ├── api/server.py       (FastMCP)
