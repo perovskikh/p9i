@@ -1950,7 +1950,7 @@ async def get_figma_file(
         return {"status": "error", "error": "Authentication required"}
 
     try:
-        from src.services.figma import get_figma_client
+        from src.infrastructure.adapters.external.figma_adapter import get_figma_client
 
         client = await get_figma_client()
 
@@ -1996,7 +1996,7 @@ async def get_figma_components(
         return {"status": "error", "error": "Authentication required"}
 
     try:
-        from src.services.figma import get_figma_client
+        from src.infrastructure.adapters.external.figma_adapter import get_figma_client
 
         client = await get_figma_client()
 
@@ -2028,7 +2028,7 @@ async def get_figma_styles(
         return {"status": "error", "error": "Authentication required"}
 
     try:
-        from src.services.figma import get_figma_client
+        from src.infrastructure.adapters.external.figma_adapter import get_figma_client
 
         client = await get_figma_client()
 
@@ -2064,7 +2064,7 @@ async def export_figma_nodes(
         return {"status": "error", "error": "Authentication required"}
 
     try:
-        from src.services.figma import get_figma_client
+        from src.infrastructure.adapters.external.figma_adapter import get_figma_client
 
         client = await get_figma_client()
 
@@ -2099,7 +2099,7 @@ async def figma_to_code(
         return {"status": "error", "error": "Authentication required"}
 
     try:
-        from src.services.figma import get_figma_client
+        from src.infrastructure.adapters.external.figma_adapter import get_figma_client
 
         client = await get_figma_client()
 

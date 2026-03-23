@@ -4,15 +4,18 @@ Agent Orchestrator - Central Router for Multi-Agent System
 
 Manages interactions between specialized AI agents through shared memory.
 Siri-like interface for p9i.
+
+Now uses Clean Architecture:
+- AgentRouter (application layer): Agent detection and prompt selection
+- AgentExecutor (services layer): Prompt execution
 """
 
-import asyncio
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
+from typing import Dict, Any, Optional
 
 from src.services.executor import PromptExecutor
+from src.application.agent_router import AgentRouter, AGENTS
 
 logger = logging.getLogger(__name__)
 
@@ -50,164 +53,38 @@ def load_prompt(prompt_name: str) -> str:
     return ""
 
 
-@dataclass
-class Agent:
-    """Represents an AI agent with its own prompts"""
-    name: str
-    prompts: List[str]
-    memory_key: str
-    description: str = ""
-
-
-@dataclass
-class AgentResult:
-    """Result from agent execution"""
-    agent: str
-    status: str
-    output: str = ""
-    error: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
 class AgentOrchestrator:
     """
     Central router (Siri-like) for multi-agent system.
 
-    Manages agent interactions through shared memory.
+    Now delegates routing to AgentRouter and execution to PromptExecutor.
     """
 
-    # Define available agents - uses prompts from universal/ai_agent_prompts/
-    AGENTS = {
-        "architect": Agent(
-            name="Architect",
-            prompts=[
-                "promt-project-adaptation",  # Adapts to project stack
-                "promt-adr-implementation-planner",  # ADR planning
-                "create_adr"
-            ],
-            memory_key="architecture",
-            description="System design, ADRs, architecture decisions"
-        ),
-        "developer": Agent(
-            name="Developer",
-            prompts=[
-                "promt-feature-add",  # Add new features
-                "promt-bug-fix",     # Fix bugs
-                "promt-refactoring",  # Refactor code
-                "promt-implementation"  # General implementation
-            ],
-            memory_key="code",
-            description="Code generation, features, bug fixes"
-        ),
-        "reviewer": Agent(
-            name="Reviewer",
-            prompts=[
-                "promt-llm-review",     # Code review
-                "promt-security-audit",  # Security check
-                "promt-quality-test"    # Quality testing
-            ],
-            memory_key="reviews",
-            description="Code review, security, quality checks"
-        ),
-        "designer": Agent(
-            name="Designer",
-            prompts=[
-                "promt-ui-generator",  # UI generation (covers Tailwind + shadcn)
-            ],
-            memory_key="design",
-            description="UI/UX design and generation"
-        ),
-        "devops": Agent(
-            name="DevOps",
-            prompts=[
-                "promt-ci-cd-pipeline",
-                "promt-onboarding"
-            ],
-            memory_key="devops",
-            description="CI/CD, deployment, infrastructure"
-        )
-    }
-
-    # Keywords for agent detection
-    AGENT_KEYWORDS = {
-        "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование"],
-        "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
-        "reviewer": ["ревью", "проверь", "аудит", "тест", "review", "check", "audit", "test"],
-        "designer": ["дизайн", "ui", "ux", "интерфейс", "button", "card", "design", "interface"],
-        "devops": ["ci", "cd", "deploy", "docker", "kubernetes", "pipeline", "деплой"]
-    }
-
     def __init__(self):
+        self.router = AgentRouter()
         self.executor = PromptExecutor()
         self.memory: Dict[str, Any] = {}
 
-    def _detect_agents(self, request: str) -> List[str]:
-        """Detect which agents are needed based on request"""
-        request_lower = request.lower()
-        needed = []
-
-        for agent_name, keywords in self.AGENT_KEYWORDS.items():
-            for keyword in keywords:
-                if keyword in request_lower:
-                    if agent_name not in needed:
-                        needed.append(agent_name)
-                    break
-
-        # Default to developer if no specific agent detected
-        if not needed:
-            needed = ["developer"]
-
-        return needed
+    def _detect_agents(self, request: str) -> list[str]:
+        """Detect which agents are needed based on request."""
+        return self.router.detect_agents(request)
 
     def _select_prompt(self, agent_name: str, request: str) -> str:
-        """Select appropriate prompt for agent based on request"""
-        agent = self.AGENTS.get(agent_name)
-        if not agent:
-            return agent.prompts[0]
-
-        request_lower = request.lower()
-
-        # Try to match prompt based on keywords
-        prompt_keywords = {
-            "promt-architect-design": ["спроектируй", "проектирование", "design"],
-            "promt-architect-review": ["ревью", "review", "анализ"],
-            "create_adr": ["adr", "документация"],
-            "promt-feature-add": ["добавь", "новая", "feature", "new"],
-            "promt-bug-fix": ["баг", "исправь", "bug", "fix"],
-            "promt-refactoring": ["рефакторинг", "refactor"],
-            "promt-llm-review": ["ревью", "review"],
-            "promt-security-audit": ["безопасность", "security"],
-            "promt-quality-test": ["тест", "test", "quality"],
-            "promt-ui-generator": ["дизайн", "ui", "design"],
-            "generate_tailwind": ["tailwind", "css"],
-            "generate_shadcn": ["shadcn", "react", "component"],
-            "promt-ci-cd-pipeline": ["ci", "cd", "pipeline", "деплой"],
-            "promt-onboarding": ["онбординг", "onboard", "адаптация"]
-        }
-
-        for prompt in agent.prompts:
-            keywords = prompt_keywords.get(prompt, [])
-            for keyword in keywords:
-                if keyword in request_lower:
-                    return prompt
-
-        # Default to first prompt
-        return agent.prompts[0]
+        """Select appropriate prompt for agent based on request."""
+        return self.router.select_prompt(agent_name, request)
 
     def get_agent_context(self, agent_name: str) -> Dict[str, Any]:
-        """Get context from memory for agent"""
-        agent = self.AGENTS.get(agent_name)
+        """Get context from memory for agent."""
+        agent = AGENTS.get(agent_name)
         if not agent:
             return {}
-
         return self.memory.get(agent.memory_key, {})
 
     def save_agent_context(self, agent_name: str, context: Dict[str, Any]):
-        """Save context to memory for agent"""
-        agent = self.AGENTS.get(agent_name)
+        """Save context to memory for agent."""
+        agent = AGENTS.get(agent_name)
         if not agent:
             return
-
         self.memory[agent.memory_key] = context
 
     async def execute_agent(
@@ -215,9 +92,19 @@ class AgentOrchestrator:
         agent_name: str,
         request: str,
         context: Optional[Dict[str, Any]] = None
-    ) -> AgentResult:
-        """Execute a single agent"""
-        agent = self.AGENTS.get(agent_name)
+    ):
+        """Execute a single agent."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class AgentResult:
+            agent: str
+            status: str
+            output: str = ""
+            error: str = None
+            metadata: dict = None
+
+        agent = AGENTS.get(agent_name)
         if not agent:
             return AgentResult(
                 agent=agent_name,
@@ -314,41 +201,18 @@ class AgentOrchestrator:
             "errors": errors
         }
 
-    async def execute_single_agent(
-        self,
-        agent_name: str,
-        task: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> AgentResult:
-        """Execute a specific agent directly"""
-        return await self.execute_agent(agent_name, task, context)
-
-    def list_agents(self) -> List[Dict[str, Any]]:
-        """List all available agents"""
-        return [
-            {
-                "name": agent.name,
-                "key": key,
-                "prompts": agent.prompts,
-                "description": agent.description,
-                "memory_key": agent.memory_key
-            }
-            for key, agent in self.AGENTS.items()
-        ]
-
-    def get_agent_prompts(self, agent_name: str) -> List[str]:
-        """Get prompts for specific agent"""
-        agent = self.AGENTS.get(agent_name)
-        return agent.prompts if agent else []
+    def list_agents(self) -> list[Dict[str, Any]]:
+        """List all available agents."""
+        return self.router.list_agents()
 
 
 # Global orchestrator instance
-_orchestrator: Optional[AgentOrchestrator] = None
+_orchestrator_instance: Optional[AgentOrchestrator] = None
 
 
 def get_orchestrator() -> AgentOrchestrator:
-    """Get or create global orchestrator"""
-    global _orchestrator
-    if _orchestrator is None:
-        _orchestrator = AgentOrchestrator()
-    return _orchestrator
+    """Get or create global orchestrator instance."""
+    global _orchestrator_instance
+    if _orchestrator_instance is None:
+        _orchestrator_instance = AgentOrchestrator()
+    return _orchestrator_instance
