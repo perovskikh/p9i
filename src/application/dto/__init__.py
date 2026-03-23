@@ -1,9 +1,7 @@
-# src/application/__init__.py
-"""Application layer - Use cases and orchestration."""
+# src/application/dto/__init__.py
+"""Application DTOs - Data Transfer Objects."""
 
-from src.application.container import Container, get_container, setup_container
-from src.application.agent_router import AgentRouter
-from src.application.dto import (
+from src.application.dto.prompt_dto import (
     RunPromptRequest,
     RunPromptChainRequest,
     ListPromptsRequest,
@@ -12,12 +10,18 @@ from src.application.dto import (
     PromptListResponse,
     RunPromptResponse,
     RunPromptChainResponse,
+)
+
+from src.application.dto.auth_dto import (
     GenerateTokenRequest,
     ValidateTokenRequest,
     RevokeTokenRequest,
     TokenResponse,
     TokenValidationResponse,
     TokenRevokeResponse,
+)
+
+from src.application.dto.agent_dto import (
     ExecuteAgentRequest,
     RouteRequestRequest,
     AgentInfoResponse,
@@ -27,11 +31,7 @@ from src.application.dto import (
 )
 
 __all__ = [
-    "Container",
-    "get_container",
-    "setup_container",
-    "AgentRouter",
-    # DTOs
+    # Prompt DTOs
     "RunPromptRequest",
     "RunPromptChainRequest",
     "ListPromptsRequest",
@@ -40,12 +40,14 @@ __all__ = [
     "PromptListResponse",
     "RunPromptResponse",
     "RunPromptChainResponse",
+    # Auth DTOs
     "GenerateTokenRequest",
     "ValidateTokenRequest",
     "RevokeTokenRequest",
     "TokenResponse",
     "TokenValidationResponse",
     "TokenRevokeResponse",
+    # Agent DTOs
     "ExecuteAgentRequest",
     "RouteRequestRequest",
     "AgentInfoResponse",
