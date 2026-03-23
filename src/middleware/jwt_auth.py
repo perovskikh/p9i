@@ -35,9 +35,9 @@ class TokenPayload:
 
 
 class JWTService:
-    """JWT authentication service."""
+    """JWT authentication service with optional Redis persistence."""
 
-    def __init__(self, secret_key: str = None):
+    def __init__(self, secret_key: str = None, redis_client=None):
         # Use environment secret or generate from machine ID
         self.secret_key = secret_key or os.getenv(
             "JWT_SECRET",
@@ -47,9 +47,56 @@ class JWTService:
         self.default_expiry = 3600  # 1 hour
         self.refresh_expiry = 604800  # 7 days
 
-        # Token revocation list (in production, use Redis)
+        # Redis client for distributed token storage
+        self._redis = redis_client
+
+        # Token revocation list (fallback if Redis unavailable)
         self._revoked_tokens: set = set()
         self._refresh_tokens: Dict[str, Dict] = {}
+
+    def _is_token_revoked(self, token: str) -> bool:
+        """Check if token is revoked (Redis or in-memory)."""
+        # Try Redis first (handle both sync and async clients)
+        if self._redis:
+            try:
+                import asyncio
+                key = f"jwt:revoked:{hashlib.sha256(token.encode()).hexdigest()[:32]}"
+
+                # Check if it's an async Redis client
+                if hasattr(self._redis, 'get') and asyncio.iscoroutinefunction(self._redis.get):
+                    # Can't use async in sync context - use in-memory fallback
+                    logger.warning("Async Redis detected, using in-memory fallback")
+                else:
+                    result = self._redis.get(key)
+                    return result is not None
+            except Exception as e:
+                logger.warning(f"Redis check failed, using in-memory: {e}")
+
+        # Fallback to in-memory
+        return token in self._revoked_tokens
+
+    def _revoke_token(self, token: str, expiry: int = None) -> None:
+        """Revoke token (Redis or in-memory)."""
+        expiry = expiry or self.default_expiry
+
+        # Try Redis first (handle both sync and async clients)
+        if self._redis:
+            try:
+                import asyncio
+                key = f"jwt:revoked:{hashlib.sha256(token.encode()).hexdigest()[:32]}"
+
+                # Check if it's an async Redis client
+                if hasattr(self._redis, 'setex') and asyncio.iscoroutinefunction(self._redis.setex):
+                    # Can't use async in sync context - use in-memory fallback
+                    logger.warning("Async Redis detected, using in-memory fallback")
+                else:
+                    self._redis.setex(key, expiry, "1")
+                    return
+            except Exception as e:
+                logger.warning(f"Redis revoke failed, using in-memory: {e}")
+
+        # Fallback to in-memory
+        self._revoked_tokens.add(token)
 
     def generate_token(
         self,
@@ -133,7 +180,7 @@ class JWTService:
                 return None
 
             # Check revocation
-            if token in self._revoked_tokens:
+            if self._is_token_revoked(token):
                 logger.warning("Token revoked")
                 return None
 
@@ -152,8 +199,18 @@ class JWTService:
             return None
 
     def revoke_token(self, token: str) -> bool:
-        """Revoke a token."""
-        self._revoked_tokens.add(token)
+        """Revoke a token (Redis or in-memory)."""
+        # Decode token to get expiry
+        try:
+            parts = token.split(".")
+            if len(parts) == 3:
+                payload = json.loads(self._base64url_decode(parts[1]))
+                exp = payload.get("exp", 0)
+                ttl = max(0, exp - int(time.time()))
+        except:
+            ttl = self.default_expiry
+
+        self._revoke_token(token, ttl)
         return True
 
     def revoke_refresh_token(self, refresh_id: str) -> bool:
