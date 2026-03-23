@@ -774,6 +774,13 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "улучши": "promt-refactoring",
             "refactor": "promt-refactoring",
 
+            # Security (MUST BE BEFORE bug fix!)
+            "уязвим": "promt-security-audit",  # уязвимости, уязвимость
+            "уязвимост": "promt-security-audit",
+            "security": "promt-security-audit",
+            "безопасност": "promt-security-audit",
+            "audit": "promt-security-audit",
+
             # Bug/fix operations
             "исправить ошибку": "promt-bug-fix",
             "fix bug": "promt-bug-fix",
@@ -784,12 +791,6 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "исправить": "promt-bug-fix",
             "исправь": "promt-bug-fix",
             "bug": "promt-bug-fix",
-
-            # Security (after documentation)
-            "уязвимост": "promt-security-audit",
-            "security": "promt-security-audit",
-            "безопасност": "promt-security-audit",
-            "audit": "promt-security-audit",
 
             # Testing
             "напиши тест": "promt-quality-test",
@@ -889,17 +890,19 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
 
 
 @mcp.tool
-async def run_prompt(prompt_name: str, input_data: dict, jwt_token: str = None) -> dict:
+async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, jwt_token: str = None) -> dict:
     """
     Execute a single prompt through LLM.
 
     Args:
         prompt_name: Name of the prompt to run (without .md)
         input_data: Input data for the prompt
+        stream: Enable streaming response (default: False)
         jwt_token: JWT token for authentication (optional if JWT disabled)
 
     Returns:
         dict: Execution result with generated content
+        If stream=True, returns status=streaming with stream generator
     """
     try:
         # JWT Authentication
@@ -907,12 +910,30 @@ async def run_prompt(prompt_name: str, input_data: dict, jwt_token: str = None) 
         if not is_valid:
             return {"status": "error", "error": "Authentication required"}
         prompt = load_prompt(prompt_name)
-        logger.info(f"Running prompt: {prompt_name}")
+        logger.info(f"Running prompt: {prompt_name}, stream={stream}")
 
         # Execute prompt through LLM
         executor = get_prompt_executor()
         logger.info(f"Executor provider: {executor.client.provider}, model: {executor.client.model}")
-        result = await executor.execute(prompt["content"], input_data)
+        result = await executor.execute(prompt["content"], input_data, stream=stream)
+
+        # Handle streaming response
+        if stream and result.get("status") == "streaming":
+            # For streaming, we need to return the content as it arrives
+            # Note: MCP doesn't support streaming natively, so we return full content
+            content_chunks = []
+            async for chunk in result.get("stream", []):
+                content_chunks.append(chunk)
+            full_content = "".join(content_chunks)
+            return {
+                "status": "success",
+                "prompt": prompt_name,
+                "input": input_data,
+                "model": result.get("model", "claude-3-5-sonnet"),
+                "content": full_content,
+                "streaming": True,
+                "usage": result.get("usage", {}),
+            }
 
         return {
             "status": result.get("status", "success"),

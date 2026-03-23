@@ -23,7 +23,7 @@ services:
       - API_KEYS__SYSTEM=sk-system-dev
       - LOG_LEVEL=DEBUG
       - MCP_TRANSPORT=sse
-      - LLM_PROVIDER=minimax
+      - LLM_PROVIDER=auto  # Auto-detect: ZAI → OpenRouter → MiniMax → DeepSeek → Anthropic
       # JWT Auth (Phase 5)
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_ENABLED=${JWT_ENABLED:-false}
@@ -38,6 +38,7 @@ services:
       - TUI_THEME=${TUI_THEME:-dark}
     volumes:
       - ./.env:/app/.env:ro
+      - ./src:/app/src
       - ./prompts:/app/prompts
       - ./memory:/app/memory
       - ./config:/app/config:ro

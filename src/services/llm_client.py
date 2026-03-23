@@ -115,7 +115,23 @@ def get_available_providers() -> dict:
 
 
 class LLMClient:
-    """Async client for multiple LLM providers."""
+    """Async client for multiple LLM providers with automatic failover."""
+
+    # Fallback order when primary provider fails
+    # Priority: MiniMax → ZAI → OpenRouter → DeepSeek → Anthropic
+    FALLBACK_ORDER = {
+        "minimax": ["glm-4-7", "hunter", "deepseek", "anthropic"],
+        "glm-4-7": ["hunter", "minimax", "deepseek", "anthropic"],
+        "glm-4-5-air": ["glm-4-7", "hunter", "minimax", "deepseek"],
+        "zai-claude": ["glm-4-7", "hunter", "minimax", "deepseek"],
+        "hunter": ["glm-4-7", "minimax", "deepseek", "anthropic"],
+        "deepseek": ["hunter", "glm-4-7", "minimax", "anthropic"],
+        "deepseek-reasoner": ["deepseek", "hunter", "glm-4-7", "minimax"],
+        "anthropic": ["minimax", "glm-4-7", "hunter", "deepseek"],  # Only if explicitly allowed
+    }
+
+    # Error codes that trigger failover
+    FAILOVER_ON_CODES = {401, 403, 429, 500, 502, 503, 504}
 
     def __init__(
         self,
@@ -124,15 +140,18 @@ class LLMClient:
         model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        enable_failover: bool = True,
     ):
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.enable_failover = enable_failover
 
         # Auto-detect provider based on available keys
         if provider == "auto":
             provider = self._detect_provider()
 
         self.provider = provider
+        self.original_provider = provider  # Track primary provider
         config = PROVIDERS.get(provider, PROVIDERS["hunter"])
 
         self.base_url = config["base_url"]
@@ -147,36 +166,41 @@ class LLMClient:
             logger.warning(f"No API key for provider: {provider}")
 
     def _detect_provider(self) -> str:
-        """Detect best available provider based on API keys in .env."""
-        # Priority order (March 2026):
-        # 0. LLM_PROVIDER env var (explicit selection)
-        # 1. MINIMAX_API_KEY → MiniMax (PRIMARY - best性价比)
-        # 2. ZAI_API_KEY → GLM-4.7 (Z.ai)
-        # 3. ANTHROPIC_API_KEY → Anthropic
-        # 4. DEEPSEEK_API_KEY → DeepSeek
-        # 5. OPENROUTER_API_KEY → Hunter (free)
-        # 6. Fallback: hunter (free via OpenRouter)
+        """Detect best available provider based on API keys in .env.
 
+        Priority order (aligned with CLAUDE.md):
+        0. LLM_PROVIDER env var (explicit selection)
+        1. MINIMAX_API_KEY → MiniMax-M2.7 (best price/performance)
+        2. ZAI_API_KEY → GLM-4.7 (best quality)
+        3. OPENROUTER_API_KEY → Hunter (free via OpenRouter)
+        4. DEEPSEEK_API_KEY → DeepSeek
+        5. ANTHROPIC_API_KEY → Anthropic (requires explicit permission)
+        6. Fallback: hunter (free)
+        """
         # Check explicit provider first
         explicit = os.getenv("LLM_PROVIDER")
         if explicit and explicit in PROVIDERS:
             return explicit
 
-        # PRIMARY: MiniMax (best price/quality ratio)
+        # PRIMARY: MiniMax (best price/performance)
         if os.getenv("MINIMAX_API_KEY"):
-            return "minimax"  # MiniMax-M2.7
+            return "minimax"
 
+        # Z.ai GLM-4.7 (best quality)
         if os.getenv("ZAI_API_KEY"):
-            return "glm-4-7"  # GLM-4.7 via Z.ai
+            return "glm-4-7"
 
-        if os.getenv("ANTHROPIC_API_KEY"):
-            return "anthropic"  # claude-sonnet-4
-
-        if os.getenv("DEEPSEEK_API_KEY"):
-            return "deepseek"  # deepseek-chat
-
+        # Free via OpenRouter
         if os.getenv("OPENROUTER_API_KEY"):
-            return "hunter"  # Free: openrouter/hunter-alpha
+            return "hunter"
+
+        # DeepSeek (fallback for reasoning)
+        if os.getenv("DEEPSEEK_API_KEY"):
+            return "deepseek"
+
+        # Anthropic direct (requires explicit permission)
+        if os.getenv("ANTHROPIC_API_KEY"):
+            return "anthropic"
 
         return "hunter"  # Fallback to free
 
@@ -245,7 +269,12 @@ class LLMClient:
             # Anthropic format: {"content": [...], "stop_reason": "..."}
             content = response.get("content", [])
             if content and isinstance(content, list):
-                text = content[0].get("text", "") if content[0].get("type") == "text" else str(content[0])
+                # Extract text from "text" type blocks, skip "thinking" blocks
+                text_parts = []
+                for block in content:
+                    if block.get("type") == "text":
+                        text_parts.append(block.get("text", ""))
+                text = "\n".join(text_parts)
             else:
                 text = ""
             return {
@@ -264,7 +293,7 @@ class LLMClient:
         stream: bool = False,
     ) -> dict | AsyncGenerator[str, None]:
         """
-        Send chat request to LLM provider.
+        Send chat request to LLM provider with automatic failover.
 
         Args:
             messages: List of message dicts with 'role' and 'content'
@@ -278,6 +307,82 @@ class LLMClient:
         if not self.api_key:
             return {"error": "No API key configured"}
 
+        # For streaming, don't do failover (complex to handle)
+        if stream:
+            return await self._chat_single_provider(messages, temperature, max_tokens, stream)
+
+        # Non-streaming: try with failover
+        fallback_providers = self.FALLBACK_ORDER.get(self.provider, [])
+
+        for attempt_provider in [self.provider] + fallback_providers:
+            result = await self._try_provider(
+                attempt_provider, messages, temperature, max_tokens, stream
+            )
+
+            # Check if result is an error that should trigger failover
+            if isinstance(result, dict) and "error" in result:
+                error_code = result.get("error", "")
+
+                # Check if we should failover
+                should_failover = False
+                if "API error: 401" in error_code or "API error: 403" in error_code:
+                    should_failover = True  # Auth issues - switch provider
+                elif "API error: 429" in error_code:
+                    should_failover = True  # Rate limit - try next
+                elif any(x in error_code for x in ["API error: 500", "API error: 502", "API error: 503", "API error: 504"]):
+                    should_failover = True  # Server errors - temporary, try next
+
+                if should_failover and attempt_provider != fallback_providers[-1]:
+                    # Find next provider in the list
+                    try:
+                        idx = fallback_providers.index(attempt_provider)
+                        next_provider = fallback_providers[idx + 1]
+                        logger.warning(f"Failover from {attempt_provider} to {next_provider}")
+                        # Continue to next provider
+                        continue
+                    except (ValueError, IndexError):
+                        pass
+
+            # Return successful result
+            return result
+
+        # All providers failed
+        return {"error": "All providers failed", "last_provider": attempt_provider}
+
+    async def _try_provider(
+        self,
+        provider: str,
+        messages: list[dict],
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        stream: bool,
+    ) -> dict | AsyncGenerator[str, None]:
+        """Try a single provider and return result."""
+        # Temporarily switch provider config
+        old_provider = self.provider
+        old_config = PROVIDERS[provider]
+
+        self.provider = provider
+        self.base_url = old_config["base_url"]
+        self.endpoint = old_config["endpoint"]
+        self.default_model = old_config["model"]
+        self.api_key = os.getenv(old_config["env_key"])
+        self.model = self.default_model
+
+        try:
+            return await self._chat_single_provider(messages, temperature, max_tokens, stream)
+        finally:
+            # Restore original provider
+            self.provider = old_provider
+
+    async def _chat_single_provider(
+        self,
+        messages: list[dict],
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        stream: bool,
+    ) -> dict | AsyncGenerator[str, None]:
+        """Send chat request to a single LLM provider (no failover)."""
         headers = self._get_headers()
         payload = self._build_payload(messages, temperature, max_tokens, stream)
         endpoint = f"{self.base_url}{self.endpoint}"
@@ -361,6 +466,7 @@ class LLMClient:
         system_prompt: str,
         user_prompt: str,
         context: Optional[dict] = None,
+        stream: bool = False,
     ) -> dict:
         """
         Generate response from prompt.
@@ -369,9 +475,10 @@ class LLMClient:
             system_prompt: System instructions
             user_prompt: User input
             context: Additional context data
+            stream: Enable streaming output
 
         Returns:
-            dict with generated text and metadata
+            dict with generated text and metadata, or generator if stream=True
         """
         messages = []
 
@@ -384,7 +491,6 @@ class LLMClient:
 
         # Some providers don't support system role - combine with first user message
         if self.provider in ("zai-claude",):
-            # For Z.ai Claude: system becomes part of user message
             messages.append({
                 "role": "user",
                 "content": f"[System: {full_system}]\n\nUser request: {user_prompt}"
@@ -392,6 +498,16 @@ class LLMClient:
         else:
             messages.append({"role": "system", "content": full_system})
             messages.append({"role": "user", "content": user_prompt})
+
+        # Streaming mode - return dict with stream and usage tracker
+        if stream:
+            result = await self._stream_chat(messages)
+            return {
+                "status": "streaming",
+                "stream": result["stream"],
+                "usage": result["usage"],
+                "model": self.model,
+            }
 
         result = await self.chat(messages)
 
@@ -416,6 +532,81 @@ class LLMClient:
                 "error": "Invalid response format",
             }
 
+    async def _stream_chat(self, messages: list[dict]) -> dict:
+        """
+        Streaming chat - returns dict with stream generator and usage tracker.
+
+        Returns:
+            dict: {"stream": async generator, "usage": dict to be updated}
+        """
+        if not self.api_key:
+            return {
+                "stream": self._error_stream("Error: No API key configured"),
+                "usage": {"input_tokens": 0, "output_tokens": 0},
+            }
+
+        # Create a shared usage dict that can be updated during streaming
+        usage = {"input_tokens": 0, "output_tokens": 0}
+
+        headers = self._get_headers()
+        payload = self._build_payload(messages, None, None, True)
+        endpoint = f"{self.base_url}{self.endpoint}"
+
+        logger.info(f"LLM Streaming: provider={self.provider}, model={self.model}")
+
+        # Create streaming generator with closure to update usage
+        async def stream_generator():
+            try:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if line.strip():
+                                # MiniMax uses event: prefix (Anthropic-compatible)
+                                if line.startswith("event: "):
+                                    continue
+                                # Handle data: JSON
+                                if line.startswith("data: "):
+                                    data = line[6:]
+                                    if data == "[DONE]":
+                                        break
+                                    try:
+                                        chunk = json.loads(data)
+                                        # Anthropic event format - capture usage from message_stop
+                                        if chunk.get("type") == "message_stop":
+                                            usage_data = chunk.get("usage", {})
+                                            if usage_data:
+                                                usage["input_tokens"] = usage_data.get("input_tokens", 0)
+                                                usage["output_tokens"] = usage_data.get("output_tokens", 0)
+                                                logger.info(f"Captured streaming usage: {usage}")
+                                        elif chunk.get("type") == "content_block_delta":
+                                            delta = chunk.get("delta", {})
+                                            if delta.get("text"):
+                                                yield delta["text"]
+                                        # OpenAI format - capture usage from final chunk
+                                        elif "choices" in chunk and chunk["choices"]:
+                                            delta = chunk["choices"][0].get("delta", {})
+                                            if delta.get("content"):
+                                                yield delta["text"]
+                                            # Check for usage in OpenAI format
+                                            if chunk.get("usage"):
+                                                usage["input_tokens"] = chunk["usage"].get("prompt_tokens", 0)
+                                                usage["output_tokens"] = chunk["usage"].get("completion_tokens", 0)
+                                    except json.JSONDecodeError:
+                                        continue
+            except Exception as e:
+                logger.error(f"Streaming error: {e}")
+                yield f"Error: {e}"
+
+        return {
+            "stream": stream_generator(),
+            "usage": usage,
+        }
+
+    def _error_stream(self, error_msg: str) -> AsyncGenerator[str, None]:
+        """Yield error message as stream."""
+        yield error_msg
+
     def _format_context(self, context: dict) -> str:
         """Format context dict as string for prompt."""
         lines = []
@@ -434,7 +625,12 @@ class LLMClient:
 
 
 def get_llm_client() -> LLMClient:
-    """Get configured LLM client from environment."""
+    """
+    Get configured LLM client from environment.
+
+    Now uses LLMProviderRegistry (adapter pattern) for unified interface.
+    Falls back to LLMClient for backward compatibility.
+    """
     import os
     from dotenv import load_dotenv
 
@@ -445,4 +641,133 @@ def get_llm_client() -> LLMClient:
     provider = os.getenv("LLM_PROVIDER", "auto")
     model = os.getenv("LLM_MODEL", None)  # Optional model override
 
-    return LLMClient(provider=provider, model=model)
+    # Try to use adapter registry first (new pattern)
+    try:
+        from src.infrastructure.adapters.llm import get_registry
+        registry = get_registry()
+
+        # Create a wrapper that uses adapters but provides LLMClient interface
+        return _AdapterRegistryWrapper(registry, provider, model)
+    except ImportError:
+        # Fallback to direct LLMClient (legacy)
+        return LLMClient(provider=provider, model=model)
+
+
+class _AdapterRegistryWrapper:
+    """
+    Wrapper to provide LLMClient-compatible interface using adapter registry.
+
+    This integrates the adapter pattern while maintaining backward compatibility.
+    """
+
+    def __init__(self, registry, provider: str = "auto", model: str = None):
+        self._registry = registry
+        self._provider_name = provider
+        self._model = model
+
+        # Get adapter and sync properties
+        adapter = registry.get_adapter(provider)
+        self.provider = adapter.name
+        self.model = model or adapter.model
+        self.api_key = os.getenv(adapter.api_key_env)
+
+        # Copy relevant methods from adapter
+        self._adapter = adapter
+
+    @property
+    def base_url(self):
+        return getattr(self._adapter, 'base_url', '')
+
+    @property
+    def endpoint(self):
+        return getattr(self._adapter, 'endpoint', '/chat/completions')
+
+    async def generate(self, system_prompt: str, user_prompt: str, context: dict = None, stream: bool = False) -> dict:
+        """Generate using adapter registry with streaming support."""
+        # Build messages
+        full_system = system_prompt
+        if context:
+            context_str = self._format_context(context)
+            full_system = f"{system_prompt}\n\n## Context\n{context_str}"
+
+        messages = [
+            {"role": "system", "content": full_system},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        # Use streaming if requested
+        if stream:
+            return await self._stream_generate(messages)
+
+        # Regular generate with failover
+        result = await self._registry.generate(messages)
+
+        if "error" in result:
+            return {"status": "error", "error": result["error"]}
+
+        # Standardize response format (handle both OpenAI and Anthropic formats)
+        content = result.get("content", "")
+        if not content and "choices" in result:
+            # OpenAI format: {"choices": [{"message": {"content": "..."}}]}
+            content = result["choices"][0].get("message", {}).get("content", "")
+
+        return {
+            "status": "success",
+            "content": content,
+            "model": self.model,
+            "usage": result.get("usage", {}),
+        }
+
+    async def _stream_generate(self, messages: list) -> dict:
+        """Streaming generate using adapter with usage tracking."""
+        # Create shared usage dict for tracking during streaming
+        usage = {"input_tokens": 0, "output_tokens": 0}
+
+        async def tracked_stream():
+            """Wrapper that tracks usage during streaming."""
+            try:
+                adapter = self._registry.get_adapter()
+                # Get stream from adapter
+                stream_gen = adapter.generate_stream(messages)
+
+                logger.info(f"Stream generator type: {type(stream_gen)}")
+
+                # Iterate over the stream and capture usage
+                async for chunk in stream_gen:
+                    # Check if chunk is a dict with usage info (some providers send this)
+                    if isinstance(chunk, dict):
+                        if "usage" in chunk:
+                            usage.update(chunk["usage"])
+                        if "content" in chunk:
+                            yield chunk["content"]
+                    elif isinstance(chunk, str):
+                        # Regular text chunk
+                        yield chunk
+                # Note: Usage is captured at the end from provider's final message
+                # For now we keep the usage dict accessible
+            except Exception as e:
+                logger.error(f"Stream generate error: {e}")
+                yield f"Error: {e}"
+
+        return {
+            "status": "streaming",
+            "stream": tracked_stream(),
+            "usage": usage,
+            "model": self.model,
+        }
+
+    def _format_context(self, context: dict) -> str:
+        """Format context as string."""
+        lines = []
+        for key, value in context.items():
+            if isinstance(value, dict):
+                lines.append(f"### {key}")
+                for k, v in value.items():
+                    lines.append(f"- {k}: {v}")
+            elif isinstance(value, list):
+                lines.append(f"### {key}")
+                for item in value:
+                    lines.append(f"- {item}")
+            else:
+                lines.append(f"- {key}: {value}")
+        return "\n".join(lines)
