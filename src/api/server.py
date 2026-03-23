@@ -61,6 +61,9 @@ from src.services.redis_rate_limiter import (
     DistributedRateLimiter
 )
 
+# Import UI/UX design resources
+from src.infrastructure.uiux import register_uiux_tools
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -798,6 +801,29 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "quality": "promt-quality-test",
             "тест": "promt-quality-test",
             "test": "promt-quality-test",
+
+            # UI/UX Design (Natural Language Routing)
+            "ui component": "promt-ui-generator",
+            "ux design": "promt-ui-generator",
+            "ui design": "promt-ui-generator",
+            "generate ui": "promt-ui-generator",
+            "create ui": "promt-ui-generator",
+            "ui ": "promt-ui-generator",
+            "ux ": "promt-ui-generator",
+            "button": "promt-ui-generator",
+            "card": "promt-ui-generator",
+            "component": "promt-ui-generator",
+            "дизайн": "promt-ui-generator",
+            "интерфейс": "promt-ui-generator",
+            "ui": "promt-ui-generator",
+            "ux": "promt-ui-generator",
+            "компонент": "promt-ui-generator",
+            "кнопка": "promt-ui-generator",
+            "карточка": "promt-ui-generator",
+            "стиль": "promt-ui-generator",
+            "палитра": "promt-ui-generator",
+            "шрифт": "promt-ui-generator",
+            "иконка": "promt-ui-generator",
 
             # Code operations (feature-add) - MUST BE LAST (most generic)
             "создать компонент": "promt-feature-add",
@@ -2406,11 +2432,20 @@ def get_available_mcp_tools() -> dict:
         {"name": "generate_spec", "description": "Auto-generate spec documentation"},
         {"name": "checkpoint_save", "description": "Save session checkpoint"},
         {"name": "checkpoint_load", "description": "Load session checkpoint"},
-        # UI/UX tools (ADR-005)
+        # UI/UX tools (ADR-005) + Design Resources
         {"name": "generate_tailwind", "description": "Generate TailwindCSS component"},
         {"name": "generate_shadcn", "description": "Generate shadcn/ui component"},
         {"name": "generate_textual", "description": "Generate Textual TUI component"},
         {"name": "generate_tauri", "description": "Generate Tauri desktop app scaffold"},
+        # UI/UX Design Resources (new)
+        {"name": "search_ui_styles", "description": "Search UI styles (Glassmorphism, Minimalism, etc.)"},
+        {"name": "search_colors", "description": "Search color palettes by industry"},
+        {"name": "search_typography", "description": "Search font pairings and typography"},
+        {"name": "search_icons", "description": "Search icon recommendations"},
+        {"name": "search_ux_guidelines", "description": "Search UX best practices and guidelines"},
+        {"name": "search_stack", "description": "Search framework-specific guidelines"},
+        {"name": "search_all", "description": "Search all UI/UX design resources"},
+        {"name": "get_design_system", "description": "Generate complete design system"},
         # Figma tools (ADR-006)
         {"name": "get_figma_file", "description": "Get Figma file structure"},
         {"name": "get_figma_components", "description": "Get components from Figma file"},
@@ -2494,6 +2529,13 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Failed to initialize distributed rate limiting: {e}")
         logger.info("Rate limiting: enabled (in-memory fallback)")
+
+    # Register UI/UX design resources tools
+    try:
+        register_uiux_tools(mcp)
+        logger.info("UI/UX design resources tools registered")
+    except Exception as e:
+        logger.warning(f"Failed to register UI/UX tools: {e}")
 
     # Configure baseline verification
     verify_enabled = os.getenv("BASELINE_VERIFY_ENABLED", "true").lower() == "true"

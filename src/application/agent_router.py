@@ -67,22 +67,47 @@ AGENTS = {
         ],
         memory_key="devops",
         description="CI/CD, deployment, infrastructure"
-    )
+    ),
+    "migration": Agent(
+        name="Migration",
+        prompts=[
+            "promt-migration-planner",
+            "promt-migration-implementation",
+            "promt-migration-review",
+            "promt-migration-devops"
+        ],
+        memory_key="migration",
+        description="Migration planning and execution"
+    ),
 }
 
 
-# Keywords for agent detection
+# Keywords for agent detection (in priority order)
+# More specific patterns FIRST
 AGENT_KEYWORDS = {
-    "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование"],
+    "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
+    "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
+    "reviewer": ["проверь", "ревью", "аудит", "тест", "review", "check", "audit", "test"],  # Перенесено ВЫШЕ developer
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
-    "reviewer": ["ревью", "проверь", "аудит", "тест", "review", "check", "audit", "test"],
-    "designer": ["дизайн", "ui", "ux", "интерфейс", "button", "card", "design", "interface"],
+    "designer": [
+        # English
+        "ui", "ux", "design", "button", "card", "component",
+        "color", "palette", "typography", "font", "icon",
+        "layout", "responsive", "accessibility", "a11y",
+        # Russian
+        "дизайн", "интерфейс", "компонент", "кнопка", "карточка",
+        "цвет", "палитра", "шрифт", "иконка", "верстка",
+    ],
     "devops": ["ci", "cd", "deploy", "docker", "kubernetes", "pipeline", "деплой"]
 }
 
 
 # Prompt keywords for selection
 PROMPT_KEYWORDS = {
+    "promt-migration-planner": ["миграц", "migrat", "план миграции", "migrate plan"],
+    "promt-migration-implementation": ["выполни миграцию", "запусти миграцию", "execute migration"],
+    "promt-migration-review": ["проверь миграцию", "верифицируй миграцию", "verify migration"],
+    "promt-migration-devops": ["тест миграции", "ci/cd миграции"],
     "promt-architect-design": ["спроектируй", "проектирование", "design"],
     "promt-architect-review": ["ревью", "review", "анализ"],
     "create_adr": ["adr", "документация"],
@@ -103,9 +128,14 @@ PROMPT_KEYWORDS = {
 class AgentRouter:
     """Handles agent detection and prompt selection."""
 
+    # Priority order - more specific agents first
+    AGENT_PRIORITY = ["migration", "architect", "reviewer", "developer", "designer", "devops"]
+
     def detect_agents(self, request: str) -> List[str]:
         """
         Detect which agents are needed based on request.
+
+        Priority: migration > architect > developer > reviewer > designer > devops
 
         Args:
             request: User request
@@ -116,11 +146,12 @@ class AgentRouter:
         request_lower = request.lower()
         needed = []
 
-        for agent_name, keywords in AGENT_KEYWORDS.items():
+        # Check in priority order - migration checked FIRST
+        for agent_name in self.AGENT_PRIORITY:
+            keywords = AGENT_KEYWORDS.get(agent_name, [])
             for keyword in keywords:
                 if keyword in request_lower:
-                    if agent_name not in needed:
-                        needed.append(agent_name)
+                    needed.append(agent_name)
                     break
 
         # Default to developer if no specific agent detected
