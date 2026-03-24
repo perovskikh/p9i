@@ -9,6 +9,10 @@ services:
     ports:
       - "8000:8000"
     environment:
+      # Server host
+      - SERVER_HOST=0.0.0.0
+      - P9I_API_KEY=sk-p9i-codeshift-${DOMAIN:-dev}
+      - ALLOWED_ORIGINS=*
       # PostgreSQL (persistent data)
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ai_prompts
       - POSTGRES_HOST=db
