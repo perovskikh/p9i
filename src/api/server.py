@@ -94,6 +94,17 @@ if JWT_ENABLED:
 # Create MCP server
 mcp = FastMCP("AI Prompt System")
 
+# Health check endpoint
+@mcp.resource("health://system")
+def health_check() -> str:
+    """Health check endpoint for monitoring."""
+    return json.dumps({
+        "status": "healthy",
+        "service": "AI Prompt System MCP Server",
+        "version": "2.0.0",
+        "timestamp": time.time()
+    })
+
 
 # JWT Auth Tools (only if JWT_ENABLED)
 if JWT_ENABLED:
@@ -2757,9 +2768,6 @@ def _run_mcp_sse_thread():
 
 async def main_async():
     """Main async entry point"""
-    # Run startup logic
-    await startup_event()
-
     # Get transport mode
     transport = os.getenv("MCP_TRANSPORT", "sse")
     logger.info(f"Transport mode: {transport}")
@@ -2767,7 +2775,14 @@ async def main_async():
     if transport == "stdio":
         # Claude Code uses stdio transport
         logger.info("Running in stdio mode")
-        mcp.run(transport="stdio")
+        # Run startup in same event loop
+        await startup_event()
+
+        # Run MCP stdio in a separate thread to avoid asyncio conflict
+        import threading
+        stdio_thread = threading.Thread(target=lambda: mcp.run(transport="stdio"), daemon=True)
+        stdio_thread.start()
+        stdio_thread.join()
     else:
         # Run both Web UI and MCP SSE in separate threads
         logger.info("Running Web UI + MCP SSE mode")
