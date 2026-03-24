@@ -1,0 +1,169 @@
+# .github/workflows/sync-uiux.yml
+name: Sync UI/UX Data
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sync UI/UX data
+        run: |
+          python3 -c "
+          import csv
+          import subprocess
+          import json
+          from io import StringIO
+
+          BASE = 'https://raw.githubusercontent.com/redf0x1/ui-ux-pro-mcp/main/data'
+
+          def fetch(name):
+              url = f'{BASE}/{name}.csv'
+              result = subprocess.run(['curl', '-s', url], capture_output=True, text=True)
+              return result.stdout
+
+          data = {}
+
+          # Sync styles
+          styles_csv = fetch('styles')
+          styles = []
+          reader = csv.DictReader(StringIO(styles_csv))
+          for row in reader:
+              if not row.get('STT'): continue
+              styles.append({
+                  'id': f\"style-{row.get('STT', '')}\",
+                  'name': row.get('Style Category', '').strip()[:100],
+                  'description': f\"{row.get('Type', '')} - {row.get('Keywords', '')}\"[:200],
+                  'data': {
+                      'primary_colors': row.get('Primary Colors', '').strip()[:100],
+                      'effects': row.get('Effects & Animation', '').strip()[:100],
+                      'best_for': row.get('Best For', '').strip()[:100],
+                      'css_code': row.get('CSS_Code', '').strip()[:300],
+                      'framework_compatibility': row.get('Framework Compatibility', '').strip(),
+                  },
+                  'tags': [k.strip() for k in row.get('Keywords', '').split(',') if k.strip()][:8],
+              })
+          data['styles'] = styles
+
+          # Sync colors
+          colors_csv = fetch('colors')
+          colors = []
+          reader = csv.DictReader(StringIO(colors_csv))
+          for row in reader:
+              if not row.get('No'): continue
+              colors.append({
+                  'id': f\"color-{row.get('No', '')}\",
+                  'name': row.get('Product Type', '').strip(),
+                  'description': f\"{row.get('Keywords', '')} - {row.get('Notes', '')}\"[:200],
+                  'data': {
+                      'primary': row.get('Primary (Hex)', '').strip(),
+                      'secondary': row.get('Secondary (Hex)', '').strip(),
+                      'accent': row.get('CTA (Hex)', '').strip(),
+                      'background': row.get('Background (Hex)', '').strip(),
+                      'tailwind_config': row.get('Tailwind_Config', '').strip()[:200],
+                  },
+                  'tags': [k.strip().lower() for k in row.get('Keywords', '').split(',') if k.strip()][:8],
+              })
+          data['colors'] = colors
+
+          # Sync typography
+          typo_csv = fetch('typography')
+          typography = []
+          reader = csv.DictReader(StringIO(typo_csv))
+          for row in reader:
+              if not row.get('STT'): continue
+              typography.append({
+                  'id': f\"typo-{row.get('STT', '')}\",
+                  'name': f\"{row.get('Heading Font', '').strip()} + {row.get('Body Font', '').strip()}\",
+                  'description': f\"{row.get('Use Case', '')} - {row.get('Personality', '')}\"[:200],
+                  'data': {
+                      'heading': row.get('Heading Font', '').strip(),
+                      'body': row.get('Body Font', '').strip(),
+                      'mono': row.get('Monospace Font', '').strip(),
+                      'google_fonts': row.get('Google Fonts Link', '').strip()[:150],
+                      'personality': row.get('Personality', '').strip(),
+                  },
+                  'tags': [row.get('Classification', '').strip().lower(), row.get('Personality', '').strip().lower()],
+              })
+          data['typography'] = typography
+
+          # Sync icons
+          icons_csv = fetch('icons')
+          icons = []
+          reader = csv.DictReader(StringIO(icons_csv))
+          for row in reader:
+              if not row.get('STT'): continue
+              icons.append({
+                  'id': f\"icon-{row.get('STT', '')}\",
+                  'name': row.get('Icon Name', '').strip(),
+                  'description': f\"{row.get('Category', '')} - {row.get('Description', '')}\"[:200],
+                  'data': {
+                      'import': f\"import {{ {row.get('Icon Name', '').strip()} }} from 'lucide-react'\",
+                      'component': f\"<{row.get('Icon Name', '').strip()} />\",
+                      'category': row.get('Category', '').strip(),
+                  },
+                  'tags': [row.get('Category', '').strip().lower(), row.get('Icon Name', '').strip().lower()],
+              })
+          data['icons'] = icons
+
+          # Generate Python
+          lines = [
+              '# src/infrastructure/uiux/data/embedded.py',
+              '\"\"\"',
+              f'Embedded UI/UX design resources.',
+              f'Auto-synced from ui-ux-pro-mcp: {len(styles)} styles, {len(colors)} colors, {len(typography)} typography, {len(icons)} icons',
+              '\"\"\"',
+              '',
+          ]
+
+          for cat_name in ['styles', 'colors', 'typography', 'icons']:
+              items = data.get(cat_name, [])
+              var_name = f\"UIUX_{cat_name.upper()}\"
+              lines.append(f'# {cat_name.title()} ({len(items)})')
+              lines.append(f\"{var_name} = [\")
+
+              for item in items:
+                  lines.append('    {')
+                  lines.append(f'        \"id\": \"{item[\"id\"]}\",')
+                  name = item[\"name\"][:100].replace('\"', '\\\"')
+                  desc = item[\"description\"][:150].replace('\"', '\\\"')
+                  lines.append(f'        \"name\": \"{name}\",')
+                  lines.append(f'        \"description\": \"{desc}\",')
+                  lines.append(f'        \"data\": {repr(item[\"data\"])},')
+                  lines.append(f'        \"tags\": {repr(item[\"tags\"])},')
+                  lines.append('    },')
+
+              lines.append(']')
+              lines.append('')
+
+          lines.append('UIUX_EMBEDDED_DATA = {')
+          for cat in ['styles', 'colors', 'typography', 'icons']:
+              lines.append(f'    \"{cat}\": UIUX_{cat.upper()},')
+          lines.append('}')
+
+          with open('src/infrastructure/uiux/data/embedded.py', 'w') as f:
+              f.write('\\n'.join(lines))
+
+          with open('src/infrastructure/uiux/data/embedded.json', 'w') as f:
+              json.dump(data, f, indent=2)
+
+          print(f'Synced: {len(styles)} styles, {len(colors)} colors, {len(typography)} typography, {len(icons)} icons')
+          "
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "ci@github.com"
+          git config --local user.name "CI"
+          git add src/infrastructure/uiux/data/
+          git diff --staged --quiet || git commit -m "chore: sync UI/UX data from ui-ux-pro-mcp"
+          git push

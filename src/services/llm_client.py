@@ -188,6 +188,22 @@ def _get_fallback_order() -> list:
     return ["glm-4-7", "hunter", "deepseek", "anthropic"]
 
 
+def _get_provider_priority() -> list:
+    """Get custom provider priority order from LLM_PROVIDER_PRIORITY env var.
+
+    This defines the order for auto-detection when LLM_PROVIDER=auto.
+    Format: "minimax,glm-4-7,deepseek,hunter,anthropic"
+
+    Higher priority = checked first for API key availability.
+    """
+    custom_priority = os.getenv("LLM_PROVIDER_PRIORITY", "")
+    if custom_priority:
+        return [p.strip() for p in custom_priority.split(",") if p.strip() in PROVIDERS]
+
+    # Default priority order (best price/performance first)
+    return ["minimax", "glm-4-7", "hunter", "deepseek", "anthropic"]
+
+
 class LLMClient:
     """Async client for multiple LLM providers with automatic failover."""
 
@@ -248,39 +264,22 @@ class LLMClient:
     def _detect_provider(self) -> str:
         """Detect best available provider based on API keys in .env.
 
-        Priority order (aligned with CLAUDE.md):
-        0. LLM_PROVIDER env var (explicit selection)
-        1. MINIMAX_API_KEY → MiniMax-M2.7 (best price/performance)
-        2. ZAI_API_KEY → GLM-4.7 (best quality)
-        3. OPENROUTER_API_KEY → Hunter (free via OpenRouter)
-        4. DEEPSEEK_API_KEY → DeepSeek
-        5. ANTHROPIC_API_KEY → Anthropic (requires explicit permission)
-        6. Fallback: hunter (free)
+        Uses LLM_PROVIDER_PRIORITY env var for custom priority order.
+        Default priority: MiniMax → ZAI → OpenRouter → DeepSeek → Anthropic
         """
-        # Check explicit provider first
+        # Check explicit provider first (LLM_PROVIDER=minimax, etc.)
         explicit = os.getenv("LLM_PROVIDER")
         if explicit and explicit in PROVIDERS:
             return explicit
 
-        # PRIMARY: MiniMax (best price/performance)
-        if os.getenv("MINIMAX_API_KEY"):
-            return "minimax"
+        # Get priority order from env or use default
+        priority = _get_provider_priority()
 
-        # Z.ai GLM-4.7 (best quality)
-        if os.getenv("ZAI_API_KEY"):
-            return "glm-4-7"
-
-        # Free via OpenRouter
-        if os.getenv("OPENROUTER_API_KEY"):
-            return "hunter"
-
-        # DeepSeek (fallback for reasoning)
-        if os.getenv("DEEPSEEK_API_KEY"):
-            return "deepseek"
-
-        # Anthropic direct (requires explicit permission)
-        if os.getenv("ANTHROPIC_API_KEY"):
-            return "anthropic"
+        # Check providers in priority order, return first one with API key
+        for provider in priority:
+            config = PROVIDERS[provider]
+            if os.getenv(config["env_key"]):
+                return provider
 
         return "hunter"  # Fallback to free
 

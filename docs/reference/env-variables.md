@@ -18,6 +18,7 @@ cp .env.example .env
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `LLM_PROVIDER` | string | `auto` | Explicit provider selection. Options: `auto`, `minimax`, `glm-4-7`, `glm-4-5-air`, `zai-claude`, `deepseek`, `deepseek-reasoner`, `anthropic`, `hunter` |
+| `LLM_PROVIDER_PRIORITY` | string | `minimax,glm-4-7,hunter,deepseek,anthropic` | Auto-detection priority order (comma-separated). Higher priority = checked first for API key availability. |
 
 ### MiniMax (Primary - Best Price/Performance)
 
