@@ -20,6 +20,15 @@ class Agent:
 
 # Agent definitions
 AGENTS = {
+    # Full cycle agent - orchestrates complete development pipeline
+    "full_cycle": Agent(
+        name="Full Cycle",
+        prompts=[
+            "promt-feature-add",  # Includes: research → ADR → impl → test → docs
+        ],
+        memory_key="full_cycle",
+        description="Complete development cycle: idea → implementation → tests → fixes → docs"
+    ),
     "architect": Agent(
         name="Architect",
         prompts=[
@@ -86,10 +95,10 @@ AGENTS = {
 # More specific patterns FIRST
 AGENT_KEYWORDS = {
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
+    # Full cycle keywords - активируют полный цикл с арбитражом
+    "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
     "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
-    "reviewer": ["проверь", "ревью", "аудит", "тест", "review", "check", "audit", "test"],  # Перенесено ВЫШЕ developer
-    # Full cycle shortcuts → routes to promt-feature-add (already has full cycle)
-    # "developer_full_cycle": ["реализуй", "внедри", "сделай", "реализуем", "внедряем", "выполни", "implement", "build", "deploy"],
+    "reviewer": ["проверь", "ревью", "аудит", "тест", "review", "check", "audit", "test"],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
         # English
@@ -133,13 +142,13 @@ class AgentRouter:
     """Handles agent detection and prompt selection."""
 
     # Priority order - more specific agents first
-    AGENT_PRIORITY = ["migration", "architect", "reviewer", "developer", "designer", "devops"]
+    AGENT_PRIORITY = ["migration", "full_cycle", "architect", "reviewer", "developer", "designer", "devops"]
 
     def detect_agents(self, request: str) -> List[str]:
         """
         Detect which agents are needed based on request.
 
-        Priority: migration > architect > developer > reviewer > designer > devops
+        Priority: migration > full_cycle > architect > reviewer > developer > designer > devops
 
         Args:
             request: User request
@@ -150,8 +159,17 @@ class AgentRouter:
         request_lower = request.lower()
         needed = []
 
-        # Check in priority order - migration checked FIRST
+        # Check for full cycle commands first (реализуй, внедри, сделай, e2e)
+        if "full_cycle" in AGENT_KEYWORDS:
+            for keyword in AGENT_KEYWORDS["full_cycle"]:
+                if keyword in request_lower:
+                    # Full cycle detected - determine orchestration based on context
+                    return self._orchestrate_full_cycle(request_lower)
+
+        # Check in priority order for other keywords
         for agent_name in self.AGENT_PRIORITY:
+            if agent_name == "full_cycle":
+                continue
             keywords = AGENT_KEYWORDS.get(agent_name, [])
             for keyword in keywords:
                 if keyword in request_lower:
@@ -163,6 +181,61 @@ class AgentRouter:
             needed = ["developer"]
 
         return needed
+
+    def _orchestrate_full_cycle(self, request_lower: str) -> List[str]:
+        """
+        Orchestrate full cycle based on request context.
+
+        Determines which agents to invoke:
+        - Simple feature → developer only (promt-feature-add has full cycle built-in)
+        - UI/UX task → designer + developer + reviewer
+        - Complex architecture → architect + developer + reviewer + devops
+        - Deployment → developer + reviewer + devops
+
+        Args:
+            request_lower: Lowercased request
+
+        Returns:
+            Ordered list of agents to execute
+        """
+        orchestration = []
+
+        # Check for UI/UX requirements
+        ui_keywords = ["ui", "ux", "дизайн", "интерфейс", "design", "component", "кнопка", "карточка"]
+        has_ui = any(kw in request_lower for kw in ui_keywords)
+
+        # Check for deployment/infrastructure requirements
+        deploy_keywords = ["deploy", "деплой", "ci", "cd", "docker", "kubernetes", "pipeline"]
+        has_deploy = any(kw in request_lower for kw in deploy_keywords)
+
+        # Check for complex architecture (new system, redesign, major feature)
+        complex_keywords = ["спроектируй", "архитектура", "нов систем", "редизайн", "architecture"]
+        has_complex = any(kw in request_lower for kw in complex_keywords)
+
+        # Orchestration logic
+        if has_complex:
+            # Complex task: Architect first for design decisions
+            orchestration.append("architect")
+            orchestration.append("developer")
+            orchestration.append("reviewer")
+            if has_deploy:
+                orchestration.append("devops")
+        elif has_ui:
+            # UI task: Designer first, then developer, then reviewer
+            orchestration.append("designer")
+            orchestration.append("developer")
+            orchestration.append("reviewer")
+        elif has_deploy:
+            # Deployment task: Developer + Reviewer + DevOps
+            orchestration.append("developer")
+            orchestration.append("reviewer")
+            orchestration.append("devops")
+        else:
+            # Simple feature: Use full cycle prompt (already includes all phases)
+            # This goes directly to promt-feature-add which has research→impl→test→docs built-in
+            orchestration.append("full_cycle")
+
+        return orchestration
 
     def select_prompt(self, agent_name: str, request: str) -> str:
         """
