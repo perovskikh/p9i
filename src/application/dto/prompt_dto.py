@@ -17,7 +17,7 @@ class RunPromptRequest(BaseModel):
 
 class RunPromptChainRequest(BaseModel):
     """Request to run a chain of prompts."""
-    stages: List[str] = Field(..., min_items=1)
+    stages: List[str] = Field(..., min_length=1)
     initial_data: Dict[str, Any] = Field(default_factory=dict)
 
 
