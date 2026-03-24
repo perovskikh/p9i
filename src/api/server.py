@@ -49,6 +49,7 @@ from src.storage.prompts_v2 import (
     verify_baseline,
     PromptTier
 )
+from src.storage.packs import get_pack_loader
 from src.middleware import (
     verify_baseline_on_startup,
     configure_baseline_verification
@@ -744,6 +745,7 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "инициализация p9i": "promt-system-adapt",
             "подключи систему": "promt-system-adapt",
             "init p9i": "promt-system-adapt",
+            "p9i init": "promt-system-adapt",  # Alternative order
             "новый проект": "promt-system-adapt",
             "new project": "promt-system-adapt",
             "адаптируй": "promt-system-adapt",
@@ -867,6 +869,14 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
         }
 
         request_lower = request.lower()
+
+        # First, check pack triggers (higher priority than INTENT_MAP)
+        pack_loader = get_pack_loader()
+        pack_match = pack_loader.find_by_trigger(request_lower)
+        if pack_match:
+            selected_prompt = pack_match["prompt_file"].replace(".md", "")
+            matched_keyword = f"pack:{pack_match['matched_keyword']}"
+            logger.info(f"Pack trigger matched: {pack_match}")
 
         # Find matching prompt via keywords
         selected_prompt = None
@@ -2728,19 +2738,55 @@ async def shutdown_event():
 # Note: FastMCP doesn't support add_event_handler, call startup/shutdown in main()
 # See main() below for startup/shutdown handling
 
-if __name__ == "__main__":
-    # Run startup logic
-    import asyncio
-    asyncio.run(startup_event())
+def _run_webui_thread():
+    """Web UI server in separate thread"""
+    import uvicorn
+    from src.api.webui import app as webui_app
+    try:
+        uvicorn.run(webui_app, host="0.0.0.0", port=8080, log_level="info")
+    except Exception as e:
+        print(f"WebUI Error: {e}")
+        import traceback
+        traceback.print_exc()
 
-    # Support both transport modes
-    # stdio: for Claude Code MCP (docker run --rm -i)
-    # sse: for HTTP-based MCP clients
+
+def _run_mcp_sse_thread():
+    """MCP SSE server in separate thread"""
+    mcp.run(transport="sse", host="0.0.0.0", port=8000)
+
+
+async def main_async():
+    """Main async entry point"""
+    # Run startup logic
+    await startup_event()
+
+    # Get transport mode
     transport = os.getenv("MCP_TRANSPORT", "sse")
+    logger.info(f"Transport mode: {transport}")
 
     if transport == "stdio":
         # Claude Code uses stdio transport
+        logger.info("Running in stdio mode")
         mcp.run(transport="stdio")
     else:
-        # Default: SSE transport for HTTP
-        mcp.run(transport="sse", host="0.0.0.0", port=8000)
+        # Run both Web UI and MCP SSE in separate threads
+        logger.info("Running Web UI + MCP SSE mode")
+        import threading
+
+        # Start both servers in separate threads
+        webui_thread = threading.Thread(target=_run_webui_thread, daemon=True)
+        mcp_thread = threading.Thread(target=_run_mcp_sse_thread, daemon=True)
+
+        webui_thread.start()
+        mcp_thread.start()
+
+        # Wait for both threads
+        try:
+            webui_thread.join()
+        except KeyboardInterrupt:
+            logger.info("Shutting down...")
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main_async())
