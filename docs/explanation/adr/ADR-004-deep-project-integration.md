@@ -1,7 +1,7 @@
 # ADR-004: Deep-Project Integration - Prompt Orchestration Engine
 
 ## Status
-**Proposed** | 2026-03-22
+**Implemented** ✅ | 2026-03-24
 
 ## Context
 
@@ -53,3 +53,10 @@ We will integrate key features from deep-project to transform p9i into a dynamic
 
 - Keep static library model (rejected - limits expressiveness)
 - Full deep-project clone (overkill - we need prompt-specific features)
+
+## See Also
+- [ADR-007: Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) — Agent system built on this
+- [MPV Pipeline](../how-to/MPV.md) — 7-stage pipeline
+
+---
+*Last Updated: 2026-03-24*

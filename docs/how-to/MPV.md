@@ -628,6 +628,9 @@ install_pack("ci-cd-pack")
 
 ---
 
-*Версия: 0.5.0*
-*Статус: Active Development*
-*Последнее обновление: March 2026*
+## See Also
+- [ADR-002: Tiered Prompt Architecture](explanation/adr/ADR-002-tiered-prompt-architecture-mpv-integration.md)
+- [ADR Index](explanation/adr/ADR_INDEX.md)
+
+---
+*Last Updated: 2026-03-24*

@@ -1,14 +1,14 @@
 # ADR Index
 
-| ADR # | Title | Status | Date | Focus |
-|---------|--------|--------|--------|
-| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Deprecated** | 2026-03-13 | Foundational, superseded by ADR-002 |
-| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** ✅ | 2026-03-19 | Tiered: core + universal + packs |
-| ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Accepted** | 2026-03-20 | Files + Lazy Loading vs PostgreSQL |
-| ADR-004 | [Deep-Project Integration - Prompt Orchestration](ADR-004-deep-project-integration.md) | **Proposed** | 2026-03-22 | AI Interview, Decomposition, DAG |
-| ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** | 2026-03-22 | TailwindCSS, shadcn, Textual, Tauri |
-| ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** | 2026-03-22 | Figma API, design-to-code, tokens |
-| ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Proposed** | 2026-03-22 | Agent system, Siri-like router, shared memory |
+| ADR # | Title | Status | Date | Focus | Related |
+|---------|--------|--------|--------|--------|---------|
+| ADR-001 | [System Genesis & Repository Standards](ADR-001-system-genesis.md) | **Deprecated** | 2026-03-13 | Foundational, superseded by ADR-002 | — |
+| ADR-002 | [Tiered Prompt Architecture & MPV Integration](ADR-002-tiered-prompt-architecture-mpv-integration.md) | **Implemented** ✅ | 2026-03-19 | Tiered: core + universal + packs | ADR-003, MPV |
+| ADR-003 | [Prompt Storage Strategy](ADR-003-prompt-storage-strategy.md) | **Implemented** ✅ | 2026-03-20 | Files + Lazy Loading vs PostgreSQL | ADR-002 |
+| ADR-004 | [Deep-Project Integration - Prompt Orchestration](ADR-004-deep-project-integration.md) | **Implemented** ✅ | 2026-03-22 | AI Interview, Decomposition, DAG | ADR-007 |
+| ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** ✅ | 2026-03-22 | TailwindCSS, shadcn, Textual, Tauri | ADR-006 |
+| ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** ✅ | 2026-03-22 | Figma API, design-to-code, tokens | ADR-005 |
+| ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Implemented** ✅ | 2026-03-24 | 7 agents, Siri voice, browser, dedup guard | ADR-004 |
 
 ## Legend
 
@@ -17,39 +17,6 @@
 - **Proposed:** ADR is drafted and awaiting review
 - **Deprecated:** ADR is no longer applicable (superseded by newer ADR)
 - **TBD:** To be determined
-
-## Quick Reference
-
-### Active ADRs
-
-#### **ADR-001: System Genesis & Repository Standards**
-- **Status:** Deprecated (superseded by ADR-002)
-- **Decision:** Define initial flat structure and founding principles
-- **Date:** 2026-03-13
-- **Focus:** Foundational architecture, repository standards
-- **Content:**
-  - Initial flat structure with 16 prompts (not 28)
-  - Foundational principles and repository standards
-  - System genesis documentation
-
----
-
-#### **ADR-002: Tiered Prompt Architecture & MPV Integration**
-- **Status:** ✅ IMPLEMENTED
-- **Decision:** Implement 3-tier cascade + MPV 7-stage pipeline + legacy cleanup
-- **Date:** 2026-03-18 (Implemented: 2026-03-19)
-- **Focus:** Tiered architecture, MPV pipeline, legacy naming cleanup
-- **Content:**
-  - **Real System:** 31 prompts in tiered structure
-  - **MPV Stage Prompts:** 7 prompts (promt-ideation → promt-finish)
-  - **Plugin Packs:** k8s-pack (5), ci-cd-pack (4)
-  - **3-Tier Cascade:** Core → Universal → MPV_Stage → Projects
-  - **7-Stage Pipeline:** ideation → analysis → design → implementation → testing → debugging → finish
-  - **Lazy Loading:** Depends() pattern + lru_cache
-  - **Phase 1-4:** ✅ COMPLETE
-  - **Phase 5:** ✅ COMPLETE (JWT, RBAC, HTTPS proxy)
-
----
 
 ### Related Documentation
 
@@ -66,7 +33,7 @@
 
 ---
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-24
 **Total ADRs:** 7
-**Active ADRs:** 5 (0 Deprecated)
-**Next ADR Number:** ADR-006
+**Implemented:** 6 | **Deprecated:** 1
+**Next ADR:** ADR-008 (planned)

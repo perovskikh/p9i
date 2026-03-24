@@ -1,7 +1,7 @@
 # ADR-007: Multi-Agent Orchestrator Architecture
 
 ## Status
-**Proposed** | 2026-03-22
+**Implemented** ✅ | 2026-03-24 | Merged to main (PR #2)
 
 ## Context
 
@@ -121,3 +121,11 @@ class AgentOrchestrator:
 - Single agent with all prompts (rejected - no specialization)
 - No shared memory (rejected - loses context)
 - Direct tool calls only (rejected - loses natural language)
+
+## See Also
+- [ADR-004: Deep-Project Integration](ADR-004-deep-project-integration.md) — Orchestration pipeline
+- [ADR-005: UI/UX Integration](ADR-005-ui-ux-integration.md) — Designer agent tools
+- [ADR-006: Figma Integration](ADR-006-figma-integration.md) — Design resources
+
+---
+*Last Updated: 2026-03-24*
