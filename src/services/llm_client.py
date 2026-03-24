@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Provider configurations (updated March 2026)
 # Each provider has its own API endpoint and uses its own API key
+# Per-provider settings can be overridden via environment variables
 PROVIDERS = {
     # === Z.ai (https://docs.z.ai) ===
     # Z.ai provides access to GLM models via their API
@@ -25,12 +26,20 @@ PROVIDERS = {
         "endpoint": "/chat/completions",
         "model": "GLM-4.7",
         "env_key": "ZAI_API_KEY",
+        "enabled_env": "ZAI_ENABLED",
+        "model_env": "ZAI_MODEL",
+        "temperature_env": "ZAI_TEMPERATURE",
+        "max_tokens_env": "ZAI_MAX_TOKENS",
     },
     "glm-4-5-air": {
         "base_url": "https://api.z.ai/api/coding/paas/v4",
         "endpoint": "/chat/completions",
         "model": "GLM-4.5-Air",
         "env_key": "ZAI_API_KEY",
+        "enabled_env": "ZAI_ENABLED",
+        "model_env": "ZAI_MODEL",
+        "temperature_env": "ZAI_TEMPERATURE",
+        "max_tokens_env": "ZAI_MAX_TOKENS",
     },
     # Z.ai also supports Anthropic models via /anthropic/v1/messages
     "zai-claude": {
@@ -38,6 +47,10 @@ PROVIDERS = {
         "endpoint": "/anthropic/v1/messages",
         "model": "claude-sonnet-4-20250514",
         "env_key": "ZAI_API_KEY",
+        "enabled_env": "ZAI_ENABLED",
+        "model_env": "ZAI_MODEL",
+        "temperature_env": "ZAI_TEMPERATURE",
+        "max_tokens_env": "ZAI_MAX_TOKENS",
     },
 
     # === MiniMax (https://platform.minimax.io) ===
@@ -46,6 +59,10 @@ PROVIDERS = {
         "endpoint": "/v1/messages",
         "model": "MiniMax-M2.7",
         "env_key": "MINIMAX_API_KEY",
+        "enabled_env": "MINIMAX_ENABLED",
+        "model_env": "MINIMAX_MODEL",
+        "temperature_env": "MINIMAX_TEMPERATURE",
+        "max_tokens_env": "MINIMAX_MAX_TOKENS",
     },
 
     # === DeepSeek (https://api-docs.deepseek.com) ===
@@ -54,12 +71,20 @@ PROVIDERS = {
         "endpoint": "/v1/chat/completions",
         "model": "deepseek-chat",
         "env_key": "DEEPSEEK_API_KEY",
+        "enabled_env": "DEEPSEEK_ENABLED",
+        "model_env": "DEEPSEEK_MODEL",
+        "temperature_env": "DEEPSEEK_TEMPERATURE",
+        "max_tokens_env": "DEEPSEEK_MAX_TOKENS",
     },
     "deepseek-reasoner": {
         "base_url": "https://api.deepseek.com",
         "endpoint": "/v1/chat/completions",
         "model": "deepseek-reasoner",
         "env_key": "DEEPSEEK_API_KEY",
+        "enabled_env": "DEEPSEEK_ENABLED",
+        "model_env": "DEEPSEEK_MODEL",
+        "temperature_env": "DEEPSEEK_TEMPERATURE",
+        "max_tokens_env": "DEEPSEEK_MAX_TOKENS",
     },
 
     # === Anthropic Direct ===
@@ -68,6 +93,10 @@ PROVIDERS = {
         "endpoint": "/v1/messages",
         "model": "claude-sonnet-4-20250514",
         "env_key": "ANTHROPIC_API_KEY",
+        "enabled_env": "ANTHROPIC_ENABLED",
+        "model_env": "ANTHROPIC_MODEL",
+        "temperature_env": "ANTHROPIC_TEMPERATURE",
+        "max_tokens_env": "ANTHROPIC_MAX_TOKENS",
     },
 
     # === OpenRouter (https://openrouter.ai) - Free models ===
@@ -76,6 +105,10 @@ PROVIDERS = {
         "endpoint": "/chat/completions",
         "model": "anthropic/claude-3-haiku",
         "env_key": "OPENROUTER_API_KEY",
+        "enabled_env": "OPENROUTER_ENABLED",
+        "model_env": "OPENROUTER_MODEL",
+        "temperature_env": "OPENROUTER_TEMPERATURE",
+        "max_tokens_env": "OPENROUTER_MAX_TOKENS",
     },
 }
 
@@ -106,20 +139,62 @@ def get_available_providers() -> dict:
     result = {}
     for name, config in PROVIDERS.items():
         api_key = os.getenv(config["env_key"])
+        enabled_env = config.get("enabled_env")
+        # Check if provider is explicitly disabled
+        enabled = True
+        if enabled_env:
+            enabled = os.getenv(enabled_env, "true").lower() == "true"
+
         result[name] = {
             "model": config["model"],
             "env_key": config["env_key"],
             "available": bool(api_key),
+            "enabled": enabled,
         }
     return result
+
+
+def _get_provider_settings(provider: str) -> dict:
+    """Get per-provider settings from environment variables."""
+    config = PROVIDERS.get(provider, {})
+    settings = {}
+
+    if config:
+        # Model override
+        model_env = config.get("model_env")
+        if model_env:
+            settings["model"] = os.getenv(model_env)
+
+        # Temperature override
+        temp_env = config.get("temperature_env")
+        if temp_env:
+            settings["temperature"] = float(os.getenv(temp_env, "0.7"))
+
+        # Max tokens override
+        tokens_env = config.get("max_tokens_env")
+        if tokens_env:
+            settings["max_tokens"] = int(os.getenv(tokens_env, "4096"))
+
+    return settings
+
+
+def _get_fallback_order() -> list:
+    """Get custom fallback order from LLM_FAILOVER_ORDER env var."""
+    custom_order = os.getenv("LLM_FAILOVER_ORDER", "")
+    if custom_order:
+        return [p.strip() for p in custom_order.split(",") if p.strip() in PROVIDERS]
+
+    # Default fallback order
+    return ["glm-4-7", "hunter", "deepseek", "anthropic"]
 
 
 class LLMClient:
     """Async client for multiple LLM providers with automatic failover."""
 
-    # Fallback order when primary provider fails
+    # Default fallback order when primary provider fails
     # Priority: MiniMax → ZAI → OpenRouter → DeepSeek → Anthropic
-    FALLBACK_ORDER = {
+    # Can be overridden via LLM_FAILOVER_ORDER env var
+    DEFAULT_FALLBACK_ORDER = {
         "minimax": ["glm-4-7", "hunter", "deepseek", "anthropic"],
         "glm-4-7": ["hunter", "minimax", "deepseek", "anthropic"],
         "glm-4-5-air": ["glm-4-7", "hunter", "minimax", "deepseek"],
@@ -142,9 +217,12 @@ class LLMClient:
         max_tokens: int = 4096,
         enable_failover: bool = True,
     ):
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.enable_failover = enable_failover
+        # Load per-provider settings from environment
+        settings = _get_provider_settings(provider) if provider != "auto" else {}
+
+        self.temperature = settings.get("temperature", temperature)
+        self.max_tokens = settings.get("max_tokens", max_tokens)
+        self.enable_failover = os.getenv("LLM_FAILOVER_ENABLED", "true").lower() == "true" if enable_failover else False
 
         # Auto-detect provider based on available keys
         if provider == "auto":
@@ -160,7 +238,9 @@ class LLMClient:
 
         # Use provided key or fall back to env
         self.api_key = api_key or os.getenv(config["env_key"])
-        self.model = model or self.default_model
+
+        # Model override: param > env provider setting > default
+        self.model = model or settings.get("model") or self.default_model
 
         if not self.api_key:
             logger.warning(f"No API key for provider: {provider}")
@@ -312,7 +392,7 @@ class LLMClient:
             return await self._chat_single_provider(messages, temperature, max_tokens, stream)
 
         # Non-streaming: try with failover
-        fallback_providers = self.FALLBACK_ORDER.get(self.provider, [])
+        fallback_providers = self.DEFAULT_FALLBACK_ORDER.get(self.provider, _get_fallback_order())
 
         for attempt_provider in [self.provider] + fallback_providers:
             result = await self._try_provider(
