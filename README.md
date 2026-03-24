@@ -299,17 +299,63 @@ MCP_TRANSPORT=sse python -m src.api.server
 # Тест HTTP endpoint
 curl http://localhost:8000/health
 
-# Тест MCP tools
-curl -X POST http://localhost:8000/jsonrpc \
+# Тест MCP tools (SSE transport)
+curl -s -N http://localhost:8000/sse &
+# Session init - MUST call initialize() first!
+curl -s "http://localhost:8000/messages/?session_id=YOUR_SESSION" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+  -X POST \
+  -d '{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+
+# List tools (after initialize)
+curl -s "http://localhost:8000/messages/?session_id=YOUR_SESSION" \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":2}'
 ```
+
+> **Важно:** MCP клиент должен вызвать `initialize()` перед другими методами!
 
 ---
 
 ## Аутентификация
 
 p9i поддерживает JWT токены и API ключи для авторизации.
+
+### JWT Architecture (python-jose best practices)
+
+p9i использует `python-jose` для JWT операций, следуя FastAPI best practices:
+
+```python
+# Token generation
+from jose import jwt
+token = jwt.encode(payload, secret_key, algorithm='HS256')
+
+# Token validation with proper exception handling
+from jose import jwt, JWTError, ExpiredSignatureError, JWTClaimsError
+from jose.exceptions import JWSSignatureError
+
+try:
+    payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+except ExpiredSignatureError:
+    # Token expired
+except JWTClaimsError:
+    # Invalid claims
+except JWSSignatureError:
+    # Invalid signature
+except JWTError:
+    # General JWT error
+```
+
+**FastAPI-style 401 response:**
+```python
+from fastapi import HTTPException, status
+raise HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+```
 
 ### Настройка через .env
 
