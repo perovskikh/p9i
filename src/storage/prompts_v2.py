@@ -490,416 +490,6 @@ class PromptStorageV2:
         self.get_registry.cache_clear()
         logger.info("Prompt storage cache cleared")
 
-
-class TieredPromptLoader:
-    """
-    Tiered Prompt Loader with lazy loading and cascade override.
-
-    Implements ADR-002 tiered prompt architecture:
-    - Lazy loading with lru_cache for performance (-60% tokens)
-    - Cascade priority: projects → mpv_stages → ai_agent_prompts → universal → core
-    - Baseline lock verification with SHA256
-    - Immutable flag enforcement for core prompts
-    - FastAPI Depends() pattern compatible
-    """
-
-    # MPV stage prompts that should be loaded from mpv_stages tier
-    MPV_STAGE_PROMPTS = {
-        "promt-ideation", "promt-analysis", "promt-design",
-        "promt-implementation", "promt-testing", "promt-debugging", "promt-finish"
-    }
-
-    def __init__(self, prompts_dir: str = "./prompts"):
-        self.prompts_dir = Path(prompts_dir)
-
-        # Tier paths (lazy initialized)
-        self._core_path: Optional[Path] = None
-        self._universal_path: Optional[Path] = None
-        self._mpv_stages_path: Optional[Path] = None
-        self._ai_agent_prompts_path: Optional[Path] = None
-        self._projects_path: Optional[Path] = None
-
-        # Baseline lock
-        self._baseline_lock: Optional[Dict] = None
-
-        # Cache for registry lookups
-        self._registry_cache: Dict[str, Dict] = {}
-
-    @property
-    def core_path(self) -> Path:
-        """Lazy load core path."""
-        if self._core_path is None:
-            self._core_path = self.prompts_dir / "core"
-        return self._core_path
-
-    @property
-    def universal_path(self) -> Path:
-        """Lazy load universal path."""
-        if self._universal_path is None:
-            self._universal_path = self.prompts_dir / "universal"
-        return self._universal_path
-
-    @property
-    def mpv_stages_path(self) -> Path:
-        """Lazy load MPV stages path."""
-        if self._mpv_stages_path is None:
-            self._mpv_stages_path = self.prompts_dir / "universal" / "mpv_stages"
-        return self._mpv_stages_path
-
-    @property
-    def ai_agent_prompts_path(self) -> Path:
-        """Lazy load AI agent prompts path."""
-        if self._ai_agent_prompts_path is None:
-            self._ai_agent_prompts_path = self.prompts_dir / "universal" / "ai_agent_prompts"
-        return self._ai_agent_prompts_path
-
-    @property
-    def projects_path(self) -> Path:
-        """Lazy load projects path."""
-        if self._projects_path is None:
-            self._projects_path = self.prompts_dir / "projects"
-        return self._projects_path
-
-    def _load_baseline_lock(self) -> Dict:
-        """Load baseline lock for core prompts."""
-        if self._baseline_lock is not None:
-            return self._baseline_lock
-
-        lock_file = self.core_path / ".promt-baseline-lock"
-        if lock_file.exists():
-            try:
-                with open(lock_file, 'r') as f:
-                    self._baseline_lock = json.load(f)
-                logger.info(f"Baseline lock loaded: {self._baseline_lock.get('version', 'unknown')}")
-            except Exception as e:
-                logger.error(f"Error loading baseline lock: {e}")
-                self._baseline_lock = {}
-        else:
-            self._baseline_lock = {}
-
-        return self._baseline_lock
-
-    def _verify_baseline_integrity(self, prompt_name: str, content: str) -> bool:
-        """Verify core prompt integrity against baseline lock."""
-        lock = self._load_baseline_lock()
-        if not lock:
-            return True  # No lock, skip verification
-
-        checksums = lock.get("checksums", {})
-        expected_checksum = checksums.get(f"{prompt_name}.md")
-
-        if not expected_checksum:
-            return True  # Not in baseline, allow
-
-        current_checksum = hashlib.sha256(content.encode()).hexdigest()
-        expected_clean = expected_checksum.replace("sha256:", "")
-
-        if current_checksum != expected_clean:
-            logger.error(f"Baseline integrity FAILED for {prompt_name}")
-            return False
-
-        return True
-
-    def _load_registry(self, registry_path: Path) -> Dict:
-        """Load and cache registry from path."""
-        key = str(registry_path)
-        if key in self._registry_cache:
-            return self._registry_cache[key]
-
-        if not registry_path.exists():
-            return {}
-
-        try:
-            with open(registry_path, 'r') as f:
-                registry = json.load(f)
-            self._registry_cache[key] = registry
-            return registry
-        except Exception as e:
-            logger.error(f"Error loading registry {registry_path}: {e}")
-            return {}
-
-    @lru_cache(maxsize=128)
-    def load_prompt(self, name: str, project: Optional[str] = None) -> Prompt:
-        """
-        Load prompt with cascade priority.
-
-        Priority: projects → mpv_stages → ai_agent_prompts → universal → core
-        """
-        # Normalize name (remove .md if present)
-        prompt_name = name.replace(".md", "")
-
-        # 1. Check projects override (highest priority)
-        if project:
-            prompt = self._load_project_prompt(prompt_name, project)
-            if prompt:
-                return prompt
-
-        # 2. Check MPV stages (high priority)
-        if prompt_name in self.MPV_STAGE_PROMPTS:
-            prompt = self._load_mpv_stage_prompt(prompt_name)
-            if prompt:
-                return prompt
-
-        # 3. Check AI agent prompts (medium priority)
-        prompt = self._load_ai_agent_prompt(prompt_name)
-        if prompt:
-            return prompt
-
-        # 4. Check universal
-        prompt = self._load_universal_prompt(prompt_name)
-        if prompt:
-            return prompt
-
-        # 5. Check core (fallback, lowest priority)
-        return self._load_core_prompt(prompt_name)
-
-    def _load_project_prompt(self, name: str, project: str) -> Optional[Prompt]:
-        """Load prompt from project tier."""
-        project_dir = self.projects_path / project
-        prompt_file = project_dir / f"{name}.md"
-
-        if not prompt_file.exists():
-            return None
-
-        content = prompt_file.read_text()
-        registry = self._load_registry(project_dir / "registry.json")
-        prompt_data = registry.get("prompts", {}).get(name, {})
-
-        return Prompt(
-            name=name,
-            content=content,
-            version=prompt_data.get("version", "1.0.0"),
-            tier=PromptTier.PROJECTS,
-            immutable=prompt_data.get("immutable", False),
-            overridable=prompt_data.get("overridable", True),
-            tags=prompt_data.get("tags", [])
-        )
-
-    def _load_mpv_stage_prompt(self, name: str) -> Optional[Prompt]:
-        """Load prompt from MPV stages tier."""
-        prompt_file = self.mpv_stages_path / f"{name}.md"
-
-        if not prompt_file.exists():
-            return None
-
-        content = prompt_file.read_text()
-        registry = self._load_registry(self.mpv_stages_path / "registry.json")
-        prompt_data = registry.get("prompts", {}).get(name, {})
-
-        return Prompt(
-            name=name,
-            content=content,
-            version=prompt_data.get("version", "1.0.0"),
-            tier=PromptTier.MPV_STAGE,
-            immutable=prompt_data.get("immutable", False),
-            overridable=prompt_data.get("overridable", True),
-            tags=prompt_data.get("tags", []),
-            variables=prompt_data.get("variables", {})
-        )
-
-    def _load_ai_agent_prompt(self, name: str) -> Optional[Prompt]:
-        """Load prompt from AI agent prompts tier."""
-        prompt_file = self.ai_agent_prompts_path / f"{name}.md"
-
-        if not prompt_file.exists():
-            return None
-
-        content = prompt_file.read_text()
-        registry = self._load_registry(self.ai_agent_prompts_path / "registry.json")
-        prompt_data = registry.get("prompts", {}).get(name, {})
-
-        # Check immutable flag and verify baseline
-        is_immutable = prompt_data.get("immutable", False)
-        if is_immutable:
-            if not self._verify_baseline_integrity(name, content):
-                raise BaselineIntegrityError(f"Core prompt {name} integrity check failed")
-
-        return Prompt(
-            name=name,
-            content=content,
-            version=prompt_data.get("version", "1.0.0"),
-            tier=PromptTier.UNIVERSAL,
-            immutable=is_immutable,
-            overridable=prompt_data.get("overridable", True),
-            checksum=prompt_data.get("checksum"),
-            tags=prompt_data.get("tags", [])
-        )
-
-    def _load_universal_prompt(self, name: str) -> Optional[Prompt]:
-        """Load prompt from universal tier."""
-        prompt_file = self.universal_path / f"{name}.md"
-
-        if not prompt_file.exists():
-            return None
-
-        content = prompt_file.read_text()
-        registry = self._load_registry(self.universal_path / "registry.json")
-        prompt_data = registry.get("prompts", {}).get(name, {})
-
-        return Prompt(
-            name=name,
-            content=content,
-            version=prompt_data.get("version", "1.0.0"),
-            tier=PromptTier.UNIVERSAL,
-            immutable=prompt_data.get("immutable", False),
-            overridable=prompt_data.get("overridable", True),
-            tags=prompt_data.get("tags", [])
-        )
-
-    def _load_core_prompt(self, name: str) -> Prompt:
-        """Load prompt from core tier (baseline, immutable)."""
-        prompt_file = self.core_path / f"{name}.md"
-
-        if not prompt_file.exists():
-            raise PromptNotFoundError(f"Core prompt not found: {name}")
-
-        content = prompt_file.read_text()
-
-        # Verify baseline integrity for core prompts
-        if not self._verify_baseline_integrity(name, content):
-            raise BaselineIntegrityError(f"Core prompt {name} integrity check failed")
-
-        registry = self._load_registry(self.core_path / "registry.json")
-        prompt_data = registry.get("prompts", {}).get(name, {})
-
-        return Prompt(
-            name=name,
-            content=content,
-            version=prompt_data.get("version", "1.0.0"),
-            tier=PromptTier.CORE,
-            immutable=True,
-            overridable=False,
-            checksum=prompt_data.get("checksum"),
-            tags=prompt_data.get("tags", [])
-        )
-
-    def list_tier_prompts(self, tier: PromptTier) -> List[str]:
-        """List all prompts in a specific tier."""
-        tier_path_map = {
-            PromptTier.CORE: self.core_path,
-            PromptTier.UNIVERSAL: self.universal_path,
-            PromptTier.MPV_STAGE: self.mpv_stages_path,
-            PromptTier.PROJECTS: self.projects_path,
-        }
-
-        tier_path = tier_path_map.get(tier)
-        if not tier_path or not tier_path.exists():
-            return []
-
-        prompts = []
-        for f in tier_path.rglob("*.md"):
-            if f.name.startswith("."):
-                continue
-            prompts.append(f.stem)
-        return prompts
-
-    def clear_cache(self):
-        """Clear lru_cache entries."""
-        self.load_prompt.cache_clear()
-        self._registry_cache.clear()
-        logger.info("TieredPromptLoader cache cleared")
-
-
-# Global TieredPromptLoader instance with lazy initialization
-_tiered_loader_instance: Optional[TieredPromptLoader] = None
-
-
-def get_tiered_loader() -> TieredPromptLoader:
-    """
-    Get or create global TieredPromptLoader instance.
-
-    FastAPI Depends() compatible:
-    async def endpoint(prompt_loader: TieredPromptLoader = Depends(get_tiered_loader)):
-    """
-    global _tiered_loader_instance
-    if _tiered_loader_instance is None:
-        _tiered_loader_instance = TieredPromptLoader()
-    return _tiered_loader_instance
-
-
-# Global storage instance with lazy initialization
-_storage_instance: Optional[PromptStorageV2] = None
-
-
-def get_storage() -> PromptStorageV2:
-    """
-    Get or create global prompt storage instance.
-
-    This function provides FastAPI Depends() compatible lazy initialization
-    of the prompt storage.
-
-    Returns:
-        PromptStorageV2: Global storage instance
-    """
-    global _storage_instance
-    if _storage_instance is None:
-        _storage_instance = PromptStorageV2()
-    return _storage_instance
-
-
-# Dependency injection helpers for FastAPI Depends()
-
-def get_prompt(name: str) -> Prompt:
-    """
-    FastAPI Depends() compatible function for getting a single prompt.
-
-    Usage in FastAPI:
-        @app.get("/prompts/{name}")
-        async def read_prompt(prompt: Prompt = Depends(lambda: get_prompt(name))):
-            return prompt
-
-    Args:
-        name: Prompt name
-
-    Returns:
-        Prompt: Loaded prompt
-
-    Raises:
-        PromptNotFoundError: If prompt not found
-    """
-    storage = get_storage()
-    return storage.get_prompt_by_name(name)
-
-
-def get_tier_prompts(tier: PromptTier) -> List[Prompt]:
-    """
-    FastAPI Depends() compatible function for getting all prompts in a tier.
-
-    Usage in FastAPI:
-        @app.get("/prompts/tier/{tier}")
-        async def list_tier_prompts(
-            prompts: List[Prompt] = Depends(lambda: get_tier_prompts(tier))
-        ):
-            return prompts
-
-    Args:
-        tier: Prompt tier
-
-    Returns:
-        List of Prompts in that tier
-    """
-    storage = get_storage()
-    return storage.get_tier_prompts(tier)
-
-
-def verify_baseline() -> Dict:
-    """
-    FastAPI Depends() compatible function for baseline verification.
-
-    Usage in FastAPI:
-        @app.get("/baseline/verify")
-        async def verify_baseline_result(
-            result: Dict = Depends(verify_baseline)
-        ):
-            return result
-
-    Returns:
-        dict: Verification results
-    """
-    storage = get_storage()
-    return storage.verify_baseline_integrity()
-
-
 # Legacy compatibility: maintain old storage interface
 class PromptStorage:
     """Legacy prompt storage for backward compatibility."""
@@ -937,3 +527,43 @@ class PromptStorage:
 
 # Legacy storage instance for backward compatibility
 storage = PromptStorage()
+
+
+# Global storage instance with lazy initialization
+_storage_instance: Optional[PromptStorageV2] = None
+
+
+def get_storage() -> PromptStorageV2:
+    """Get or create global PromptStorageV2 instance."""
+    global _storage_instance
+    if _storage_instance is None:
+        _storage_instance = PromptStorageV2()
+    return _storage_instance
+
+
+def get_prompt(name: str) -> Prompt:
+    """FastAPI Depends() compatible function for getting a prompt."""
+    return get_storage().load_prompt(name)
+
+
+def get_tier_prompts(tier: PromptTier) -> List[Prompt]:
+    """FastAPI Depends() compatible function for getting prompts by tier."""
+    return get_storage().get_tier_prompts(tier)
+
+
+def verify_baseline():
+    """
+    Verify baseline integrity of all core prompts.
+
+    Usage in FastAPI:
+        @app.get("/baseline/verify")
+        async def verify_baseline_result(
+            result: Dict = Depends(verify_baseline)
+        ):
+            return result
+
+    Returns:
+        dict: Verification results
+    """
+    storage = get_storage()
+    return storage.verify_baseline_integrity()

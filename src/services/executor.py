@@ -30,27 +30,53 @@ class PromptExecutor:
             self._client = get_llm_client()
         return self._client
 
-    async def execute(self, prompt_content: str, input_data: dict) -> dict:
+    async def execute(self, prompt_content: str, input_data: dict, stream: bool = False) -> dict:
         """
         Execute a prompt with input data through LLM.
 
         Args:
             prompt_content: The prompt template (markdown content)
             input_data: Input data to pass to the prompt
+            stream: Enable streaming output
 
         Returns:
             dict: Execution result with generated content
+            If stream=True, returns dict with 'stream' containing async generator
         """
         logger.info(f"Executing prompt with model {self.model}")
 
         # Parse prompt - extract system instruction and user query
         system_prompt, user_prompt = self._parse_prompt(prompt_content)
 
-        # Add input_data as context
+        # FIX: Use input_data['task'] as user prompt when no explicit user section
+        task = input_data.get('task', '')
+        if task and user_prompt == "Process the following input:":
+            user_prompt = task
+
+        context = {k: v for k, v in input_data.items() if k != 'task'}
+
+        # Streaming mode
+        if stream:
+            # Get the result from client.generate
+            client_result = await self.client.generate(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                context=context,
+                stream=True,
+            )
+            # Extract the stream and usage from the result dict
+            return {
+                "status": "streaming",
+                "stream": client_result.get("stream"),
+                "usage": client_result.get("usage", {}),
+                "model": client_result.get("model", self.model),
+            }
+
+        # Regular mode
         result = await self.client.generate(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            context=input_data,
+            context=context,
         )
 
         return {

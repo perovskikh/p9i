@@ -8,6 +8,7 @@
 | ADR-004 | [Deep-Project Integration - Prompt Orchestration](ADR-004-deep-project-integration.md) | **Proposed** | 2026-03-22 | AI Interview, Decomposition, DAG |
 | ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** | 2026-03-22 | TailwindCSS, shadcn, Textual, Tauri |
 | ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** | 2026-03-22 | Figma API, design-to-code, tokens |
+| ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Proposed** | 2026-03-22 | Agent system, Siri-like router, shared memory |
 
 ## Legend
 
@@ -66,6 +67,6 @@
 ---
 
 **Last Updated:** 2026-03-22
-**Total ADRs:** 6
+**Total ADRs:** 7
 **Active ADRs:** 5 (0 Deprecated)
 **Next ADR Number:** ADR-006
