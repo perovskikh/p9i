@@ -64,6 +64,12 @@ from src.services.redis_rate_limiter import (
 # Import UI/UX design resources
 from src.infrastructure.uiux import register_uiux_tools
 
+# Import Browser automation resources
+from src.infrastructure.browser import register_browser_tools
+
+# Import Deduplication Guard
+from src.domain.services.prompt_guard import get_prompt_guard
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -777,6 +783,28 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "улучши": "promt-refactoring",
             "refactor": "promt-refactoring",
 
+            # Full Cycle Implementation → promt-feature-add (already has full cycle)
+            # Shortcuts for Siri - route to existing promt-feature-add
+            "реализуй": "promt-feature-add",
+            "реализуем": "promt-feature-add",
+            "внедри": "promt-feature-add",
+            "внедряем": "promt-feature-add",
+            "сделай": "promt-feature-add",
+            "выполни": "promt-feature-add",
+            "выполни полный": "promt-feature-add",
+            "полный цикл": "promt-feature-add",
+            "end-to-end": "promt-feature-add",
+            "e2e": "promt-feature-add",
+            "implement": "promt-feature-add",
+            "build": "promt-feature-add",
+
+            # Browser Integration (full cycle)
+            "browser": "promt-browser-integration",
+            "браузер": "promt-browser-integration",
+            "автоматизация браузера": "promt-browser-integration",
+            "playwright": "promt-browser-integration",
+            "puppeteer": "promt-browser-integration",
+
             # Security (MUST BE BEFORE bug fix!)
             "уязвим": "promt-security-audit",  # уязвимости, уязвимость
             "уязвимост": "promt-security-audit",
@@ -937,6 +965,22 @@ async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, j
             return {"status": "error", "error": "Authentication required"}
         prompt = load_prompt(prompt_name)
         logger.info(f"Running prompt: {prompt_name}, stream={stream}")
+
+        # UI/UX Context Injection for designer prompts
+        uiux_prompts = ["promt-ui-generator", "ui-generator", "design", "ui"]
+        if any(p in prompt_name.lower() for p in uiux_prompts):
+            try:
+                from src.infrastructure.uiux.context import get_uiux_context
+                uiux_ctx = get_uiux_context()
+                task = input_data.get("task", "")
+                uiux_context = await uiux_ctx.build_context(task)
+                if uiux_context.get("enabled"):
+                    # Inject context into input_data
+                    input_data = input_data.copy()
+                    input_data["_uiux_context"] = uiux_context
+                    logger.info(f"UI/UX context injected: {uiux_context.get('framework', 'auto')}")
+            except Exception as e:
+                logger.warning(f"UI/UX context injection failed: {e}")
 
         # Execute prompt through LLM
         executor = get_prompt_executor()
@@ -2410,6 +2454,88 @@ def execute_bash(command: str, cwd: str = "/app") -> dict:
 
 
 @mcp.tool
+def check_prompt_uniqueness(
+    prompt_name: str = None,
+    keywords: str = None,
+    check_similar: bool = False
+) -> dict:
+    """
+    Check if a prompt or keyword already exists (prevent duplicates).
+
+    Use this BEFORE creating a new prompt to avoid duplication.
+
+    Args:
+        prompt_name: Prompt name to check (e.g., "feature-add" or "promt-feature-add")
+        keywords: Comma-separated keywords to check (e.g., "create,add,feature")
+        check_similar: If True, find similar prompts by name
+
+    Returns:
+        dict with validation result and suggestions
+    """
+    guard = get_prompt_guard()
+
+    results = {
+        "valid": True,
+        "prompt_name_check": None,
+        "keyword_check": None,
+        "similar_prompts": [],
+        "suggestions": [],
+        "existing_prompts_count": 0,
+        "existing_keywords_count": 0
+    }
+
+    # Check prompt name
+    if prompt_name:
+        result = guard.check_prompt_name(prompt_name)
+        results["prompt_name_check"] = {
+            "name": prompt_name,
+            "is_valid": result.is_valid,
+            "duplicates": result.duplicates
+        }
+        if not result.is_valid:
+            results["valid"] = False
+            results["suggestions"].extend(result.suggestions)
+
+    # Check keywords
+    if keywords:
+        kw_list = [k.strip() for k in keywords.split(",")]
+        result = guard.check_keywords_batch(kw_list)
+        results["keyword_check"] = {
+            "keywords": kw_list,
+            "is_valid": result.is_valid,
+            "duplicates": result.duplicates
+        }
+        if not result.is_valid:
+            results["valid"] = False
+            results["suggestions"].extend(result.suggestions)
+
+    # Find similar prompts
+    if check_similar and prompt_name:
+        similar = guard.get_similar_prompts(prompt_name)
+        results["similar_prompts"] = similar
+        if similar:
+            results["suggestions"].append("Consider using existing similar prompt")
+
+    # Summary
+    results["existing_prompts_count"] = len(guard._prompt_index)
+    results["existing_keywords_count"] = len(guard._keyword_map)
+
+    return results
+
+
+@mcp.tool
+def get_prompt_deduplication_report() -> dict:
+    """
+    Get full deduplication report for the prompt system.
+
+    Returns:
+        dict with statistics and potential conflicts
+    """
+    guard = get_prompt_guard()
+    return guard.get_report()
+
+
+@mcp.tool
 def get_available_mcp_tools() -> dict:
     """
     Get list of available MCP tools in this server.
@@ -2536,6 +2662,13 @@ async def startup_event():
         logger.info("UI/UX design resources tools registered")
     except Exception as e:
         logger.warning(f"Failed to register UI/UX tools: {e}")
+
+    # Register Browser automation tools
+    try:
+        register_browser_tools(mcp)
+        logger.info("Browser automation tools registered")
+    except Exception as e:
+        logger.warning(f"Failed to register Browser tools: {e}")
 
     # Configure baseline verification
     verify_enabled = os.getenv("BASELINE_VERIFY_ENABLED", "true").lower() == "true"

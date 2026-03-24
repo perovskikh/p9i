@@ -88,6 +88,8 @@ AGENT_KEYWORDS = {
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
     "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
     "reviewer": ["проверь", "ревью", "аудит", "тест", "review", "check", "audit", "test"],  # Перенесено ВЫШЕ developer
+    # Full cycle shortcuts → routes to promt-feature-add (already has full cycle)
+    # "developer_full_cycle": ["реализуй", "внедри", "сделай", "реализуем", "внедряем", "выполни", "implement", "build", "deploy"],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
         # English
@@ -111,6 +113,8 @@ PROMPT_KEYWORDS = {
     "promt-architect-design": ["спроектируй", "проектирование", "design"],
     "promt-architect-review": ["ревью", "review", "анализ"],
     "create_adr": ["adr", "документация"],
+    # Full cycle implementation (idea → implementation → testing → fixes → docs)
+    # Full cycle shortcuts now route to promt-feature-add (already has full cycle)
     "promt-feature-add": ["добавь", "новая", "feature", "new"],
     "promt-bug-fix": ["баг", "исправь", "bug", "fix"],
     "promt-refactoring": ["рефакторинг", "refactor"],

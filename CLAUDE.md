@@ -82,7 +82,7 @@ src/middleware/jwt_auth.py  # JWT authentication with RBAC
 src/middleware/rbac.py     # Role-based access control
 ```
 
-### MCP Tools (18 total)
+### MCP Tools (20+ total)
 
 Primary tools:
 - `p9i` - **Natural language router** - Parse intent and auto-select appropriate prompt
@@ -92,6 +92,14 @@ Primary tools:
 - `adapt_to_project` - Auto-detect project stack (Python/JS, frameworks, DB)
 - `generate_jwt_token` / `validate_jwt_token` / `revoke_jwt_token` - JWT authentication
 - `verify_baseline` - SHA256 baseline verification
+
+**Deduplication Guard (prevent duplicates):**
+- `check_prompt_uniqueness` - Check if prompt/keyword already exists
+- `get_prompt_deduplication_report` - Full system deduplication report
+
+**Design & UI/UX:**
+- `generate_tailwind` / `generate_shadcn` / `generate_textual` - Component generation
+
 - `get_available_mcp_tools` - List all available tools
 
 ### Prompt Tier Architecture
@@ -107,6 +115,8 @@ The `p9i` tool routes natural language requests based on keywords:
 
 | Keyword | Prompt | Purpose |
 |---------|--------|---------|
+| `реализуй`, `внедри`, `сделай`, `e2e` | promt-feature-add | Full cycle (idea→impl→test→docs) |
+| `browser`, `браузер`, `playwright` | promt-browser-integration | Browser automation |
 | `feature`, `добавить`, `создать`, `new feature` | promt-feature-add | Add new functionality |
 | `bug`, `исправить`, `фикс`, `fix bug`, `баг` | promt-bug-fix | Fix bugs |
 | `refactor`, `рефакторинг`, `улучшить код` | promt-refactoring | Refactor code |
@@ -121,18 +131,20 @@ The `p9i` tool routes natural language requests based on keywords:
 The system executes prompts through multiple LLM providers with auto-detection:
 
 **Provider Priority** (auto-detected from `.env`):
-1. `ZAI_API_KEY` → GLM-4.7 (Z.ai, recommended)
-2. `OPENROUTER_API_KEY` → hunter-alpha (free via OpenRouter)
-3. `MINIMAX_API_KEY` → MiniMax-M2.7
+1. `MINIMAX_API_KEY` → MiniMax-M2.7 (best price/performance) - **PRIMARY**
+2. `ZAI_API_KEY` → GLM-4.7 (Z.ai, best quality)
+3. `OPENROUTER_API_KEY` → hunter-alpha (free via OpenRouter)
 4. `DEEPSEEK_API_KEY` → deepseek-chat or deepseek-reasoner
-5. `ANTHROPIC_API_KEY` → claude-sonnet-4-20250514
+5. `ANTHROPIC_API_KEY` → claude-sonnet-4-20250514 (**requires explicit permission**)
+
+**Failover:** When primary provider fails (401, 403, 429, 500+), system automatically switches to next available provider in order: MiniMax → ZAI → OpenRouter → DeepSeek → Anthropic.
 
 **API Keys** (loaded from `.env`):
-- `ZAI_API_KEY` - Primary (GLM models)
-- `ANTHROPIC_API_KEY` - Anthropic direct
+- `MINIMAX_API_KEY` - Primary (best price/performance)
+- `ZAI_API_KEY` - GLM models (best quality)
 - `OPENROUTER_API_KEY` - OpenRouter (free models)
-- `MINIMAX_API_KEY` - MiniMax fallback
 - `DEEPSEEK_API_KEY` - DeepSeek fallback
+- `ANTHROPIC_API_KEY` - Anthropic direct (**requires explicit permission in CLAUDE.md**)
 
 ### Transport Modes
 
