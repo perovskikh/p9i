@@ -2,7 +2,35 @@
 
 This guide explains how to set up the MCP proxy to connect Claude Code to the remote p9i MCP server.
 
-## Quick Start
+## Two Connection Options
+
+### Option A: HTTP-to-STDIO Proxy (Recommended for Claude Code)
+
+Uses `mcp_proxy_simple.py` to bridge Claude Code (stdio) to MCP server (HTTP).
+
+**Pros:**
+- Simple setup
+- Handles session management automatically
+- Works reliably with Claude Code
+
+**Cons:**
+- Additional process running
+
+### Option B: Direct HTTP Connection (Production)
+
+Direct connection without proxy, using server-side session management.
+
+**Pros:**
+- No proxy process needed
+- Lower latency
+- Server-side sessions persist across reconnections
+
+**Cons:**
+- Requires session creation step
+
+---
+
+## Option A: Proxy Setup (Recommended)
 
 ### 1. Copy `.mcp.json` to your project
 
@@ -27,6 +55,71 @@ Replace `/path/to/p9i` with the actual path to your p9i installation.
 
 Start Claude Code in the project directory. It should detect the MCP server from `.mcp.json`.
 
+## Option B: Direct HTTP Connection
+
+For production setups, you can connect directly without the proxy.
+
+### 1. Create a Session
+
+First, create an MCP session using the `create_mcp_session` tool:
+
+```python
+# Or via curl:
+curl -X POST http://mcp.coderweb.ru/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-p9i-codeshift-mcp.coderweb.ru" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "create_mcp_session",
+      "arguments": {}
+    }
+  }'
+```
+
+The response will include a `session_id`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "{\"status\": \"success\", \"session_id\": \"abc-123...\", \"message\": \"...\"}"
+    }]
+  }
+}
+```
+
+### 2. Use Session ID in Requests
+
+For all subsequent requests, include the session ID:
+
+```bash
+curl -X POST http://mcp.coderweb.ru/mcp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: sk-p9i-codeshift-mcp.coderweb.ru" \
+  -H "Mcp-Session-Id: abc-123..." \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", ...}'
+```
+
+### Session Management Tools
+
+The server provides these session tools:
+
+| Tool | Description |
+|------|-------------|
+| `create_mcp_session` | Create new session |
+| `get_mcp_session` | Get session info |
+| `update_mcp_session` | Update session state |
+| `delete_mcp_session` | Delete session |
+| `list_mcp_sessions` | List active sessions |
+
+---
+
 ## Alternative: Environment Variables
 
 You can also set environment variables in your shell:
@@ -46,7 +139,8 @@ python3 mcp_proxy_simple.py
 
 ### "Session not found" error
 
-This occurs when using HTTP transport directly without the proxy. Make sure you're using the proxy.
+- **With proxy (Option A)**: This is normal on first request, proxy handles it automatically
+- **Without proxy (Option B)**: Create a session first using `create_mcp_session`
 
 ### MCP server not detected
 
@@ -63,13 +157,18 @@ curl http://mcp.coderweb.ru/mcp
 
 Should return JSON-RPC error (normal) but not connection refused.
 
-## Files
-
-- `mcp_proxy_simple.py` - Simple curl-based proxy (recommended)
-- `mcp_proxy.py` - Alternative version with more features
-
 ## Architecture
 
 ```
-Claude Code (stdio) --> mcp_proxy.py --> HTTP --> mcp.coderweb.ru/mcp
+Option A (Proxy):
+Claude Code (stdio) --> mcp_proxy_simple.py --> HTTP --> mcp.coderweb.ru/mcp
+
+Option B (Direct):
+Claude Code --> HTTP --> mcp.coderweb.ru/mcp (with session management)
 ```
+
+## Files
+
+- `mcp_proxy_simple.py` - Simple curl-based proxy (Option A)
+- `mcp_proxy.py` - Alternative version with more features
+- `src/services/mcp_session_manager.py` - Session management (Option B)

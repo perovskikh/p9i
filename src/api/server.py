@@ -63,6 +63,9 @@ from src.services.redis_rate_limiter import (
     DistributedRateLimiter
 )
 
+# Import MCP session manager
+from src.services.mcp_session_manager import MCPSessionManager, get_session_manager
+
 # Import UI/UX design resources
 from src.infrastructure.uiux import register_uiux_tools
 
@@ -2790,6 +2793,11 @@ def get_available_mcp_tools() -> dict:
         {"name": "generate_jwt_token", "description": "Generate JWT token"},
         {"name": "validate_jwt_token", "description": "Validate JWT token"},
         {"name": "revoke_jwt_token", "description": "Revoke JWT token"},
+        {"name": "create_mcp_session", "description": "Create MCP session for direct HTTP"},
+        {"name": "get_mcp_session", "description": "Get MCP session info"},
+        {"name": "update_mcp_session", "description": "Update MCP session state"},
+        {"name": "delete_mcp_session", "description": "Delete MCP session"},
+        {"name": "list_mcp_sessions", "description": "List active MCP sessions"},
         {"name": "get_available_mcp_tools", "description": "Get this list of tools"}
     ]
 
@@ -2830,9 +2838,144 @@ def get_available_mcp_tools() -> dict:
                 "description": "Multi-Agent Orchestrator (ADR-007) - Natural Language interface",
                 "tools": ["p9i_nl", "p9i", "architect_design", "developer_code", "reviewer_check", "list_agents"],
                 "example": "p9i_nl('Спроектируй и создай систему авторизации')"
+            },
+            "session_management": {
+                "description": "Server-side session management for direct HTTP connections",
+                "tools": ["create_mcp_session", "get_mcp_session", "update_mcp_session", "delete_mcp_session", "list_mcp_sessions"],
+                "note": "Enables direct MCP HTTP connections without proxy"
             }
         }
     }
+
+
+# ============================================================================
+# MCP Session Management Tools (Variant B - Server-side sessions)
+# ============================================================================
+
+@mcp.tool
+async def create_mcp_session(client_info: dict = None) -> dict:
+    """
+    Create a new MCP session for direct HTTP connections.
+
+    This enables direct connections without using the proxy (mcp_proxy_simple.py).
+    Sessions are stored in Redis and persist across server restarts.
+
+    Args:
+        client_info: Optional client information (protocol version, capabilities, etc.)
+
+    Returns:
+        dict: Session ID and status
+    """
+    try:
+        session_manager = await get_session_manager()
+        session_id = await session_manager.create_session(client_info)
+
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "message": "Session created. Use session_id in X-MCP-Session-Id header for subsequent requests."
+        }
+    except Exception as e:
+        logger.error(f"Failed to create session: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def get_mcp_session(session_id: str) -> dict:
+    """
+    Get MCP session information.
+
+    Args:
+        session_id: Session ID to retrieve
+
+    Returns:
+        dict: Session data
+    """
+    try:
+        session_manager = await get_session_manager()
+        session = await session_manager.get_session(session_id)
+
+        if session:
+            return {"status": "success", "session": session}
+        else:
+            return {"status": "error", "error": "Session not found or expired"}
+    except Exception as e:
+        logger.error(f"Failed to get session: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def update_mcp_session(session_id: str, state: dict) -> dict:
+    """
+    Update session state.
+
+    Args:
+        session_id: Session ID to update
+        state: State data to merge into session
+
+    Returns:
+        dict: Update status
+    """
+    try:
+        session_manager = await get_session_manager()
+        success = await session_manager.update_session(session_id, state)
+
+        if success:
+            return {"status": "success", "message": "Session updated"}
+        else:
+            return {"status": "error", "error": "Session not found or failed to update"}
+    except Exception as e:
+        logger.error(f"Failed to update session: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def delete_mcp_session(session_id: str) -> dict:
+    """
+    Delete an MCP session.
+
+    Args:
+        session_id: Session ID to delete
+
+    Returns:
+        dict: Deletion status
+    """
+    try:
+        session_manager = await get_session_manager()
+        success = await session_manager.delete_session(session_id)
+
+        if success:
+            return {"status": "success", "message": "Session deleted"}
+        else:
+            return {"status": "error", "error": "Session not found"}
+    except Exception as e:
+        logger.error(f"Failed to delete session: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool
+async def list_mcp_sessions(limit: int = 100) -> dict:
+    """
+    List all active MCP sessions.
+
+    Args:
+        limit: Maximum number of sessions to return (default: 100)
+
+    Returns:
+        dict: List of active sessions
+    """
+    try:
+        session_manager = await get_session_manager()
+        sessions = await session_manager.list_sessions(limit)
+
+        return {
+            "status": "success",
+            "count": len(sessions),
+            "sessions": sessions
+        }
+    except Exception as e:
+        logger.error(f"Failed to list sessions: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 async def startup_event():
