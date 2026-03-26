@@ -1,0 +1,51 @@
+{{- if .Values.mcp_server.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "p9i.fullname" . }}-post-install
+  labels:
+    {{- include "p9i.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "p9i.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: default
+      containers:
+        - name: post-install-verify
+          image: bitnami/kubectl:1.28
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Post-install verification for p9i ==="
+              NAMESPACE="{{ .Release.Namespace }}"
+              DEPLOYMENT_NAME="{{ include "p9i.fullname" . }}"
+
+              echo "Waiting for deployment rollout..."
+              kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s || true
+
+              echo "Checking pod status..."
+              kubectl get pods -n $NAMESPACE -l app=$DEPLOYMENT_NAME || true
+
+              echo "Checking services..."
+              kubectl get svc -n $NAMESPACE -l app=$DEPLOYMENT_NAME || true
+
+              echo "=== Post-install verification completed ==="
+              exit 0
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+{{- end }}

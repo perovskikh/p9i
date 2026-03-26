@@ -1,0 +1,129 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: p9i
+  labels:
+    app: p9i
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: p9i-secrets
+  namespace: p9i
+type: Opaque
+stringData:
+  # Add actual API keys here or use external secrets manager
+  # zaiKey: ""
+  # anthropicKey: ""
+  # minimaxKey: ""
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: p9i
+  namespace: p9i
+  labels:
+    app: p9i
+spec:
+  type: ClusterIP
+  selector:
+    app: p9i
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: p9i
+  namespace: p9i
+  labels:
+    app: p9i
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: p9i
+  template:
+    metadata:
+      labels:
+        app: p9i
+    spec:
+      containers:
+        - name: p9i
+          image: localhost:5000/p9i:k8s
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: P9I_API_KEY
+              value: "sk-p9i-dev"
+            - name: ALLOWED_ORIGINS
+              value: "*"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: LLM_PROVIDER
+              value: "auto"
+            - name: TUI_THEME
+              value: "dark"
+            - name: JWT_ENABLED
+              value: "false"
+            # Secrets from Secret resource
+            - name: ZAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: p9i-secrets
+                  key: zaiKey
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: p9i
+  namespace: p9i
+  labels:
+    app: p9i
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - mcp.coderweb.ru
+      secretName: p9i-tls
+  rules:
+    - host: mcp.coderweb.ru
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: p9i
+                port:
+                  number: 8000

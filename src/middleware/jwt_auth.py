@@ -24,8 +24,14 @@ from dataclasses import dataclass
 import logging
 
 # JWT imports - using python-jose (FastAPI recommended)
-from jose import jwt, JWTError, ExpiredSignatureError, JWTClaimsError
-from jose.exceptions import JWSSignatureError, JWSError
+try:
+    from jose import jwt, JWTError, ExpiredSignatureError, JWTClaimsError
+    from jose.exceptions import JWSSignatureError, JWSError
+except ImportError:
+    # Handle older versions of python-jose
+    from jose import jwt, JWTError, ExpiredSignatureError
+    from jose.exceptions import JWSSignatureError, JWSError
+    JWTClaimsError = Exception
 
 logger = logging.getLogger(__name__)
 
@@ -207,8 +213,11 @@ class JWTService:
         except ExpiredSignatureError:
             logger.warning("Token expired")
             return None
-        except JWTClaimsError as e:
-            logger.warning(f"Invalid claims: {e}")
+        except (JWTClaimsError, Exception) as e:
+            if isinstance(e, JWTClaimsError):
+                logger.warning(f"Invalid claims: {e}")
+            else:
+                logger.warning(f"JWT claims error: {e}")
             return None
         except JWSSignatureError:
             logger.warning("Invalid token signature")

@@ -1,0 +1,79 @@
+# Production environment values for p9i Helm chart
+# Usage: helm upgrade --install p9i ./helm/p9i --values values-prod.yaml
+
+replicaCount: 2
+
+image:
+  repository: localhost:5000/p9i
+  tag: k8s
+  pullPolicy: Always
+
+# Enable ingress with TLS
+ingress:
+  enabled: true
+
+# Production resources
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Production environment variables
+env:
+  SERVER_HOST: 0.0.0.0
+  P9I_API_KEY: sk-p9i-codeshift-mcp.coderweb.ru
+  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru
+  LOG_LEVEL: INFO
+  LLM_PROVIDER: auto
+  JWT_ENABLED: true
+  JWT_SECRET: ""
+  TUI_THEME: dark
+  # Add actual API keys via secrets or environment
+
+# Enable persistence for production
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: ai_prompts
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: microk8s-hostpath
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: microk8s-hostpath
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# Disable optional components
+nginx:
+  enabled: false
+certbot:
+  enabled: false
+storage:
+  enabled: false

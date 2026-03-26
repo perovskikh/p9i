@@ -1,0 +1,73 @@
+# Development environment values for p9i Helm chart
+# Usage: helm upgrade --install p9i ./helm/p9i --values values-dev.yaml
+
+replicaCount: 1
+
+image:
+  repository: localhost:5000/p9i
+  tag: k8s
+  pullPolicy: Always
+
+# Disable ingress for local dev
+ingress:
+  enabled: false
+
+# Minimal resources for dev
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Environment variables for dev
+env:
+  SERVER_HOST: 0.0.0.0
+  P9I_API_KEY: sk-p9i-dev-local
+  ALLOWED_ORIGINS: "*"
+  LOG_LEVEL: DEBUG
+  LLM_PROVIDER: auto
+  JWT_ENABLED: false
+  TUI_THEME: dark
+
+# Disable persistence for dev (use emptyDir)
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: ai_prompts
+  primary:
+    persistence:
+      enabled: false
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+
+# Disable components not needed for dev
+nginx:
+  enabled: false
+certbot:
+  enabled: false
+storage:
+  enabled: false

@@ -1,0 +1,18 @@
+apiVersion: v2
+name: p9i
+description: Helm chart for deploying p9i MCP server on MicroK8s
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.20"
+
+keywords:
+- mcp
+- ai
+- prompts
+- fastapi
+- python
+
+maintainers:
+- name: p9i
+  email: dev@coderweb.ru

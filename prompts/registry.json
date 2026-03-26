@@ -259,6 +259,23 @@
         "documentation"
       ]
     },
+    "promt-readme-validator.md": {
+      "name": "promt-readme-validator.md",
+      "file": "universal/ai_agent_prompts/promt-readme-validator.md",
+      "version": "1.0.0",
+      "tier": "universal",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-26",
+      "description": "Валидация README.md по стандартам (проверка структуры, оформления, полноты)",
+      "tags": [
+        "universal",
+        "readme",
+        "documentation",
+        "validator",
+        "review"
+      ]
+    },
     "promt-project-rules-sync.md": {
       "name": "promt-project-rules-sync.md",
       "file": "universal/ai_agent_prompts/promt-project-rules-sync.md",

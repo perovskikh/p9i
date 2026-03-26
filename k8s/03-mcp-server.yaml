@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+  namespace: p9i
+spec:
+  ports:
+    - port: 8000
+      name: mcp-http
+    - port: 8080
+      name: mcp-alt
+  selector:
+    app: mcp-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  namespace: p9i
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server
+  template:
+    metadata:
+      labels:
+        app: mcp-server
+    spec:
+      containers:
+        - name: mcp-server
+          image: localhost:5000/p9i:k8s
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: mcp-http
+          env:
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: P9I_API_KEY
+              value: "sk-p9i-codeshift-mcp.coderweb.ru"
+            - name: ALLOWED_ORIGINS
+              value: "https://mcp.coderweb.ru,https://coderweb.ru"
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@db:5432/ai_prompts"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: MCP_TRANSPORT
+              value: "streamable-http"
+            - name: LLM_PROVIDER
+              value: "auto"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: JWT_ENABLED
+              value: "false"
+            # LLM API Keys
+            - name: MINIMAX_API_KEY
+              value: "sk-cp-SVxN17GQ_o3w0eZm4IVgt9hNWrVTsjF8aM2cwb56bLytm3d_H_qpGa9SzuHrpJ_ZIP3mj40FC1J7imfcHH0uLL-DnxoorR0Wz7KlJC3uyDYd8vDw9FDtc_4"
+            - name: ZAI_API_KEY
+              value: "7216829c83ed425bb11b28731da7db73.BpdcQZA5LR9jyzpm"
+            - name: DEEPSEEK_API_KEY
+              value: "sk-533b24b672f444a8a5c65751a1df3a4f"
+            - name: OPENROUTER_API_KEY
+              value: "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"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-ui
+  namespace: p9i
+spec:
+  ports:
+    - port: 8501
+      name: streamlit
+  selector:
+    app: web-ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-ui
+  namespace: p9i
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-ui
+  template:
+    metadata:
+      labels:
+        app: web-ui
+    spec:
+      containers:
+        - name: web-ui
+          image: python:3.11-slim
+          command:
+            - sh
+            - -c
+            - "pip install streamlit python-dotenv httpx pydantic pyyaml redis asyncpg sqlalchemy hiredis anthropic fastmcp fastapi uvicorn -q && python -m streamlit run web/app.py --server.port=8501 --server.address=0.0.0.0"
+          ports:
+            - containerPort: 8501
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

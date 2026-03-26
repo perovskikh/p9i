@@ -1,0 +1,129 @@
+microk8s:
+  enabled: true
+  storage:
+    enabled: false
+    size: 10Gi
+  storageClass: microk8s-hostpath
+  dns:
+    enabled: false
+    domains: []
+
+replicaCount: 1
+
+image:
+  repository: localhost:5000/p9i
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  ports:
+    http: 8000
+    mcp: 8000
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: mcp.coderweb.ru
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: p9i-tls
+      hosts:
+        - mcp.coderweb.ru
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+env:
+  SERVER_HOST: 0.0.0.0
+  P9I_API_KEY: sk-p9i-codeshift-mcp.coderweb.ru
+  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru,http://localhost:8501,http://localhost:8000
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@p9i-postgresql:5432/ai_prompts
+  POSTGRES_HOST: p9i-postgresql
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: ai_prompts
+  REDIS_URL: redis://p9i-redis-master:6379
+  REDIS_CLUSTER_NODES: p9i-redis-master:6379
+  API_KEYS__SYSTEM: sk-system-dev
+  LOG_LEVEL: INFO
+  LLM_PROVIDER: auto
+  JWT_SECRET: ""
+  JWT_ENABLED: false
+  ZAI_API_KEY: ""
+  ANTHROPIC_API_KEY: ""
+  OPENROUTER_API_KEY: ""
+  MINIMAX_API_KEY: ""
+  DEEPSEEK_API_KEY: ""
+  FIGMA_TOKEN: ""
+  TUI_THEME: dark
+
+mcp_server:
+  enabled: true
+
+web_ui:
+  enabled: true
+
+nginx:
+  enabled: true
+
+storage:
+  enabled: false
+
+certbot:
+  enabled: false
+
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: ai_prompts
+  primary:
+    service:
+      ports:
+        postgresql: 5432
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: microk8s-hostpath
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    service:
+      ports:
+        redis: 6379
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: microk8s-hostpath
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+        memory: 256Mi

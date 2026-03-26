@@ -1,0 +1,106 @@
+{{- if .Values.mcp_server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "p9i.fullname" . }}
+  labels:
+    {{- include "p9i.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "1"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "p9i.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "p9i.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "p9i.fullname" . }}
+      automountServiceAccountToken: false
+      containers:
+        - name: p9i
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: mcp
+              containerPort: 8000
+          env:
+            - name: SERVER_HOST
+              value: {{ .Values.env.SERVER_HOST | quote }}
+            - name: P9I_API_KEY
+              value: {{ .Values.env.P9I_API_KEY | quote }}
+            - name: ALLOWED_ORIGINS
+              value: {{ .Values.env.ALLOWED_ORIGINS | quote }}
+            - name: DATABASE_URL
+              value: {{ .Values.env.DATABASE_URL | quote }}
+            - name: REDIS_URL
+              value: {{ .Values.env.REDIS_URL | quote }}
+            - name: REDIS_CLUSTER_NODES
+              value: {{ .Values.env.REDIS_CLUSTER_NODES | quote }}
+            - name: API_KEYS__SYSTEM
+              value: {{ .Values.env.API_KEYS__SYSTEM | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.env.LOG_LEVEL | quote }}
+            - name: LLM_PROVIDER
+              value: {{ .Values.env.LLM_PROVIDER | quote }}
+            - name: JWT_ENABLED
+              value: {{ .Values.env.JWT_ENABLED | quote }}
+            - name: ZAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: zaiKey
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: anthropicKey
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: openrouterKey
+            - name: MINIMAX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: minimaxKey
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: deepseekKey
+            - name: FIGMA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "p9i.fullname" . }}-secrets
+                  key: figmaToken
+            - name: TUI_THEME
+              value: {{ .Values.env.TUI_THEME | quote }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts: []
+      volumes: []
+{{- end }}

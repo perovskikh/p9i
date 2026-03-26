@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: p9i
+  labels:
+    app.kubernetes.io/name: p9i
+    app.kubernetes.io/component: mcp-server

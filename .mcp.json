@@ -1,0 +1,10 @@
+{
+  "p9i": {
+    "command": "python3",
+    "args": ["/home/worker/p9i/mcp_proxy_simple.py"],
+    "env": {
+      "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
+      "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+    }
+  }
+}

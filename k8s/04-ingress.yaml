@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: p9i-ingress
+  namespace: p9i
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "false"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/proxy-headers: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: mcp.coderweb.ru
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-server
+                port:
+                  number: 8000
+---
+# Remove the TLS secret since we're using HTTP
+# apiVersion: v1
