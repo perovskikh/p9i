@@ -398,6 +398,8 @@ class LLMClient:
                 attempt_provider, messages, temperature, max_tokens, stream
             )
 
+            logger.debug(f"Provider {attempt_provider} result: {result}")
+
             # Check if result is an error that should trigger failover
             if isinstance(result, dict) and "error" in result:
                 error_code = result.get("error", "")
@@ -410,6 +412,12 @@ class LLMClient:
                     should_failover = True  # Rate limit - try next
                 elif any(x in error_code for x in ["API error: 500", "API error: 502", "API error: 503", "API error: 504"]):
                     should_failover = True  # Server errors - temporary, try next
+                elif "401" in error_code or "403" in error_code:
+                    should_failover = True  # Auth issues without "API error" prefix
+                elif "ReadTimeout" in error_code or "Timeout" in error_code:
+                    should_failover = True  # Timeout - try next provider
+
+                logger.warning(f"Provider {attempt_provider} failed: {error_code}, failover={should_failover}")
 
                 if should_failover and attempt_provider != fallback_providers[-1]:
                     # Find next provider in the list
@@ -496,8 +504,9 @@ class LLMClient:
             logger.error(f"API error: {e.response.status_code} - {e.response.text}")
             return {"error": f"API error: {e.response.status_code}", "details": e.response.text[:200]}
         except Exception as e:
-            logger.error(f"LLM request failed: {e}")
-            return {"error": str(e)}
+            import traceback
+            logger.error(f"LLM request failed: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+            return {"error": f"{type(e).__name__}: {e}"}
 
     async def _stream_response(
         self,

@@ -55,7 +55,8 @@ AGENTS = {
         prompts=[
             "promt-llm-review",
             "promt-security-audit",
-            "promt-quality-test"
+            "promt-quality-test",
+            "promt-readme-validator"
         ],
         memory_key="reviews",
         description="Code review, security, quality checks"
@@ -134,7 +135,10 @@ PROMPT_KEYWORDS = {
     "generate_tailwind": ["tailwind", "css"],
     "generate_shadcn": ["shadcn", "react", "component"],
     "promt-ci-cd-pipeline": ["ci", "cd", "pipeline", "деплой"],
-    "promt-onboarding": ["онбординг", "onboard", "адаптация"]
+    "promt-onboarding": ["онбординг", "onboard", "адаптация"],
+    # Documentation
+    "promt-readme-validator": ["readme", "валидация readme", "проверь документацию", "главная страница", "diataxis", "readme validator", "проверь readme"],
+    "promt-readme-sync": ["синхронизируй readme", "обнови readme", "sync readme"]
 }
 
 

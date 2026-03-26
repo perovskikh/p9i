@@ -3,7 +3,7 @@
 Agent Orchestrator - Central Router for Multi-Agent System
 
 Manages interactions between specialized AI agents through shared memory.
-Siri-like interface for p9i.
+Natural Language interface for p9i.
 
 Now uses Clean Architecture:
 - AgentRouter (application layer): Agent detection and prompt selection
@@ -19,8 +19,8 @@ from src.application.agent_router import AgentRouter, AGENTS
 
 logger = logging.getLogger(__name__)
 
-# Prompts directory
-PROMPTS_DIR = Path("/app/prompts")
+# Prompts directory - use relative path from current file for flexibility
+PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
 
 def load_prompt(prompt_name: str) -> str:
@@ -38,8 +38,8 @@ def load_prompt(prompt_name: str) -> str:
     # Subdirectories to check
     subdirs = ["architect", "developer", "reviewer", "designer", "devops"]
 
+    # First try with exact name as provided
     for search_dir in search_dirs:
-        # Direct file check
         prompt_file = search_dir / f"{prompt_name}.md"
         if prompt_file.exists():
             return prompt_file.read_text()
@@ -50,12 +50,26 @@ def load_prompt(prompt_name: str) -> str:
             if prompt_file.exists():
                 return prompt_file.read_text()
 
+    # Try stripping "promt-" prefix if not found
+    if prompt_name.startswith("promt-"):
+        alt_name = prompt_name[6:]  # Remove "promt-" prefix
+        for search_dir in search_dirs:
+            prompt_file = search_dir / f"{alt_name}.md"
+            if prompt_file.exists():
+                return prompt_file.read_text()
+
+            # Check subdirectories
+            for subdir in subdirs:
+                prompt_file = search_dir / subdir / f"{alt_name}.md"
+                if prompt_file.exists():
+                    return prompt_file.read_text()
+
     return ""
 
 
 class AgentOrchestrator:
     """
-    Central router (Siri-like) for multi-agent system.
+    Central router (Natural Language) for multi-agent system.
 
     Now delegates routing to AgentRouter and execution to PromptExecutor.
     """
@@ -119,6 +133,8 @@ class AgentOrchestrator:
             # Load prompt content from file
             prompt_content = load_prompt(prompt_name)
 
+            logger.info(f"Agent {agent_name} selected prompt: {prompt_name}, content length: {len(prompt_content)}")
+
             if not prompt_content:
                 return AgentResult(
                     agent=agent_name,
@@ -135,17 +151,25 @@ class AgentOrchestrator:
             # Execute prompt with content
             result = await self.executor.execute(prompt_content, exec_context)
 
+            logger.info(f"Agent {agent_name} executor result: status={result.get('status')}, content_len={len(result.get('content', ''))}, error={result.get('error')}")
+
+            # Check if execution was successful
+            exec_status = result.get("status", "success")
+            exec_output = result.get("content", "")
+            exec_error = result.get("error")
+
             # Save to memory
             self.save_agent_context(agent_name, {
                 "last_request": request,
-                "output": result.get("content", ""),
+                "output": exec_output,
                 "prompt": prompt_name
             })
 
             return AgentResult(
                 agent=agent_name,
-                status="success",
-                output=result.get("content", ""),
+                status=exec_status,
+                output=exec_output,
+                error=exec_error,
                 metadata={
                     "prompt": prompt_name,
                     "agent_description": agent.description
@@ -162,7 +186,7 @@ class AgentOrchestrator:
 
     async def route(self, request: str) -> Dict[str, Any]:
         """
-        Main routing method - Siri-like interface.
+        Main routing method - Natural Language interface.
 
         Detects needed agents and orchestrates their execution.
         """
@@ -176,6 +200,7 @@ class AgentOrchestrator:
         # Execute each agent sequentially
         for agent_name in needed_agents:
             result = await self.execute_agent(agent_name, request)
+            logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")
             results.append({
                 "agent": result.agent,
                 "status": result.status,
@@ -191,6 +216,8 @@ class AgentOrchestrator:
         # Compile final response
         all_outputs = [r["output"] for r in results if r["output"]]
         errors = [r["error"] for r in results if r["error"]]
+
+        logger.info(f"Orchestrator results: outputs_count={len(all_outputs)}, errors_count={len(errors)}")
 
         return {
             "status": "success" if not errors else "partial" if all_outputs else "error",
