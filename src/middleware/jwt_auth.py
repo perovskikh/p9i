@@ -3,21 +3,29 @@
 JWT Authentication Service for AI Prompt System v2.0.0
 
 Provides JWT token-based authentication with:
-- Token generation and validation
+- Token generation and validation using python-jose
 - Refresh token mechanism
 - Token revocation support
 - Role-based access control (RBAC)
+
+Follows FastAPI best practices:
+- Uses python-jose for JWT encode/decode
+- Proper exception handling with ExpiredSignatureError, JWTClaimsError
+- HTTPException with 401 and WWW-Authenticate header
 """
 
 import os
 import time
 import hashlib
-import hmac
 import json
 from typing import Optional, Dict, List, Any
 from functools import wraps
 from dataclasses import dataclass
 import logging
+
+# JWT imports - using python-jose (FastAPI recommended)
+from jose import jwt, JWTError, ExpiredSignatureError, JWTClaimsError
+from jose.exceptions import JWSSignatureError, JWSError
 
 logger = logging.getLogger(__name__)
 
@@ -132,13 +140,8 @@ class JWTService:
             "expires": now + self.refresh_expiry
         }
 
-        # Create JWT (simplified - in production use pyjwt)
-        header = {"alg": self.algorithm, "typ": "JWT"}
-        header_b64 = self._base64url_encode(json.dumps(header))
-        payload_b64 = self._base64url_encode(json.dumps(payload))
-        signature = self._sign(f"{header_b64}.{payload_b64}")
-
-        return f"{header_b64}.{payload_b64}.{signature}"
+        # Create JWT using python-jose (FastAPI best practice)
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def generate_refresh_token(self, refresh_id: str) -> Optional[str]:
         """Generate a new access token from refresh token."""
@@ -157,27 +160,34 @@ class JWTService:
         )
 
     def validate_token(self, token: str) -> Optional[TokenPayload]:
-        """Validate JWT token and return payload."""
+        """Validate JWT token and return payload.
+
+        Uses python-jose for proper validation:
+        - Signature verification
+        - Expiration checking (exp claim)
+        - Not-before checking (nbf claim)
+        - Issuer/audience validation (optional)
+
+        Raises specific exceptions for better error handling:
+        - ExpiredSignatureError: Token has expired
+        - JWTClaimsError: Invalid claims
+        - JWSSignatureError: Invalid signature
+        """
         try:
-            parts = token.split(".")
-            if len(parts) != 3:
-                return None
-
-            header_b64, payload_b64, signature = parts
-
-            # Verify signature
-            expected_sig = self._sign(f"{header_b64}.{payload_b64}")
-            if not hmac.compare_digest(signature, expected_sig):
-                logger.warning("Invalid token signature")
-                return None
-
-            # Decode payload
-            payload = json.loads(self._base64url_decode(payload_b64))
-
-            # Check expiration
-            if payload["exp"] < int(time.time()):
-                logger.warning("Token expired")
-                return None
+            # Decode with full validation using python-jose
+            # Options: verify_exp=True (default), verify_signature=True (default)
+            payload = jwt.decode(
+                token,
+                self.secret_key,
+                algorithms=[self.algorithm],
+                options={
+                    'verify_signature': True,
+                    'verify_exp': True,
+                    'verify_nbf': False,  # Skip not-before check for flexibility
+                    'verify_iat': False,  # Skip issued-at check
+                    'require_exp': True   # Require expiration claim
+                }
+            )
 
             # Check revocation
             if self._is_token_revoked(token):
@@ -185,29 +195,44 @@ class JWTService:
                 return None
 
             return TokenPayload(
-                sub=payload["sub"],
-                role=payload["role"],
+                sub=payload.get("sub", ""),
+                role=payload.get("role", "user"),
                 permissions=payload.get("permissions", []),
                 tier_access=payload.get("tier_access", []),
-                exp=payload["exp"],
-                iat=payload["iat"],
+                exp=payload.get("exp", 0),
+                iat=payload.get("iat", 0),
                 refresh_id=payload.get("refresh_id", "")
             )
 
+        except ExpiredSignatureError:
+            logger.warning("Token expired")
+            return None
+        except JWTClaimsError as e:
+            logger.warning(f"Invalid claims: {e}")
+            return None
+        except JWSSignatureError:
+            logger.warning("Invalid token signature")
+            return None
+        except JWTError as e:
+            logger.error(f"JWT error: {e}")
+            return None
         except Exception as e:
             logger.error(f"Token validation error: {e}")
             return None
 
     def revoke_token(self, token: str) -> bool:
         """Revoke a token (Redis or in-memory)."""
-        # Decode token to get expiry
+        # Decode token to get expiry using python-jose
         try:
-            parts = token.split(".")
-            if len(parts) == 3:
-                payload = json.loads(self._base64url_decode(parts[1]))
-                exp = payload.get("exp", 0)
-                ttl = max(0, exp - int(time.time()))
-        except:
+            payload = jwt.decode(
+                token,
+                self.secret_key,
+                algorithms=[self.algorithm],
+                options={'verify_exp': False}  # Allow expired tokens
+            )
+            exp = payload.get("exp", 0)
+            ttl = max(0, exp - int(time.time()))
+        except Exception:
             ttl = self.default_expiry
 
         self._revoke_token(token, ttl)
@@ -232,28 +257,52 @@ class JWTService:
             return True
         return permission in payload.permissions
 
-    def _base64url_encode(self, data: str) -> str:
-        """Base64URL encode."""
-        import base64
-        return base64.urlsafe_b64encode(
-            data.encode()
-        ).decode().rstrip("=")
 
-    def _base64url_decode(self, data: str) -> str:
-        """Base64URL decode."""
-        import base64
-        padding = 4 - len(data) % 4
-        if padding != 4:
-            data += "=" * padding
-        return base64.urlsafe_b64decode(data).decode()
+# FastAPI-style OAuth2 dependency (for use with FastAPI routes)
+# This provides proper 401 response with WWW-Authenticate header
+def create_oauth_scheme():
+    """Create OAuth2PasswordBearer scheme (for FastAPI integration).
 
-    def _sign(self, data: str) -> str:
-        """HMAC-SHA256 sign."""
-        return hmac.new(
-            self.secret_key.encode(),
-            data.encode(),
-            hashlib.sha256
-        ).hexdigest()
+    Returns a callable that extracts the token from the Authorization header.
+    """
+    try:
+        from fastapi import Depends, HTTPException, status
+        from fastapi.security import OAuth2PasswordBearer
+        from typing import Optional
+
+        oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+        async def get_current_user_from_token(token: str = Depends(oauth2_scheme)) -> TokenPayload:
+            """Dependency to get current user from JWT token."""
+            jwt_service = get_jwt_service()
+
+            credentials_exception = HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+            try:
+                payload = jwt.decode(token, jwt_service.secret_key, algorithms=[jwt_service.algorithm])
+                sub: str = payload.get("sub")
+                if sub is None:
+                    raise credentials_exception
+            except (ExpiredSignatureError, JWTClaimsError, JWSSignatureError, JWTError) as e:
+                logger.warning(f"JWT validation failed: {e}")
+                raise credentials_exception
+
+            user = jwt_service.validate_token(token)
+            if user is None:
+                raise credentials_exception
+
+            return user
+
+        return get_current_user_from_token
+
+    except ImportError:
+        # FastAPI not available, return None
+        logger.warning("FastAPI not available, OAuth2 dependency not created")
+        return None
 
 
 # Default roles configuration

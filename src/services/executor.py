@@ -73,11 +73,21 @@ class PromptExecutor:
             }
 
         # Regular mode
-        result = await self.client.generate(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            context=context,
-        )
+        try:
+            result = await self.client.generate(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                context=context,
+            )
+        except Exception as e:
+            logger.error(f"Client generate error: {type(e).__name__}: {e}")
+            return {
+                "status": "error",
+                "model": self.model,
+                "content": "",
+                "error": f"{type(e).__name__}: {e}",
+                "usage": {},
+            }
 
         return {
             "status": result.get("status", "error"),

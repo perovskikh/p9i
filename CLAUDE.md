@@ -21,8 +21,8 @@ docker compose up -d
 # With stdio transport (Claude Code compatible)
 MCP_TRANSPORT=stdio python -m src.api.server
 
-# With SSE transport (HTTP API)
-MCP_TRANSPORT=sse python -m src.api.server
+# With streamable-http transport (HTTP API with streaming support)
+MCP_TRANSPORT=streamable-http python -m src.api.server
 ```
 
 ### Testing
@@ -70,17 +70,65 @@ docker run --rm -i \
 
 ## Architecture
 
-The system follows an MCP server architecture with the following key components:
+The system follows Clean Architecture with MCP server pattern:
 
 ```
-src/api/server.py         # FastMCP server with 18 tools (main entry point)
-src/services/executor.py  # PromptExecutor - executes prompts through LLM
-src/services/llm_client.py  # LLMClient - multi-provider support (auto-detect priority)
-src/services/memory.py    # MemoryService - project context management
-src/storage/prompts_v2.py  # PromptStorageV2 - tiered prompt loading
-src/middleware/jwt_auth.py  # JWT authentication with RBAC
-src/middleware/rbac.py     # Role-based access control
+src/
+├── api/server.py              # FastMCP server (20+ tools)
+├── api/webui.py               # Web Dashboard (Streamlit)
+├── application/               # Use cases, Agent routing, DTOs
+│   ├── agent_router.py        # Agent detection and routing
+│   ├── container.py           # DI container
+│   ├── dto/                   # Data transfer objects
+│   └── ports/                 # Interface definitions (LLMPort)
+├── domain/                    # Entities, Business rules
+│   ├── entities/              # Prompt, Project, Agent entities
+│   ├── repositories/          # Repository interfaces
+│   └── services/              # Domain services (PromptGuard)
+├── infrastructure/            # External integrations
+│   ├── adapters/llm/          # LLM providers (MiniMax, GLM, DeepSeek, Anthropic)
+│   ├── adapters/external/    # Figma, GitHub MCP
+│   ├── browser/               # Playwright integration
+│   └── uiux/                  # UI/UX generation tools
+├── services/                   # Business logic
+│   ├── executor.py            # Prompt execution
+│   ├── llm_client.py          # Multi-provider LLM client
+│   ├── memory.py              # Project context
+│   ├── orchestrator.py        # Multi-agent orchestration
+│   └── redis_rate_limiter.py  # Rate limiting
+├── storage/                    # Data access
+│   ├── prompts_v2.py          # Tiered prompt loading
+│   └── database.py            # PostgreSQL access
+└── middleware/                # Cross-cutting
+    ├── jwt_auth.py            # JWT authentication
+    ├── rbac.py                # Role-based access control
+    └── baseline_verification.py  # SHA256 integrity
 ```
+
+### Multi-Agent Orchestrator (ADR-007)
+
+7 AI agents with intelligent routing:
+
+| Agent | Purpose | Triggers |
+|-------|---------|----------|
+| `p9i_nl` | Central NL router (primary) | All requests |
+| `architect` | Architecture, ADRs | архитектура, спроектируй |
+| `developer` | Code generation | реализуй, добавь, фича |
+| `reviewer` | Code review, security | review, проверь |
+| `designer` | UI/UX (Tailwind, shadcn) | дизайн, кнопка |
+| `devops` | CI/CD, Docker, K8s | deploy, ci-cd |
+| `migration` | System migration | миграция, переход |
+
+### Plugin Packs
+
+Located in `prompts/packs/`:
+
+| Pack | Description | Triggers |
+|------|-------------|----------|
+| k8s-pack | Kubernetes operations | deploy, k8s, pod, helm |
+| ci-cd-pack | CI/CD pipelines | github, actions, ci, cd |
+| pinescript-v6 | Pine Script v6 (TradingView) | pinescript, tradingview, стратегия |
+| uiux-pack | Design System | tailwind, shadcn, colors, typography |
 
 ### MCP Tools (20+ total)
 
@@ -149,8 +197,10 @@ The system executes prompts through multiple LLM providers with auto-detection:
 ### Transport Modes
 
 The server supports two transport modes controlled by `MCP_TRANSPORT` env var:
-- **stdio** (default) - For Claude Code MCP integration
-- **sse** - For HTTP-based MCP clients (runs on port 8000)
+- **stdio** - For Claude Code MCP integration
+- **streamable-http** (default for HTTP) - For HTTP-based MCP clients with streaming support (runs on port 8000)
+  - Requires `Accept: text/event-stream` header
+  - Uses `Mcp-Session-Id` header for session management
 
 ### Storage Strategy
 
@@ -208,3 +258,80 @@ To use with Claude Code, add to `~/.claude/settings.json`:
 - `PromptStorageV2` (src/storage/prompts_v2.py) - Tiered prompt loading with baseline verification
 - `JWTAuthService` (src/middleware/jwt_auth.py) - JWT token generation and validation
 - `DistributedRateLimiter` (src/services/redis_rate_limiter.py) - Redis-based rate limiting
+- `OrchestratorService` (src/services/orchestrator.py) - Multi-agent orchestration
+- `AgentRouter` (src/application/agent_router.py) - Intent detection and agent selection
+
+## Multi-Project Access
+
+p9i supports connecting multiple external projects to a single p9i instance. This is the recommended production setup:
+
+**Architecture:**
+- One p9i server (local or remote)
+- Multiple client projects each connect via MCP HTTP
+- Shared LLM providers, prompt library, and memory
+
+**Authentication Options:**
+
+1. **P9I_API_KEY** (simplest) - Header-based API key auth
+   ```json
+   {
+     "mcpServers": {
+       "p9i": {
+         "type": "http",
+         "url": "http://coderweb.ru:8000",
+         "headers": { "X-API-Key": "sk-p9i-codeshift-coderweb.ru" }
+       }
+     }
+   }
+   ```
+
+2. **JWT Token** (fine-grained access) - Role-based access control
+   ```json
+   {
+     "mcpServers": {
+       "p9i": {
+         "type": "http",
+         "url": "http://coderweb.ru:8000",
+         "headers": { "Authorization": "Bearer YOUR_JWT_TOKEN" }
+       }
+     }
+   }
+   ```
+
+**Docker Integration:**
+```bash
+# Build with .env included
+docker build -f docker/Dockerfile -t p9i .
+
+# Or mount .env at runtime
+docker run --rm -d -p 8000:8000 \
+  -v $PWD/.env:/app/.env \
+  p9i
+```
+
+**Environment:**
+- `.env` is NOT baked into image by default
+- Mount `.env` at runtime for API keys
+- Or build with `--build-arg` for embedded config
+
+### Docker Build with API Keys
+
+```bash
+# Option 1: Build with embedded API keys
+docker build \
+  --build-arg MINIMAX_API_KEY=sk-xxx \
+  --build-arg ZAI_API_KEY=xxx \
+  --build-arg P9I_API_KEY=sk-p9i-myproject \
+  --build-arg JWT_SECRET=my-secret \
+  --build-arg JWT_ENABLED=true \
+  -t p9i .
+
+# Option 2: Mount .env at runtime (default)
+docker build -t p9i .
+docker run --rm -d -p 8000:8000 -v $PWD/.env:/app/.env p9i
+```
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Build args** | One image, portable | Keys in image history |
+| **Mount .env** | Keys not in image, secure | Need .env on each host |

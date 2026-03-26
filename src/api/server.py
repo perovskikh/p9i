@@ -29,7 +29,7 @@ import json
 import logging
 import os
 import time
-from typing import Optional
+from typing import Optional, Union
 from functools import wraps
 import asyncio
 
@@ -54,6 +54,7 @@ from src.middleware import (
     verify_baseline_on_startup,
     configure_baseline_verification
 )
+from src.middleware.auth_middleware import AuthHeaderMiddleware, get_current_auth_header
 
 # Import distributed rate limiting
 from src.services.redis_rate_limiter import (
@@ -93,6 +94,17 @@ if JWT_ENABLED:
 
 # Create MCP server
 mcp = FastMCP("AI Prompt System")
+
+# Health check endpoint
+@mcp.resource("health://system")
+def health_check() -> str:
+    """Health check endpoint for monitoring."""
+    return json.dumps({
+        "status": "healthy",
+        "service": "AI Prompt System MCP Server",
+        "version": "2.0.0",
+        "timestamp": time.time()
+    })
 
 
 # JWT Auth Tools (only if JWT_ENABLED)
@@ -196,19 +208,123 @@ if JWT_ENABLED:
             return {"status": "success", "message": "Token revoked"}
         return {"status": "error", "error": "Failed to revoke token"}
 
+
+# ============================================================================
+# API Key Management Tools
+# ============================================================================
+
+@mcp.tool()
+def create_api_key(
+    project_id: str,
+    permissions: str = "read_prompts,run_prompt",
+    rate_limit: int = 100,
+    admin_key: str = None
+) -> dict:
+    """
+    Create a new API key for a project.
+
+    Args:
+        project_id: Project identifier
+        permissions: Comma-separated permissions (read_prompts,run_prompt,*)
+        rate_limit: Requests per minute (default 100)
+        admin_key: Admin key for authorization
+
+    Returns:
+        dict: Created API key and details
+    """
+    # Admin authorization check
+    jwt_admin_key = os.getenv("JWT_ADMIN_KEY")
+    if jwt_admin_key and admin_key != jwt_admin_key:
+        return {"status": "error", "error": "Invalid admin key"}
+
+    try:
+        perm_list = [p.strip() for p in permissions.split(",")]
+        key = api_keys.create_key(project_id, perm_list, rate_limit)
+        return {
+            "status": "success",
+            "api_key": key,
+            "project_id": project_id,
+            "permissions": perm_list,
+            "rate_limit": rate_limit,
+            "warning": "Store this key securely - it cannot be retrieved again"
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+def list_api_keys(admin_key: str = None) -> dict:
+    """
+    List all API keys (without showing the actual keys).
+
+    Args:
+        admin_key: Admin key for authorization
+
+    Returns:
+        dict: List of API keys with their metadata
+    """
+    jwt_admin_key = os.getenv("JWT_ADMIN_KEY")
+    if jwt_admin_key and admin_key != jwt_admin_key:
+        return {"status": "error", "error": "Invalid admin key"}
+
+    try:
+        keys = api_keys.list_keys()
+        return {"status": "success", "count": len(keys), "keys": keys}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+def revoke_api_key(project_id: str, admin_key: str = None) -> dict:
+    """
+    Revoke all API keys for a project.
+
+    Args:
+        project_id: Project identifier
+        admin_key: Admin key for authorization
+
+    Returns:
+        dict: Revocation status
+    """
+    jwt_admin_key = os.getenv("JWT_ADMIN_KEY")
+    if jwt_admin_key and admin_key != jwt_admin_key:
+        return {"status": "error", "error": "Invalid admin key"}
+
+    try:
+        if api_keys.revoke_key(project_id):
+            return {"status": "success", "message": f"Keys revoked for {project_id}"}
+        return {"status": "error", "error": "No keys found for project"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 # Configuration
 PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 MEMORY_DIR = Path(__file__).parent.parent.parent / "memory"
 
 
-def validate_auth(api_key: str = None, jwt_token: str = None) -> tuple[bool, Optional[dict]]:
+def validate_auth(api_key: str = None, jwt_token: str = None, auth_header: str = None) -> tuple[bool, Optional[dict]]:
     """
     Validate authentication via API key or JWT token.
+    
+    Supports three authentication methods:
+    1. jwt_token parameter (direct token)
+    2. auth_header: "Bearer <token>" (from HTTP Authorization header via middleware)
+    3. api_key: X-API-Key header value
 
     Returns:
         tuple: (is_valid, auth_data)
     """
     global _jwt_service
+
+    # Try to get Authorization header from middleware context if not provided
+    if not auth_header:
+        auth_header = get_current_auth_header()
+
+    # Extract JWT from Authorization header if present
+    if auth_header and auth_header.startswith("Bearer "):
+        jwt_token = auth_header[7:]  # Extract token after "Bearer "
+        logger.info(f"JWT token extracted from Authorization header")
 
     # Check JWT first if enabled
     if JWT_ENABLED and jwt_token:
@@ -345,6 +461,45 @@ class APIKeyManager:
             return True
 
         return permission in permissions
+
+    def create_key(self, project_id: str, permissions: list = None, rate_limit: int = 100) -> str:
+        """Generate a new API key for a project."""
+        import secrets
+        import hashlib
+
+        # Generate secure key
+        key_bytes = secrets.token_bytes(32)
+        key = f"sk-{hashlib.sha256(key_bytes).hexdigest()[:48]}"
+
+        self._keys[key] = {
+            "project_id": project_id,
+            "permissions": permissions or ["read_prompts", "run_prompt"],
+            "rate_limit": rate_limit
+        }
+
+        logger.info(f"Created new API key for project: {project_id}")
+        return key
+
+    def list_keys(self) -> list:
+        """List all API keys (without secrets)."""
+        return [
+            {
+                "project_id": data["project_id"],
+                "permissions": data["permissions"],
+                "rate_limit": data["rate_limit"]
+            }
+            for key, data in self._keys.items()
+        ]
+
+    def revoke_key(self, project_id: str) -> bool:
+        """Revoke all keys for a project."""
+        keys_to_remove = [
+            key for key, data in self._keys.items()
+            if data["project_id"] == project_id
+        ]
+        for key in keys_to_remove:
+            del self._keys[key]
+        return len(keys_to_remove) > 0
 
 
 # Global Redis client and distributed rate limiter
@@ -517,9 +672,10 @@ def load_prompt(prompt_name: str) -> dict:
     registry = load_registry()
     prompts = registry.get("prompts", {})
 
-    # Try exact match first
-    if prompt_name in prompts:
-        file_path = prompts[prompt_name].get("file", prompt_name)
+    # Try with .md extension (registry stores keys with .md)
+    prompt_with_md = f"{prompt_name}.md"
+    if prompt_with_md in prompts:
+        file_path = prompts[prompt_with_md].get("file", prompt_with_md)
         prompt_file = PROMPTS_DIR / file_path
         if prompt_file.exists():
             content = prompt_file.read_text()
@@ -529,10 +685,9 @@ def load_prompt(prompt_name: str) -> dict:
                 "content": content
             }
 
-    # Try with .md extension added
-    prompt_with_md = f"{prompt_name}.md"
-    if prompt_with_md in prompts:
-        file_path = prompts[prompt_with_md].get("file", prompt_with_md)
+    # Try exact match without .md
+    if prompt_name in prompts:
+        file_path = prompts[prompt_name].get("file", prompt_name)
         prompt_file = PROMPTS_DIR / file_path
         if prompt_file.exists():
             content = prompt_file.read_text()
@@ -576,7 +731,7 @@ def get_memory(project_id: str) -> dict:
 
 async def _llm_route_intent(request: str) -> Optional[str]:
     """
-    LLM-based intent routing (Siri-like).
+    LLM-based intent routing (Natural Language interface).
 
     Uses LLM to classify user request and select appropriate prompt.
     """
@@ -786,7 +941,7 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
             "refactor": "promt-refactoring",
 
             # Full Cycle Implementation → promt-feature-add (already has full cycle)
-            # Shortcuts for Siri - route to existing promt-feature-add
+            # Shortcuts for p9i NL router - route to existing promt-feature-add
             "реализуй": "promt-feature-add",
             "реализуем": "promt-feature-add",
             "внедри": "promt-feature-add",
@@ -1090,28 +1245,41 @@ async def run_prompt_chain(idea: str, stages: list[str], jwt_token: str = None) 
     }
 
 
-@mcp.tool
-def list_prompts() -> dict:
+@mcp.tool()
+def list_prompts(tier: str = None, limit: int = None) -> dict:
     """
     List all available prompts.
+
+    Args:
+        tier: Filter by tier (core, universal, pack, project)
+        limit: Limit number of results
 
     Returns:
         dict: List of prompts
     """
     registry = load_registry()
+    prompts = registry.get("prompts", {})
+
+    # Filter by tier if specified
+    if tier:
+        prompts = {k: v for k, v in prompts.items() if v.get("tier") == tier}
+
+    # Apply limit
+    if limit and limit > 0:
+        prompts = dict(list(prompts.items())[:limit])
 
     # Audit logging
     audit_logger.log(
         action=AuditActions.PROMPTS_LISTED,
         resource_type="registry",
-        details={"count": len(registry.get("prompts", []))}
+        details={"count": len(prompts)}
     )
 
     return {
         "status": "success",
         "registry_version": registry.get("registry_version", "unknown"),
-        "count": len(registry.get("prompts", [])),
-        "prompts": registry.get("prompts", [])
+        "count": len(prompts),
+        "prompts": prompts
     }
 
 
@@ -1135,19 +1303,26 @@ def get_project_memory(project_id: str) -> dict:
 
 
 @mcp.tool
-def save_project_memory(project_id: str, key: str, value: dict) -> dict:
+def save_project_memory(project_id: str, key: str, value: Union[dict, str]) -> dict:
     """
     Save memory entry for a project.
 
     Args:
         project_id: ID of the project
         key: Memory key
-        value: Memory value (dict)
+        value: Memory value (dict or JSON string)
 
     Returns:
         dict: Save result
     """
     try:
+        # Handle both dict and string input (MCP sometimes passes string)
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                value = {"raw": value}
+
         memory = get_memory(project_id)
         memory["context"][key] = value
         memory["context"]["last_updated"] = __import__("datetime").datetime.now().isoformat()
@@ -2241,12 +2416,12 @@ Color Palette:"""
 # ============================================================
 
 @mcp.tool()
-async def p9i_siri(
+async def p9i_nl(
     request: str,
     jwt_token: str = None
 ) -> dict:
     """
-    Central router - Siri-like interface for p9i.
+    Central router - Natural Language interface for p9i.
 
     Automatically detects needed agents and orchestrates their execution.
 
@@ -2268,10 +2443,20 @@ async def p9i_siri(
 
     try:
         orchestrator = get_orchestrator()
+        logger.warning(f"P9I_NL CALLED: request={request[:50]}...")
+        import sys
+        print(f"P9I_NL CALLED via print: {request[:50]}", file=sys.stderr, flush=True)
         result = await orchestrator.route(request)
+        logger.warning(f"P9I_NL RESULT: output_len={len(result.get('output', ''))}")
         return result
     except Exception as e:
+        import traceback
+        logger.error(f"P9I_NL ERROR: {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return {"status": "error", "error": str(e)}
+
+
+# Backwards compatibility alias
+p9i = p9i_nl
 
 
 @mcp.tool()
@@ -2295,7 +2480,7 @@ async def architect_design(
 
     try:
         orchestrator = get_orchestrator()
-        result = await orchestrator.execute_single_agent("architect", specification)
+        result = await orchestrator.execute_agent("architect", specification, context={})
         return {
             "status": result.status,
             "agent": result.agent,
@@ -2331,7 +2516,7 @@ async def developer_code(
     try:
         orchestrator = get_orchestrator()
         task_with_lang = f"{task} (language: {language})"
-        result = await orchestrator.execute_single_agent("developer", task_with_lang)
+        result = await orchestrator.execute_agent("developer", task_with_lang, context={})
         return {
             "status": result.status,
             "agent": result.agent,
@@ -2374,7 +2559,7 @@ async def reviewer_check(
             "review_type": review_type
         }
         task = f"Проведи {review_type} ревью кода"
-        result = await orchestrator.execute_single_agent("reviewer", task, context)
+        result = await orchestrator.execute_agent("reviewer", task, context)
         return {
             "status": result.status,
             "agent": result.agent,
@@ -2589,7 +2774,8 @@ def get_available_mcp_tools() -> dict:
         {"name": "export_figma_nodes", "description": "Export Figma nodes as images"},
         {"name": "figma_to_code", "description": "Convert Figma to TailwindCSS/shadcn code"},
         # Agent Orchestrator tools (ADR-007)
-        {"name": "p9i_siri", "description": "Central router - Siri for p9i"},
+        {"name": "p9i_nl", "description": "Central router - Natural Language interface"},
+        {"name": "p9i", "description": "Central router - NL interface (alias for p9i_nl)"},
         {"name": "architect_design", "description": "Architect agent - system design"},
         {"name": "developer_code", "description": "Developer agent - code generation"},
         {"name": "reviewer_check", "description": "Reviewer agent - code review"},
@@ -2641,9 +2827,9 @@ def get_available_mcp_tools() -> dict:
                 "env_var": "FIGMA_TOKEN"
             },
             "agents": {
-                "description": "Multi-Agent Orchestrator (ADR-007) - Siri-like interface",
-                "tools": ["p9i_siri", "architect_design", "developer_code", "reviewer_check", "list_agents"],
-                "example": "p9i_siri('Спроектируй и создай систему авторизации')"
+                "description": "Multi-Agent Orchestrator (ADR-007) - Natural Language interface",
+                "tools": ["p9i_nl", "p9i", "architect_design", "developer_code", "reviewer_check", "list_agents"],
+                "example": "p9i_nl('Спроектируй и создай систему авторизации')"
             }
         }
     }
@@ -2750,32 +2936,105 @@ def _run_webui_thread():
         traceback.print_exc()
 
 
-def _run_mcp_sse_thread():
-    """MCP SSE server in separate thread"""
-    mcp.run(transport="sse", host="0.0.0.0", port=8000)
+def _run_mcp_http_thread():
+    """
+    MCP HTTP server in separate thread.
+    Supports multiple transports: stdio, streamable-http, sse
+    """
+    transport = os.getenv("MCP_TRANSPORT", "streamable-http")
+    logger.info(f"Running MCP with transport: {transport}")
+
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    elif transport == "sse":
+        # SSE transport for HTTP clients (includes auth middleware)
+        from starlette.middleware import Middleware
+        from starlette.middleware.cors import CORSMiddleware
+        from fastmcp.server.http import SseServerTransport
+
+        cors_middleware = [
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_methods=["GET", "POST", "OPTIONS"],
+                allow_headers=["*"],
+                expose_headers=["mcp-session-id"],
+            ),
+            Middleware(AuthHeaderMiddleware),
+        ]
+
+        # Run SSE transport on port 8001
+        mcp.run(
+            transport="sse",
+            host="0.0.0.0",
+            port=8001,
+            middleware=cors_middleware
+        )
+    elif transport == "streamable-http" or transport == "http":
+        # Add CORS middleware for browser clients
+        from starlette.middleware import Middleware
+        from starlette.middleware.cors import CORSMiddleware
+
+        cors_middleware = [
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_methods=["GET", "POST", "OPTIONS"],
+                allow_headers=["*"],
+                expose_headers=["mcp-session-id"],
+            ),
+            Middleware(AuthHeaderMiddleware),  # JWT Authorization header extraction
+        ]
+
+        # Run with CORS
+        mcp.run(
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=8000,
+            middleware=cors_middleware
+        )
+    else:
+        logger.warning(f"Unknown transport '{transport}', defaulting to streamable-http")
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
 
 
 async def main_async():
     """Main async entry point"""
-    # Run startup logic
-    await startup_event()
-
-    # Get transport mode
-    transport = os.getenv("MCP_TRANSPORT", "sse")
+    # Get transport mode - default to streamable-http
+    transport = os.getenv("MCP_TRANSPORT", "streamable-http")
     logger.info(f"Transport mode: {transport}")
 
     if transport == "stdio":
-        # Claude Code uses stdio transport
+        # Claude Code uses stdio transport directly
         logger.info("Running in stdio mode")
-        mcp.run(transport="stdio")
+        await startup_event()
+        import threading
+        stdio_thread = threading.Thread(target=lambda: mcp.run(transport="stdio"), daemon=True)
+        stdio_thread.start()
+        stdio_thread.join()
+
+    elif transport == "proxy":
+        # HTTP-to-stdio proxy mode for Claude Code
+        # Simply run stdio mode - works out of the box with Claude Code
+        logger.info("Running in proxy mode - using stdio")
+        await startup_event()
+        import threading
+        stdio_thread = threading.Thread(target=lambda: mcp.run(transport="stdio"), daemon=True)
+        stdio_thread.start()
+        stdio_thread.join()
+
     else:
-        # Run both Web UI and MCP SSE in separate threads
-        logger.info("Running Web UI + MCP SSE mode")
+        # Run both Web UI and MCP streamable-http in separate threads
+        logger.info("Running Web UI + MCP streamable-http mode")
+
+        # Run startup event before starting servers
+        await startup_event()
+
         import threading
 
         # Start both servers in separate threads
         webui_thread = threading.Thread(target=_run_webui_thread, daemon=True)
-        mcp_thread = threading.Thread(target=_run_mcp_sse_thread, daemon=True)
+        mcp_thread = threading.Thread(target=_run_mcp_http_thread, daemon=True)
 
         webui_thread.start()
         mcp_thread.start()
