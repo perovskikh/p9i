@@ -575,7 +575,39 @@ docker run --rm -d -p 8000:8000 -p 8080:8080 \
   p9i
 ```
 
-### MicroK8s (Production)
+### K3s (Production)
+
+```bash
+# Build and push to local registry
+docker build -f docker/Dockerfile -t p9i .
+docker tag p9i:latest localhost:5000/p9i:k8s
+docker push localhost:5000/p9i:k8s
+
+# Deploy with kubectl
+sudo k3s kubectl apply -f k8s/
+
+# Check status
+sudo k3s kubectl get pods -n p9i
+```
+
+### Helm (Alternative)
+
+| Method | Directory | Use Case |
+|--------|-----------|----------|
+| K3s (kubectl) | `k8s/` | Simple, already working |
+| Helm | `helm/p9i/` | Flexible, multiple environments |
+
+```bash
+# Or with Helm
+helm upgrade --install p9i ./helm/p9i \
+  --namespace p9i \
+  --create-namespace \
+  --wait \
+  --timeout 15m
+
+# Check status
+python -m cli.main deploy status
+```
 
 ```bash
 # Install CLI
