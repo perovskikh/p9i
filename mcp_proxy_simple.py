@@ -39,7 +39,7 @@ def stream_response(response, session_store):
 def main():
     """Run proxy - read JSON-RPC from stdin, forward to HTTP MCP, write response to stdout."""
     url = os.getenv("MCP_PROXY_URL", "http://localhost:8000/mcp")
-    auth = os.getenv("MCP_PROXY_TIMEOUT", "120")
+    api_key = os.getenv("P9I_API_KEY", "")
 
     print(f"MCP Proxy: {url}", file=sys.stderr, flush=True)
 
@@ -47,8 +47,8 @@ def main():
         "Content-Type": "application/json",
         "Accept": "text/event-stream"  # Prefer streaming
     }
-    if auth:
-        headers["X-API-Key"] = auth
+    if api_key:
+        headers["X-API-Key"] = api_key
         print(f"Auth: configured", file=sys.stderr, flush=True)
 
     # Session tracking (stored in dict for thread safety)
