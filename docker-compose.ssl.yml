@@ -1,19 +1,28 @@
 # docker-compose.ssl.yml - SSL-enabled MCP server with nginx reverse proxy
 name: p9i-ssl
 
+networks:
+  p9i-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
 services:
   # Nginx SSL termination
   nginx:
     build:
       context: .
       dockerfile: nginx/Dockerfile
+    networks:
+      - p9i-net
     environment:
       - DOMAIN=${DOMAIN:-mcp.coderweb.ru}
     env_file:
       - .env
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:8080"
+      - "443:8443"
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx/certbot-www:/var/www/certbot:ro
@@ -21,7 +30,7 @@ services:
       - mcp-server
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/nginx-health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/nginx-health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,6 +38,8 @@ services:
   # Certbot for Let's Encrypt (optional - uncomment for auto SSL renewal)
   certbot:
     image: certbot/certbot:latest
+    networks:
+      - p9i-net
     profiles:
       - letsencrypt
     volumes:
@@ -42,8 +53,13 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    networks:
+      - p9i-net
     env_file:
       - .env
+    ports:
+      - "8000:8000"
+      - "8080:8080"
     environment:
       # Server configuration
       - SERVER_HOST=0.0.0.0
@@ -62,17 +78,13 @@ services:
       # App config
       - API_KEYS__SYSTEM=sk-system-dev
       - LOG_LEVEL=INFO
-      - MCP_TRANSPORT=sse
       - LLM_PROVIDER=auto
+      - MCP_TRANSPORT=streamable-http
       # JWT Auth
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_ENABLED=${JWT_ENABLED:-false}
-      # LLM API Keys
-      - ZAI_API_KEY=${ZAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY:-}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      # LLM API Keys - loaded from .env via env_file above
+      # Note: Do NOT set these in environment section or they will override env_file values
       # UI/UX Integration
       - FIGMA_TOKEN=${FIGMA_TOKEN:-}
       - TUI_THEME=${TUI_THEME:-dark}
@@ -98,6 +110,8 @@ services:
   web-ui:
     image: python:3.11-slim
     user: root
+    networks:
+      - p9i-net
     working_dir: /app
     env_file:
       - .env
@@ -121,6 +135,8 @@ services:
   # PostgreSQL
   db:
     image: postgres:14-alpine
+    networks:
+      - p9i-net
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -138,6 +154,8 @@ services:
   # Redis
   redis:
     image: redis:7-alpine
+    networks:
+      - p9i-net
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
