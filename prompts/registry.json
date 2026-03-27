@@ -67,7 +67,10 @@
       "immutable": false,
       "overridable": true,
       "created_at": "2026-03-18",
+      "description": "Documentation and release preparation",
       "dependencies": [
+        "promt-deployment.md",
+        "promt-code-review.md",
         "promt-debugging.md",
         "promt-testing.md",
         "promt-implementation.md",
@@ -75,6 +78,28 @@
         "promt-analysis.md",
         "promt-ideation.md"
       ]
+    },
+    "promt-code-review.md": {
+      "name": "promt-code-review.md",
+      "file": "universal/mpv_stages/promt-code-review.md",
+      "version": "1.0.0",
+      "tier": "mpv_stage",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-27",
+      "description": "Code Review: security, quality, performance",
+      "dependencies": ["promt-implementation.md"]
+    },
+    "promt-deployment.md": {
+      "name": "promt-deployment.md",
+      "file": "universal/mpv_stages/promt-deployment.md",
+      "version": "1.0.0",
+      "tier": "mpv_stage",
+      "immutable": false,
+      "overridable": true,
+      "created_at": "2026-03-27",
+      "description": "Deployment: CI/CD, infrastructure, monitoring",
+      "dependencies": ["promt-code-review.md"]
     },
     "promt-mvp-baseline-generator-universal.md": {
       "name": "promt-mvp-baseline-generator-universal.md",
