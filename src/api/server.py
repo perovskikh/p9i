@@ -380,6 +380,16 @@ class APIKeyManager:
             "rate_limit": 1000
         }
 
+        # Load P9I_API_KEY if present
+        p9i_key = os.getenv("P9I_API_KEY")
+        if p9i_key:
+            self._keys[p9i_key] = {
+                "project_id": "p9i",
+                "permissions": ["*"],
+                "rate_limit": 1000
+            }
+            logger.info("Loaded P9I_API_KEY into API key manager")
+
         # Load additional keys from environment if present
         for i in range(1, 10):
             key = os.getenv(f"API_KEYS__PROJECT_{i}")
@@ -1157,10 +1167,52 @@ async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, j
             except Exception as e:
                 logger.warning(f"UI/UX context injection failed: {e}")
 
+        # Get provider from provider manager if available
+        provider = None
+        try:
+            if redis_client:
+                from src.services.provider_manager import get_provider_manager
+                pm = get_provider_manager(redis_client)
+                provider_data = await pm.get_provider("default")
+                provider = provider_data.get("provider")
+                if provider and provider != "auto":
+                    from src.services.llm_client import set_provider_override
+                    set_provider_override(provider)
+                    logger.info(f"Using provider override: {provider}")
+        except Exception as e:
+            logger.warning(f"Provider selection failed: {e}")
+
         # Execute prompt through LLM
         executor = get_prompt_executor()
         logger.info(f"Executor provider: {executor.client.provider}, model: {executor.client.model}")
         result = await executor.execute(prompt["content"], input_data, stream=stream)
+
+        # Clear provider override after execution
+        try:
+            from src.services.llm_client import set_provider_override
+            set_provider_override(None)
+        except:
+            pass
+
+        # Record token usage if available
+        try:
+            usage = result.get("usage", {})
+            if usage and redis_client:
+                from src.services.token_tracker import get_token_tracker
+                tracker = get_token_tracker(redis_client)
+                input_tokens = usage.get("input_tokens", 0)
+                output_tokens = usage.get("output_tokens", 0)
+                # Approximate cost calculation (can be refined per provider)
+                cost = (input_tokens / 1_000_000 * 0.1) + (output_tokens / 1_000_000 * 0.3)
+                await tracker.record_usage(
+                    project_id="default",
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model=result.get("model", "unknown"),
+                    cost_usd=cost
+                )
+        except Exception as e:
+            logger.warning(f"Token usage tracking failed: {e}")
 
         # Handle streaming response
         if stream and result.get("status") == "streaming":

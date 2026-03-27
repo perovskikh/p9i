@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
 import datetime
+import secrets
+import hashlib
 
 try:
     import psutil
@@ -321,6 +323,14 @@ DASHBOARD_HTML = """
                     <span class="value">{{ port }}</span>
                 </div>
                 <div class="info-item">
+                    <span class="label">Domain</span>
+                    <span class="value">{{ domain }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">External IP</span>
+                    <span class="value">{{ external_ip }}</span>
+                </div>
+                <div class="info-item">
                     <span class="label">JWT Auth</span>
                     <span class="value">{{ jwt_enabled }}</span>
                 </div>
@@ -398,6 +408,67 @@ DASHBOARD_HTML = """
         </div>
 
         <div class="section">
+            <h2><span>🔑</span> API Keys</h2>
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <input type="text" id="newKeyProject" placeholder="Project ID" style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                    <input type="text" id="newKeyPermissions" placeholder="permissions (default: read_prompts,run_prompt)" style="flex: 2; padding: 8px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                    <button onclick="createApiKey()" style="padding: 8px 16px; background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Generate Key</button>
+                </div>
+                <div id="newKeyResult" style="display: none; padding: 12px; background: #0d1117; border-radius: 8px; margin-bottom: 12px; font-family: monospace; font-size: 12px; word-break: break-all;"></div>
+                <div id="apiKeysList" style="display: grid; gap: 8px;"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span>☁️</span> LLM Provider</h2>
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <select id="providerSelect" style="flex: 1; padding: 10px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; min-width: 200px;">
+                        <option value="">Loading providers...</option>
+                    </select>
+                    <button onclick="selectProvider()" style="padding: 10px 20px; background: #10b981; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Set Provider</button>
+                </div>
+                <div id="providerStatus" style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 13px;"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span>📊</span> Token Usage</h2>
+            <div style="margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
+                        <div style="color: #666; font-size: 11px; margin-bottom: 4px;">INPUT TOKENS</div>
+                        <div style="color: #00d4ff; font-size: 18px; font-weight: 500;" id="inputTokens">-</div>
+                    </div>
+                    <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
+                        <div style="color: #666; font-size: 11px; margin-bottom: 4px;">OUTPUT TOKENS</div>
+                        <div style="color: #10b981; font-size: 18px; font-weight: 500;" id="outputTokens">-</div>
+                    </div>
+                    <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; text-align: center;">
+                        <div style="color: #666; font-size: 11px; margin-bottom: 4px;">REQUESTS</div>
+                        <div style="color: #f59e0b; font-size: 18px; font-weight: 500;" id="requestCount">-</div>
+                    </div>
+                </div>
+                <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #666; font-size: 12px;">Usage: <span id="usagePercent">0%</span> of <span id="limitTokens">1,000,000</span></span>
+                        <span style="color: #10b981; font-size: 12px;">$<span id="costUsd">0.00</span></span>
+                    </div>
+                    <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div id="usageBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #f59e0b); border-radius: 4px; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <input type="number" id="monthlyLimit" placeholder="Monthly limit (tokens)" style="flex: 1; padding: 8px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                    <input type="number" id="alertPercent" placeholder="Alert %" value="80" style="width: 80px; padding: 8px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                    <input type="number" id="blockPercent" placeholder="Block %" value="100" style="width: 80px; padding: 8px 12px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                    <button onclick="setTokenLimits()" style="padding: 8px 16px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Set Limits</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <h2><span>▣</span> Recent Logs</h2>
             <div class="logs" id="logs">
                 <div class="log-entry"><span class="time">--:--:--</span><span class="msg">Loading logs...</span></div>
@@ -442,6 +513,10 @@ DASHBOARD_HTML = """
             document.getElementById('loginBtn').style.display = 'none';
             document.getElementById('userAvatar').textContent = currentUser.username.charAt(0).toUpperCase();
             document.getElementById('userName').textContent = currentUser.username;
+            // Load API keys, providers, and usage
+            loadApiKeys();
+            loadProviders();
+            loadUsage();
         }
 
         function doLogin() {
@@ -508,6 +583,185 @@ DASHBOARD_HTML = """
                     document.getElementById('requests').textContent = requestCount;
                 })
                 .catch(() => {});
+        }
+
+        // API Keys Management
+        function loadApiKeys() {
+            fetch('/api/keys')
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('apiKeysList');
+                    if (!container) return;
+                    container.innerHTML = '';
+                    data.keys.forEach(key => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;';
+                        div.innerHTML = `
+                            <div>
+                                <span style="color: #00d4ff; font-weight: 500;">${key.project_id}</span>
+                                <span style="color: #666; margin-left: 8px;">${key.key_prefix}</span>
+                                <span style="color: #666; margin-left: 8px; font-size: 11px;">${key.permissions.join(', ')}</span>
+                                ${key.is_main ? '<span style="color: #f59e0b; margin-left: 8px; font-size: 11px;">MAIN</span>' : ''}
+                            </div>
+                            ${!key.is_main ? '<button onclick="deleteApiKey(\'' + key.key_id + '\')" style="padding: 4px 12px; background: #ef4444; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>' : ''}
+                        `;
+                        container.appendChild(div);
+                    });
+                })
+                .catch(() => {});
+        }
+
+        function createApiKey() {
+            const projectId = document.getElementById('newKeyProject').value || 'default';
+            const permissions = document.getElementById('newKeyPermissions').value || 'read_prompts,run_prompt';
+
+            fetch('/api/keys', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({project_id: projectId, permissions: permissions})
+            })
+            .then(r => r.json())
+            .then(data => {
+                const resultDiv = document.getElementById('newKeyResult');
+                resultDiv.style.display = 'block';
+                if (data.api_key) {
+                    resultDiv.innerHTML = '<span style="color: #10b981;">API Key:</span> ' + data.api_key + '<br><span style="color: #f59e0b;">Warning: ' + data.warning + '</span>';
+                } else {
+                    resultDiv.innerHTML = '<span style="color: #ef4444;">Error: ' + (data.error || 'Unknown error') + '</span>';
+                }
+                loadApiKeys();
+            });
+        }
+
+        function deleteApiKey(keyId) {
+            if (!confirm('Delete this API key?')) return;
+            fetch('/api/keys/' + keyId, {method: 'DELETE'})
+                .then(r => r.json())
+                .then(data => {
+                    loadApiKeys();
+                });
+        }
+
+        // LLM Providers Management
+        function loadProviders() {
+            // Load provider selection API
+            fetch('/api/provider')
+                .then(r => r.json())
+                .then(data => {
+                    const select = document.getElementById('providerSelect');
+                    if (!select) return;
+                    select.innerHTML = '';
+
+                    // Add available providers
+                    if (data.available) {
+                        data.available.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.id;
+                            opt.textContent = p.name + (p.has_key ? ' ✓' : ' ✗');
+                            opt.disabled = !p.has_key;
+                            select.appendChild(opt);
+                        });
+                    }
+
+                    // Set current selection
+                    if (data.selected) {
+                        select.value = data.selected;
+                    }
+
+                    // Update status
+                    const status = document.getElementById('providerStatus');
+                    if (status && data.provider_info) {
+                        status.innerHTML = `
+                            <span style="color: #10b981;">Current: ${data.provider_info.name}</span>
+                            <span style="color: #666; margin-left: 12px;">Model: ${data.model || data.provider_info.model}</span>
+                            ${!data.provider_info.has_key ? '<span style="color: #ef4444; margin-left: 12px;">⚠️ No API key</span>' : ''}
+                        `;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function selectProvider() {
+            const select = document.getElementById('providerSelect');
+            const providerId = select.value;
+            if (!providerId) {
+                alert('Please select a provider');
+                return;
+            }
+
+            fetch('/api/provider', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({provider: providerId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Provider set to: ' + data.provider);
+                    loadProviders();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to set provider'));
+                }
+            });
+        }
+
+        // Token Usage Tracking
+        function loadUsage() {
+            fetch('/api/usage')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('inputTokens').textContent = (data.input_tokens || 0).toLocaleString();
+                    document.getElementById('outputTokens').textContent = (data.output_tokens || 0).toLocaleString();
+                    document.getElementById('requestCount').textContent = (data.requests || 0).toLocaleString();
+
+                    const limit = data.limits ? data.limits.monthly_limit : 1000000;
+                    document.getElementById('limitTokens').textContent = limit.toLocaleString();
+
+                    const percent = data.usage_percent || 0;
+                    document.getElementById('usagePercent').textContent = percent + '%';
+                    document.getElementById('usageBar').style.width = Math.min(percent, 100) + '%';
+
+                    // Color based on percentage
+                    const bar = document.getElementById('usageBar');
+                    if (percent >= 90) bar.style.background = '#ef4444';
+                    else if (percent >= 75) bar.style.background = '#f59e0b';
+                    else bar.style.background = 'linear-gradient(90deg, #10b981, #00d4ff)';
+
+                    document.getElementById('costUsd').textContent = (data.cost_usd || 0).toFixed(2);
+
+                    // Set limit inputs
+                    if (data.limits) {
+                        document.getElementById('monthlyLimit').value = data.limits.monthly_limit;
+                        document.getElementById('alertPercent').value = data.limits.alert_percent;
+                        document.getElementById('blockPercent').value = data.limits.block_percent;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function setTokenLimits() {
+            const monthlyLimit = parseInt(document.getElementById('monthlyLimit').value) || 1000000;
+            const alertPercent = parseInt(document.getElementById('alertPercent').value) || 80;
+            const blockPercent = parseInt(document.getElementById('blockPercent').value) || 100;
+
+            fetch('/api/usage/limits', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    monthly_limit: monthlyLimit,
+                    alert_percent: alertPercent,
+                    block_percent: blockPercent
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Token limits updated: ' + monthlyLimit.toLocaleString() + ' tokens/month');
+                    loadUsage();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to set limits'));
+                }
+            });
         }
 
         // Project Environment Management
@@ -789,6 +1043,8 @@ async def dashboard():
     html = DASHBOARD_HTML
     html = html.replace("{{ transport }}", os.getenv("MCP_TRANSPORT", "streamable-http"))
     html = html.replace("{{ port }}", os.getenv("SERVER_PORT", "8000"))
+    html = html.replace("{{ domain }}", os.getenv("DOMAIN", "localhost"))
+    html = html.replace("{{ external_ip }}", os.getenv("EXTERNAL_IP", "127.0.0.1"))
     html = html.replace("{{ jwt_enabled }}", os.getenv("JWT_ENABLED", "false"))
     html = html.replace("{{ llm_provider }}", os.getenv("LLM_PROVIDER", "auto"))
     html = html.replace("{{ python_version }}", f"{os.sys.version_info.major}.{os.sys.version_info.minor}")
@@ -822,10 +1078,11 @@ def _generate_simple_token(username: str, role: str) -> str:
 
 
 @app.post("/api/login")
-async def login(request: dict):
+async def login(request: Request):
     """Login endpoint"""
-    username = request.get("username", "").strip()
-    password = request.get("password", "")
+    data = await request.json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
 
     if not username or not password:
         return {"error": "Username and password required"}
@@ -901,7 +1158,10 @@ async def status():
             "transport": os.getenv("MCP_TRANSPORT", "streamable-http"),
             "port": os.getenv("SERVER_PORT", "8000"),
             "jwt_enabled": os.getenv("JWT_ENABLED", "false"),
-            "llm_provider": os.getenv("LLM_PROVIDER", "auto")
+            "llm_provider": os.getenv("LLM_PROVIDER", "auto"),
+            "domain": os.getenv("DOMAIN", ""),
+            "external_ip": os.getenv("EXTERNAL_IP", ""),
+            "p9i_api_key_set": bool(os.getenv("P9I_API_KEY"))
         },
         "requests": _request_count
     }
@@ -934,6 +1194,265 @@ async def get_logs():
     """Get recent logs"""
     global _logs
     return _logs[-20:]
+
+
+# ============================================================================
+# API Key Management
+# ============================================================================
+
+# In-memory store for API keys (for web UI session)
+_web_api_keys = {}
+
+
+@app.get("/api/keys")
+async def list_api_keys():
+    """List API keys (without secrets)"""
+    global _web_api_keys
+    # Combine with P9I_API_KEY if set
+    p9i_key = os.getenv("P9I_API_KEY", "")
+    keys = list(_web_api_keys.values())
+    if p9i_key:
+        keys.append({
+            "key_id": "p9i_main",
+            "project_id": "p9i",
+            "key_prefix": p9i_key[:12] + "...",
+            "permissions": ["*"],
+            "rate_limit": 1000,
+            "is_main": True
+        })
+    return {"keys": keys, "count": len(keys)}
+
+
+@app.post("/api/keys")
+async def create_api_key(request: Request):
+    """Create a new API key"""
+    global _web_api_keys, _request_count
+    _request_count += 1
+
+    data = await request.json()
+    project_id = data.get("project_id", "default")
+    permissions = data.get("permissions", "read_prompts,run_prompt")
+    rate_limit = data.get("rate_limit", 100)
+
+    # Generate secure key
+    key_bytes = secrets.token_bytes(32)
+    api_key = f"sk-{hashlib.sha256(key_bytes).hexdigest()[:48]}"
+
+    key_id = f"key_{len(_web_api_keys) + 1}"
+    _web_api_keys[key_id] = {
+        "key_id": key_id,
+        "api_key": api_key,
+        "project_id": project_id,
+        "key_prefix": api_key[:12] + "...",
+        "permissions": permissions.split(","),
+        "rate_limit": rate_limit,
+        "is_main": False
+    }
+
+    add_log(f"Created API key for project: {project_id}")
+    return {
+        "status": "success",
+        "api_key": api_key,
+        "warning": "Store this key securely - it cannot be retrieved again!"
+    }
+
+
+@app.delete("/api/keys/{key_id}")
+async def delete_api_key(key_id: str):
+    """Delete an API key"""
+    global _web_api_keys
+
+    if key_id == "p9i_main":
+        return {"status": "error", "error": "Cannot delete main P9I_API_KEY"}
+
+    if key_id in _web_api_keys:
+        del _web_api_keys[key_id]
+        add_log(f"Deleted API key: {key_id}")
+        return {"status": "success"}
+
+    return {"status": "error", "error": "Key not found"}
+
+
+# ============================================================================
+# LLM Provider Keys Management
+# ============================================================================
+
+LLM_PROVIDERS = [
+    {"id": "minimax", "name": "MiniMax", "env_key": "MINIMAX_API_KEY", "enabled": True},
+    {"id": "zai", "name": "Z.ai (GLM)", "env_key": "ZAI_API_KEY", "enabled": True},
+    {"id": "deepseek", "name": "DeepSeek", "env_key": "DEEPSEEK_API_KEY", "enabled": True},
+    {"id": "openrouter", "name": "OpenRouter", "env_key": "OPENROUTER_API_KEY", "enabled": True},
+    {"id": "anthropic", "name": "Anthropic", "env_key": "ANTHROPIC_API_KEY", "enabled": False},
+    {"id": "aihubmix", "name": "AIHubMix", "env_key": "AIHUBMIX_API_KEY", "enabled": False},
+    {"id": "context7", "name": "Context7", "env_key": "CONTEXT7_API_KEY", "enabled": False},
+    {"id": "github", "name": "GitHub", "env_key": "GITHUB_TOKEN", "enabled": False},
+    {"id": "figma", "name": "Figma", "env_key": "FIGMA_TOKEN", "enabled": False},
+]
+
+
+@app.get("/api/providers")
+async def list_providers():
+    """List LLM providers and their status"""
+    providers = []
+    for p in LLM_PROVIDERS:
+        key = os.getenv(p["env_key"], "")
+        enabled = os.getenv(p["env_key"] + "_ENABLED", "true").lower() == "true"
+        providers.append({
+            "id": p["id"],
+            "name": p["name"],
+            "env_key": p["env_key"],
+            "has_key": bool(key),
+            "key_preview": key[:8] + "..." if key else "",
+            "enabled": enabled
+        })
+    return {"providers": providers, "count": len(providers)}
+
+
+@app.post("/api/providers/{provider_id}")
+async def update_provider_key(provider_id: str, request: Request):
+    """Update provider API key"""
+    global _request_count
+    _request_count += 1
+
+    data = await request.json()
+    api_key = data.get("api_key", "").strip()
+
+    # Find provider
+    provider = next((p for p in LLM_PROVIDERS if p["id"] == provider_id), None)
+    if not provider:
+        return {"status": "error", "error": "Provider not found"}
+
+    # Note: In production, this would need to persist to .env or database
+    # For now, we return instructions
+    add_log(f"Provider key update requested: {provider_id}")
+    return {
+        "status": "info",
+        "message": f"To update {provider['name']} API key, edit the .env file",
+        "env_key": provider["env_key"],
+        "env_value": api_key if api_key else "[YOUR_API_KEY]"
+    }
+
+
+@app.get("/api/providers/{provider_id}/test")
+async def test_provider(provider_id: str):
+    """Test provider API key"""
+    global _request_count
+    _request_count += 1
+
+    provider = next((p for p in LLM_PROVIDERS if p["id"] == provider_id), None)
+    if not provider:
+        return {"status": "error", "error": "Provider not found"}
+
+    api_key = os.getenv(provider["env_key"], "")
+    if not api_key:
+        return {"status": "error", "error": f"{provider['name']} API key not configured"}
+
+    # Simple test - just check if key looks valid
+    if len(api_key) < 10:
+        return {"status": "error", "error": "API key seems too short"}
+
+    add_log(f"Testing {provider['name']} provider")
+    return {
+        "status": "success",
+        "provider": provider["name"],
+        "message": "API key is configured (full test requires actual API call)"
+    }
+
+
+# ============================================================================
+# Provider Selection (Dynamic)
+# ============================================================================
+
+@app.get("/api/provider")
+async def get_provider_selection():
+    """Get current provider selection for the project."""
+    global _request_count
+    _request_count += 1
+
+    try:
+        from src.services.provider_manager import get_provider_manager
+        from src.storage.database import redis_client
+
+        manager = get_provider_manager(redis_client)
+        return await manager.get_current_selection()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/provider")
+async def set_provider(request: Request):
+    """Set provider for the project."""
+    global _request_count
+    _request_count += 1
+
+    data = await request.json()
+    provider_id = data.get("provider")
+    model = data.get("model")
+
+    if not provider_id:
+        return {"status": "error", "error": "provider is required"}
+
+    try:
+        from src.services.provider_manager import get_provider_manager
+        from src.storage.database import redis_client
+
+        manager = get_provider_manager(redis_client)
+        result = await manager.set_provider("default", provider_id, model)
+        add_log(f"Provider set to: {provider_id}")
+        return result
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+# ============================================================================
+# Token Usage Tracking
+# ============================================================================
+
+@app.get("/api/usage")
+async def get_token_usage():
+    """Get token usage for the project."""
+    global _request_count
+    _request_count += 1
+
+    try:
+        from src.services.token_tracker import get_token_tracker
+        from src.storage.database import redis_client
+
+        tracker = get_token_tracker(redis_client)
+        return await tracker.get_all_usage("default")
+    except Exception as e:
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "requests": 0,
+            "cost_usd": 0,
+            "usage_percent": 0,
+            "error": str(e)
+        }
+
+
+@app.post("/api/usage/limits")
+async def set_token_limits(request: Request):
+    """Set token limits for the project."""
+    global _request_count
+    _request_count += 1
+
+    data = await request.json()
+    monthly_limit = int(data.get("monthly_limit", 1000000))
+    alert_percent = int(data.get("alert_percent", 80))
+    block_percent = int(data.get("block_percent", 100))
+
+    try:
+        from src.services.token_tracker import get_token_tracker
+        from src.storage.database import redis_client
+
+        tracker = get_token_tracker(redis_client)
+        result = await tracker.set_limits("default", monthly_limit, alert_percent, block_percent)
+        add_log(f"Token limits set: {monthly_limit} tokens/month")
+        return {"status": "success", **result}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/api/prompts")

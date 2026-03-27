@@ -712,12 +712,25 @@ class LLMClient:
         return "\n".join(lines)
 
 
-def get_llm_client() -> LLMClient:
+# Current provider override (set by provider manager)
+_current_provider_override: str = None
+
+
+def set_provider_override(provider: str):
+    """Set provider override for subsequent LLM client calls."""
+    global _current_provider_override
+    _current_provider_override = provider
+
+
+def get_llm_client(provider_override: str = None) -> LLMClient:
     """
     Get configured LLM client from environment.
 
     Now uses LLMProviderRegistry (adapter pattern) for unified interface.
     Falls back to LLMClient for backward compatibility.
+
+    Args:
+        provider_override: Optional provider to use instead of env var
     """
     import os
     from dotenv import load_dotenv
@@ -726,7 +739,8 @@ def get_llm_client() -> LLMClient:
     load_dotenv("/app/.env")
     load_dotenv()  # Try current directory
 
-    provider = os.getenv("LLM_PROVIDER", "auto")
+    # Check for override (from provider manager) or use env
+    provider = provider_override or _current_provider_override or os.getenv("LLM_PROVIDER", "auto")
     model = os.getenv("LLM_MODEL", None)  # Optional model override
 
     # Try to use adapter registry first (new pattern)
