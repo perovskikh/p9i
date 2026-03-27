@@ -59,7 +59,7 @@ docker compose ps
 
 **После запуска:**
 - MCP SSE: `http://localhost:8000`
-- Web UI: `http://localhost:8501` (Streamlit)
+- Web UI: `http://localhost:8080` (Streamlit)
 
 **Использование:**
 ```bash
@@ -217,7 +217,7 @@ p9i/
 ├── src/
 ├── src/
 │   ├── api/
-│   │   ├── server.py          # FastMCP (20+ tools)
+│   │   ├── server.py          # FastMCP (48 tools)
 │   │   └── webui.py           # Web Dashboard
 │   ├── application/           # Use cases, Agent routing
 │   ├── domain/                # Entities, Business rules
@@ -225,9 +225,9 @@ p9i/
 │   ├── services/              # Business logic
 │   ├── storage/               # Data access layer
 │   └── middleware/            # JWT, RBAC
-├── prompts/                   # 40+ markdown промтов
+├── prompts/                   # 85 markdown промтов
 │   ├── core/                  # Baseline (SHA256 locked)
-│   ├── universal/             # 38 agent prompts
+│   ├── universal/             # 40+ agent prompts
 │   └── packs/                 # Plugin packs (k8s, ci-cd, pinescript-v6, uiux-pack)
 └── memory/                    # Project memory
 ```
@@ -641,7 +641,7 @@ LLM_FAILOVER_ENABLED=true → Try next provider in LLM_FAILOVER_ORDER
 ```
 prompts/
 ├── core/                  # Baseline (SHA256, version 1.0.0 locked)
-├── universal/             # 38 prompts
+├── universal/             # 40+ prompts
 │   ├── ai_agent_prompts/  # Agent prompts
 │   └── mpv_stages/        # MVP Stage (7 stages)
 └── packs/                 # Plugin Packs (k8s, ci-cd, pinescript-v6, uiux-pack)
