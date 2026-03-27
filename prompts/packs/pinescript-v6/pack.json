@@ -1,0 +1,26 @@
+{
+  "name": "pinescript-v6",
+  "version": "1.0.0",
+  "description": "Pine Script v6 development pack - strategies, indicators, libraries for TradingView",
+  "tier": 3,
+  "author": "9Mirrors-Lab",
+  "mcp_requires": [],
+  "prompts": [
+    "promt-pinescript-strategy.md",
+    "promt-pinescript-indicator.md",
+    "promt-pinescript-library.md",
+    "promt-pinescript-debug.md",
+    "promt-pinescript-migrate.md"
+  ],
+  "triggers": {
+    "pinescript, tradingview, индикатор": "promt-pinescript-indicator.md",
+    "стратегия, strategy, торгов": "promt-pinescript-strategy.md",
+    "library, библиотека": "promt-pinescript-library.md",
+    "debug, отладка, баг": "promt-pinescript-debug.md",
+    "миграция, мигрировать, v5 v6": "promt-pinescript-migrate.md"
+  },
+  "dependencies": [],
+  "tags": ["pinescript", "tradingview", "trading", "v6", "indicators", "strategies"],
+  "created_at": "2026-03-24",
+  "reference_data": "data/pinescript_v6_reference.json"
+}

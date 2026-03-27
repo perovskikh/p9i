@@ -1,0 +1,34 @@
+{
+  "name": "uiux-pack",
+  "version": "1.0.0",
+  "description": "UI/UX Design System - colors, typography, styles, icons, components for TailwindCSS, shadcn/ui, Textual, Tauri",
+  "tier": 3,
+  "author": "9Mirrors-Lab",
+  "mcp_requires": [],
+  "prompts": [
+    "prompts/promt-uiux-colors.md",
+    "prompts/promt-uiux-typography.md",
+    "prompts/promt-uiux-styles.md",
+    "prompts/promt-uiux-icons.md",
+    "prompts/promt-uiux-tailwind.md",
+    "prompts/promt-uiux-shadcn.md",
+    "prompts/promt-uiux-textual.md",
+    "prompts/promt-uiux-tauri.md",
+    "prompts/promt-uiux-design-system.md"
+  ],
+  "triggers": {
+    "color, colors, palette, color scheme": "prompts/promt-uiux-colors.md",
+    "typography, font, fonts, pairing": "prompts/promt-uiux-typography.md",
+    "style, glassmorphism, minimalism, brutalism": "prompts/promt-uiux-styles.md",
+    "icon, icons, iconset": "prompts/promt-uiux-icons.md",
+    "tailwind, tailwindcss": "prompts/promt-uiux-tailwind.md",
+    "shadcn, shadcn-ui": "prompts/promt-uiux-shadcn.md",
+    "textual, tui, terminal": "prompts/promt-uiux-textual.md",
+    "tauri, desktop, app": "prompts/promt-uiux-tauri.md",
+    "design system, tokens": "prompts/promt-uiux-design-system.md"
+  },
+  "dependencies": [],
+  "tags": ["ui", "ux", "design", "tailwind", "shadcn", "typography", "colors"],
+  "created_at": "2026-03-24",
+  "reference_data": "data/uiux_reference.json"
+}

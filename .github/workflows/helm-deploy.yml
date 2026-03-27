@@ -1,0 +1,164 @@
+name: Helm Chart Validation & Deployment
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'helm/p9i/**'
+      - 'cli/**'
+      - 'Dockerfile'
+  pull_request:
+    paths:
+      - 'helm/p9i/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  # Validate Helm chart
+  validate:
+    name: Validate Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.15
+
+      - name: Lint Helm Chart
+        run: |
+          echo "=== Linting Helm chart ==="
+          helm lint ./helm/p9i
+
+      - name: Template Chart
+        run: |
+          echo "=== Testing Helm template ==="
+          helm template p9i-test ./helm/p9i --debug
+
+      - name: Check YAML syntax
+        run: |
+          echo "=== Validating YAML files ==="
+          python3 -c "
+import yaml
+import sys
+from pathlib import Path
+
+for f in Path('./helm/p9i').rglob('*.yaml'):
+    if 'templates' in str(f) or f.name == 'values.yaml':
+        try:
+            with open(f) as y:
+                yaml.safe_load(y)
+            print(f'OK: {f}')
+        except Exception as e:
+            print(f'ERROR: {f}: {e}')
+            sys.exit(1)
+"
+
+  # Validate Docker image builds
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -f docker/Dockerfile -t p9i:test .
+
+      - name: Run container health check
+        run: |
+          docker run -d --name p9i-test -p 8000:8000 p9i:test
+          sleep 10
+          curl -f http://localhost:8000/health || exit 1
+          docker rm -f p9i-test
+
+  # Deploy to MicroK8s (manual trigger)
+  deploy:
+    name: Deploy to MicroK8s
+    needs: [validate, docker-build]
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Setup kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Configure MicroK8s registry
+        run: |
+          microk8s config > /tmp/microk8s.yaml
+          export KUBECONFIG=/tmp/microk8s.yaml
+          microk8s enable storage ingress
+
+      - name: Tag and push image
+        run: |
+          docker build -f docker/Dockerfile -t p9i:${{ github.sha }} .
+          docker tag p9i:${{ github.sha }} localhost:5000/p9i:k8s
+          docker push localhost:5000/p9i:k8s
+
+      - name: Deploy with Helm
+        run: |
+          export KUBECONFIG=/tmp/microk8s.yaml
+          helm upgrade --install p9i ./helm/p9i \
+            --namespace p9i \
+            --create-namespace \
+            --wait \
+            --timeout 15m
+
+      - name: Verify deployment
+        run: |
+          export KUBECONFIG=/tmp/microk8s.yaml
+          kubectl wait --for=condition=ready pod -l app=p9i -n p9i --timeout=300s
+          kubectl rollout status deployment/p9i -n p9i
+
+      - name: Run smoke tests
+        run: |
+          export KUBECONFIG=/tmp/microk8s.yaml
+          kubectl exec -n p9i deployment/p9i -- curl -sf http://localhost:8000/health
+
+  # Backup after deployment
+  backup:
+    name: Backup after deploy
+    needs: deploy
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG }}" > kubeconfig
+
+      - name: Backup PostgreSQL
+        run: |
+          kubectl exec -n p9i p9i-postgresql-0 -- pg_dump -U postgres ai_prompts > p9i_backup_$(date +%Y%m%d).sql
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9i-backup
+          path: p9i_backup_*.sql
+          retention-days: 30

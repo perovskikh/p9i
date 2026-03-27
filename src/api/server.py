@@ -79,6 +79,13 @@ from src.domain.services.prompt_guard import get_prompt_guard
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Domain & External IP Configuration
+DOMAIN = os.getenv("DOMAIN", "localhost")
+EXTERNAL_IP = os.getenv("EXTERNAL_IP", "127.0.0.1")
+P9I_API_KEY = os.getenv("P9I_API_KEY", "")
+
+logger.info(f"DOMAIN: {DOMAIN}, EXTERNAL_IP: {EXTERNAL_IP}")
+
 # JWT Configuration
 JWT_ENABLED = os.getenv("JWT_ENABLED", "false").lower() == "true"
 # SECURITY: Require JWT_SECRET to be set in production
