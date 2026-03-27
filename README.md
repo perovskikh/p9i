@@ -779,6 +779,34 @@ python -m cli.main deploy restore --file backup.sql
 python -m cli.main deploy cleanup    # Remove deployment
 ```
 
+### Makefile (New!)
+
+Для удобства используй Makefile:
+
+```bash
+# Показать все цели
+make help
+
+# Docker
+make build                    # Собрать образ
+make compose-up              # Запустить все сервисы
+
+# K3s
+make k3s-install             # Установить K3s
+make k3s-deploy             # Деплой в K3s
+make k3s-status             # Статус пода
+make k3s-logs               # Логи
+make k3s-restart            # Перезапуск
+
+# Helm
+make helm-install           # Установить Helm chart
+make helm-upgrade           # Обновить Helm
+
+# Backup
+make backup                 # Создать бекап
+make restore FILE=backups/xxx.tar.gz  # Восстановить
+```
+
 ### Helm Charts
 
 | File | Purpose |
