@@ -45,7 +45,7 @@ def main():
 
     headers = {
         "Content-Type": "application/json",
-        "Accept": "text/event-stream"  # Prefer streaming
+        "Accept": "application/json, text/event-stream"  # Both required by MCP server
     }
     if api_key:
         headers["X-API-Key"] = api_key
