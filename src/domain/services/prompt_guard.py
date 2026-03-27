@@ -44,7 +44,7 @@ class PromptDeduplicationGuard:
         if not result.is_valid:
             # Handle duplicates
             for dup in result.duplicates:
-                print(f"Duplicate: {dup}")
+                logger.warning(f"Duplicate prompt found: {dup}")
     """
 
     def __init__(self, prompts_dir: str = "./prompts"):

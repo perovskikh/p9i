@@ -64,6 +64,6 @@ class AnthropicAdapter(BaseLLMAdapter):
             chunk = json.loads(data)
             if chunk.get("type") == "content_block_delta":
                 return chunk.get("delta", {}).get("text", "")
-        except:
+        except Exception:
             pass
         return None

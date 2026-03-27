@@ -11,11 +11,15 @@ Usage:
 import argparse
 import csv
 import json
+import logging
 import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, List
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 # Source URLs
 BASE_URL = "https://raw.githubusercontent.com/redf0x1/ui-ux-pro-mcp/main/data"
@@ -70,7 +74,7 @@ def parse_colors_csv(content: str) -> List[Dict[str, Any]]:
         }
         results.append(item)
 
-    print(f"Parsed {len(results)} color palettes")
+    logger.info(f"Parsed {len(results)} color palettes")
     return results
 
 
@@ -101,7 +105,7 @@ def parse_styles_csv(content: str) -> List[Dict[str, Any]]:
         }
         results.append(item)
 
-    print(f"Parsed {len(results)} styles")
+    logger.info(f"Parsed {len(results)} styles")
     return results
 
 
@@ -171,10 +175,10 @@ def main():
 
     for cat in categories:
         if cat not in SOURCES:
-            print(f"Skipping unknown category: {cat}")
+            logger.warning(f"Skipping unknown category: {cat}")
             continue
 
-        print(f"Fetching {cat}...")
+        logger.info(f"Fetching {cat}...")
         url = SOURCES[cat]
         content = fetch_csv(url)
 
@@ -183,27 +187,27 @@ def main():
         elif cat == "styles":
             data[cat] = parse_styles_csv(content)
         else:
-            print(f"  Parser not implemented for {cat}")
+            logger.info(f"Parser not implemented for {cat}")
             data[cat] = []
 
     # Generate code
     embedded_code = generate_embedded(data)
 
     if args.dry_run:
-        print("\n=== Dry Run ===")
-        print(embedded_code[:3000])
-        print("...")
+        logger.info("\n=== Dry Run ===")
+        logger.info(embedded_code[:3000])
+        logger.info("...")
         return
 
     # Write to file
     output_path = Path(__file__).parent / "data" / "embedded.py"
     output_path.write_text(embedded_code)
-    print(f"Written to {output_path}")
+    logger.info(f"Written to {output_path}")
 
     # Also save JSON
     json_path = output_path.with_suffix(".json")
     json_path.write_text(json.dumps(data, indent=2))
-    print(f"Backup saved to {json_path}")
+    logger.info(f"Backup saved to {json_path}")
 
 
 if __name__ == "__main__":

@@ -42,5 +42,5 @@ class GLMAdapter(BaseLLMAdapter):
             chunk = json.loads(data)
             delta = chunk.get("choices", [{}])[0].get("delta", {})
             return delta.get("content", "")
-        except:
+        except Exception:
             return None

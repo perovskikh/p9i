@@ -798,7 +798,7 @@ promt-versioning-policy: версионирование"""
                     content_dict = ast.literal_eval(content)
                     if isinstance(content_dict, dict) and "thinking" in content_dict:
                         content = content_dict["thinking"]
-            except:
+            except Exception:
                 pass
 
             # Extract prompt name from response
@@ -1191,7 +1191,7 @@ async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, j
         try:
             from src.services.llm_client import set_provider_override
             set_provider_override(None)
-        except:
+        except Exception:
             pass
 
         # Record token usage if available
@@ -1572,7 +1572,7 @@ async def _context7_query_docs(library_id: str, query: str) -> dict:
                                     text_data = json.loads(item["text"])
                                     if text_data.get("results"):
                                         library_id = text_data["results"][0]["libraryId"]
-                                except:
+                                except Exception:
                                     pass
 
             # Query documentation using MCP tool
@@ -2507,7 +2507,7 @@ async def p9i_nl(
         orchestrator = get_orchestrator()
         logger.warning(f"P9I_NL CALLED: request={request[:50]}...")
         import sys
-        print(f"P9I_NL CALLED via print: {request[:50]}", file=sys.stderr, flush=True)
+        logger.warning(f"P9I_NL CALLED: request={request[:50]}", file=sys.stderr, flush=True)
         result = await orchestrator.route(request)
         logger.warning(f"P9I_NL RESULT: output_len={len(result.get('output', ''))}")
         return result
@@ -3133,7 +3133,7 @@ def _run_webui_thread():
     try:
         uvicorn.run(webui_app, host="0.0.0.0", port=8080, log_level="info")
     except Exception as e:
-        print(f"WebUI Error: {e}")
+        logger.error(f"WebUI Error: {e}")
         import traceback
         traceback.print_exc()
 

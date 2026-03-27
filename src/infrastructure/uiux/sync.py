@@ -339,9 +339,9 @@ async def main():
         embedded_code = sync.generate_embedded_py(data)
 
         if args.dry_run:
-            print("=== Dry Run - Would generate ===")
-            print(embedded_code[:2000])
-            print("...")
+            logger.info("=== Dry Run - Would generate ===")
+            logger.info(embedded_code[:2000])
+            logger.info("...")
             return
 
         # Write to file
