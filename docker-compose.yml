@@ -58,28 +58,6 @@ services:
     extra_hosts:
       - "api.context7.com:76.76.21.21"
 
-  # Web UI - Streamlit Control Panel
-  web-ui:
-    image: python:3.11-slim
-    user: root
-    working_dir: /app
-    command: >
-      sh -c "pip install streamlit python-dotenv httpx pydantic pyyaml redis asyncpg sqlalchemy hiredis anthropic fastmcp fastapi uvicorn -q &&
-             python -m streamlit run web/app.py --server.port=8501 --server.address=0.0.0.0"
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./web:/app/web
-      - ./.env:/app/.env:ro
-      - ./src:/app/src:ro
-      - ./prompts:/app/prompts:ro
-      - ./memory:/app/memory:ro
-    environment:
-      - PYTHONPATH=/app
-    depends_on:
-      - mcp-server
-    restart: unless-stopped
-
   # PostgreSQL — persistent data (prompts, versions, projects, keys)
   db:
     image: postgres:14-alpine

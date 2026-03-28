@@ -20,6 +20,3 @@ spec:
                 name: mcp-server
                 port:
                   number: 8000
----
-# Remove the TLS secret since we're using HTTP
-# apiVersion: v1

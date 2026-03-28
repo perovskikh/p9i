@@ -3126,18 +3126,6 @@ async def shutdown_event():
 # Note: FastMCP doesn't support add_event_handler, call startup/shutdown in main()
 # See main() below for startup/shutdown handling
 
-def _run_webui_thread():
-    """Web UI server in separate thread"""
-    import uvicorn
-    from src.api.webui import app as webui_app
-    try:
-        uvicorn.run(webui_app, host="0.0.0.0", port=8080, log_level="info")
-    except Exception as e:
-        logger.error(f"WebUI Error: {e}")
-        import traceback
-        traceback.print_exc()
-
-
 def _run_mcp_http_thread():
     """
     MCP HTTP server in separate thread.
@@ -3226,24 +3214,22 @@ async def main_async():
         stdio_thread.join()
 
     else:
-        # Run both Web UI and MCP streamable-http in separate threads
-        logger.info("Running Web UI + MCP streamable-http mode")
+        # Run MCP streamable-http server
+        logger.info("Running MCP streamable-http mode")
 
         # Run startup event before starting servers
         await startup_event()
 
         import threading
 
-        # Start both servers in separate threads
-        webui_thread = threading.Thread(target=_run_webui_thread, daemon=True)
+        # Start MCP server in separate thread
         mcp_thread = threading.Thread(target=_run_mcp_http_thread, daemon=True)
 
-        webui_thread.start()
         mcp_thread.start()
 
-        # Wait for both threads
+        # Wait for MCP thread
         try:
-            webui_thread.join()
+            mcp_thread.join()
         except KeyboardInterrupt:
             logger.info("Shutting down...")
 

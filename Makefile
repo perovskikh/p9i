@@ -233,9 +233,7 @@ k3s-status:
 k3s-port-forward:
 	@echo "$(YELLOW)Port forwarding to K3s service...$(NC)"
 	@echo "MCP: localhost:8000 -> p9i-mcp-server:8000"
-	@echo "Web: localhost:8501 -> p9i-webui:8501"
 	kubectl port-forward -n $(NAMESPACE) svc/p9i-mcp-server 8000:8000 & \
-	kubectl port-forward -n $(NAMESPACE) svc/p9i-webui 8501:8501 & \
 	wait
 
 .PHONY: k3s-describe
