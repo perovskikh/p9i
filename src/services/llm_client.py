@@ -474,18 +474,25 @@ class LLMClient:
         payload = self._build_payload(messages, temperature, max_tokens, stream)
         endpoint = f"{self.base_url}{self.endpoint}"
 
-        logger.info(f"LLM Request: provider={self.provider}, model={self.model}, endpoint={endpoint}")
+        logger.info(f"[LLM] Request: provider={self.provider}, model={self.model}, endpoint={endpoint}, stream={stream}")
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            # Explicit timeout configuration (connect=30s, read=300s for long LLM responses)
+            timeout_config = httpx.Timeout(30.0, connect=30.0, read=300.0)
+            logger.info(f"[LLM] Timeout config: connect=30s, read=300s")
+
+            async with httpx.AsyncClient(timeout=timeout_config) as client:
                 if stream:
+                    logger.info(f"[LLM] Starting stream request...")
                     return self._stream_response(client, endpoint, headers, payload)
                 else:
                     # Retry logic for rate limiting (429)
                     max_retries = 3
                     retry_delay = 2.0
                     for attempt in range(max_retries):
+                        logger.info(f"[LLM] Sending POST request (attempt {attempt + 1}/{max_retries})...")
                         response = await client.post(endpoint, headers=headers, json=payload)
+                        logger.info(f"[LLM] Response received: status={response.status_code}")
 
                         if response.status_code == 429:
                             # Rate limited - retry with exponential backoff
@@ -516,9 +523,15 @@ class LLMClient:
         payload: dict,
     ) -> AsyncGenerator[str, None]:
         """Handle streaming response from provider."""
+        logger.info(f"[LLM] Stream: Starting connection to {endpoint}")
         async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
+            logger.info(f"[LLM] Stream: Response status={response.status_code}")
             response.raise_for_status()
+            line_count = 0
             async for line in response.aiter_lines():
+                line_count += 1
+                if line_count % 10 == 0:
+                    logger.info(f"[LLM] Stream: Received {line_count} lines")
                 if line.strip():
                     if self.provider in ("anthropic", "zai"):
                         # SSE format: data: {"type":"content_block_delta"...}

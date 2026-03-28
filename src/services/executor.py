@@ -43,20 +43,25 @@ class PromptExecutor:
             dict: Execution result with generated content
             If stream=True, returns dict with 'stream' containing async generator
         """
-        logger.info(f"Executing prompt with model {self.model}")
+        logger.info(f"[EXECUTOR] Starting execution: model={self.model}, stream={stream}, input_keys={list(input_data.keys())}")
 
         # Parse prompt - extract system instruction and user query
+        logger.info("[EXECUTOR] Parsing prompt...")
         system_prompt, user_prompt = self._parse_prompt(prompt_content)
+        logger.info(f"[EXECUTOR] Parsed: system_len={len(system_prompt)}, user_len={len(user_prompt)}")
 
         # FIX: Use input_data['task'] as user prompt when no explicit user section
         task = input_data.get('task', '')
         if task and user_prompt == "Process the following input:":
             user_prompt = task
+            logger.info(f"[EXECUTOR] Using task as user prompt: {task[:100]}...")
 
         context = {k: v for k, v in input_data.items() if k != 'task'}
+        logger.info(f"[EXECUTOR] Context keys: {list(context.keys())}")
 
         # Streaming mode
         if stream:
+            logger.info("[EXECUTOR] Using streaming mode")
             # Get the result from client.generate
             client_result = await self.client.generate(
                 system_prompt=system_prompt,
@@ -65,6 +70,7 @@ class PromptExecutor:
                 stream=True,
             )
             # Extract the stream and usage from the result dict
+            logger.info(f"[EXECUTOR] Stream result received: status={client_result.get('status')}")
             return {
                 "status": "streaming",
                 "stream": client_result.get("stream"),
@@ -73,12 +79,15 @@ class PromptExecutor:
             }
 
         # Regular mode
+        logger.info("[EXECUTOR] Using regular (non-streaming) mode")
         try:
+            logger.info("[EXECUTOR] Calling client.generate()...")
             result = await self.client.generate(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 context=context,
             )
+            logger.info(f"[EXECUTOR] client.generate() returned: status={result.get('status')}, model={result.get('model')}")
         except Exception as e:
             logger.error(f"Client generate error: {type(e).__name__}: {e}")
             return {

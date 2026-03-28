@@ -1095,8 +1095,13 @@ async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) 
                 input_data["file"] = match.group(1)
 
         # Execute the selected prompt
+        logger.info(f"[AI_PROMPTS] About to load prompt: {selected_prompt}")
         prompt = load_prompt(selected_prompt)
+        logger.info(f"[AI_PROMPTS] Prompt loaded, content length: {len(prompt.get('content', ''))}")
+        logger.info(f"[AI_PROMPTS] Input data keys: {list(input_data.keys())}")
+        logger.info(f"[AI_PROMPTS] Starting executor.execute()...")
         result = await get_prompt_executor().execute(prompt["content"], input_data)
+        logger.info(f"[AI_PROMPTS] Executor returned: status={result.get('status')}, content_len={len(result.get('content', ''))}")
 
         # Audit logging
         audit_logger.log(
