@@ -112,10 +112,12 @@ def main():
                 })
 
                 req_headers = headers.copy()
-                # Don't set Mcp-Session-Id header at all for initialize request
+                # CRITICAL: Don't set session header at all for initialize request
                 # The server will create a new session if header is missing/empty
                 if "Mcp-Session-Id" in req_headers:
                     del req_headers["Mcp-Session-Id"]
+                # Force fresh connection by not using keep-alive
+                req_headers["Connection"] = "close"
 
                 try:
                     init_data = init_req.encode("utf-8")
@@ -141,9 +143,12 @@ def main():
                 except Exception as e:
                     print(f"[PROXY] Initialize failed: {e}", file=sys.stderr, flush=True)
 
-            # Add session header
+            # Add session header - but NOT for initialize (first) request
             req_headers = headers.copy()
-            if session_store["id"]:
+            if method == "initialize":
+                # Don't set session header for initialize - server creates new session
+                print("[PROXY] Skipping session header for initialize", file=sys.stderr, flush=True)
+            elif session_store["id"]:
                 req_headers["Mcp-Session-Id"] = session_store["id"]
                 print(f"[PROXY] Using session: {session_store['id']}", file=sys.stderr, flush=True)
             else:
