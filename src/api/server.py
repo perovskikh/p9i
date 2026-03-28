@@ -1396,42 +1396,61 @@ def save_project_memory(project_id: str, key: str, value: Union[dict, str]) -> d
 
 
 @mcp.tool
-def adapt_to_project(project_path: str) -> dict:
+def adapt_to_project(project_path: str, project_description: str = None) -> dict:
     """
     Auto-detect stack and adapt prompts.
 
     Args:
-        project_path: Path to the project
+        project_path: Path to the project (optional if project_description provided)
+        project_description: Description of project stack (optional)
 
     Returns:
         dict: Detected stack and adaptations
     """
-    path = Path(project_path)
-    if not path.exists():
-        return {"status": "error", "error": "Project path does not exist"}
-
+    path = Path(project_path) if project_path else None
     stack = {"language": None, "framework": None, "database": None}
 
-    # Detect language/framework
-    if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
-        stack["language"] = "Python"
-        if (path / "fastapi" in open(path / "requirements.txt").read() if (path / "requirements.txt").exists() else False):
-            stack["framework"] = "FastAPI"
-        elif (path / "aiogram" in open(path / "requirements.txt").read() if (path / "requirements.txt").exists() else False):
-            stack["framework"] = "aiogram"
+    # Try path-based detection first
+    if path and path.exists():
+        # Detect language/framework
+        if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
+            stack["language"] = "Python"
+            req_content = (path / "requirements.txt").read_text() if (path / "requirements.txt").exists() else ""
+            if "fastapi" in req_content.lower():
+                stack["framework"] = "FastAPI"
+            elif "aiogram" in req_content.lower():
+                stack["framework"] = "aiogram"
 
-    if (path / "package.json").exists():
-        stack["language"] = "JavaScript/TypeScript"
-        if (path / "next" in open(path / "package.json").read() if (path / "package.json").exists() else False):
-            stack["framework"] = "Next.js"
+        if (path / "package.json").exists():
+            stack["language"] = "JavaScript/TypeScript"
+            pkg_content = (path / "package.json").read_text()
+            if "next" in pkg_content.lower():
+                stack["framework"] = "Next.js"
 
-    # Detect database
-    if (path / "docker-compose.yml").exists():
-        content = (path / "docker-compose.yml").read_text()
-        if "postgres" in content:
+        # Detect database
+        if (path / "docker-compose.yml").exists():
+            content = (path / "docker-compose.yml").read_text()
+            if "postgres" in content:
+                stack["database"] = "PostgreSQL"
+            elif "redis" in content:
+                stack["database"] = "Redis"
+    elif project_description:
+        # Fallback to description-based detection
+        desc = project_description.lower()
+        if "python" in desc:
+            stack["language"] = "Python"
+            if "fastmcp" in desc or "fastapi" in desc:
+                stack["framework"] = "FastMCP" if "fastmcp" in desc else "FastAPI"
+        if "javascript" in desc or "typescript" in desc:
+            stack["language"] = "JavaScript/TypeScript"
+            if "next" in desc:
+                stack["framework"] = "Next.js"
+        if "postgresql" in desc or "postgres" in desc:
             stack["database"] = "PostgreSQL"
-        elif "redis" in content:
+        if "redis" in desc:
             stack["database"] = "Redis"
+    else:
+        return {"status": "error", "error": "Project path does not exist and no description provided"}
 
     return {
         "status": "success",

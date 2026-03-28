@@ -78,9 +78,11 @@ COPY pyproject.toml ./
 COPY src/ ./src/
 COPY prompts/ ./prompts/
 COPY config/ ./config/
+COPY tests/ ./tests/
 
-# Install dependencies
+# Install dependencies (including dev for pytest)
 RUN uv pip install --system -r pyproject.toml
+RUN uv pip install --system ".[dev]"
 
 # Install Playwright browsers
 RUN playwright install chromium && \
