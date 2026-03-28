@@ -40,315 +40,266 @@ def print_test_result(test_name, passed, details=""):
 
 def test_prompt_tier_enum():
     """Test PromptTier enum."""
-    try:
-        assert PromptTier.CORE == "core"
-        assert PromptTier.UNIVERSAL == "universal"
-        assert PromptTier.MPV_STAGE == "mpv_stage"
-        assert PromptTier.PROJECTS == "projects"
-        print_test_result("PromptTier enum", True)
-        return True
-    except AssertionError as e:
-        print_test_result("PromptTier enum", False, str(e))
-        return False
+    assert PromptTier.CORE == "core"
+    assert PromptTier.UNIVERSAL == "universal"
+    assert PromptTier.MPV_STAGE == "mpv_stage"
+    assert PromptTier.PROJECTS == "projects"
+    print_test_result("PromptTier enum", True)
 
 
 def test_storage_initialization():
     """Test storage initialization."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
-            (prompts_dir / "core").mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "core").mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            storage = PromptStorageV2(str(prompts_dir))
-            assert storage.prompts_dir == prompts_dir
-            assert storage.core_dir.exists()
-            print_test_result("Storage initialization", True)
-            return True
-    except Exception as e:
-        print_test_result("Storage initialization", False, str(e))
-        return False
+        storage = PromptStorageV2(str(prompts_dir))
+        assert storage.prompts_dir == prompts_dir
+        assert storage.core_dir.exists()
+        print_test_result("Storage initialization", True)
 
 
 def test_registry_loading():
     """Test registry loading with caching."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            registry = {
-                "registry_version": "2.0",
-                "prompts": {
-                    "test.md": {
-                        "name": "test.md",
-                        "file": "universal/ai_agent_prompts/test.md",
-                        "version": "1.0.0",
-                        "tier": "universal"
-                    }
+        registry = {
+            "registry_version": "2.0",
+            "prompts": {
+                "test.md": {
+                    "name": "test.md",
+                    "file": "universal/ai_agent_prompts/test.md",
+                    "version": "1.0.0",
+                    "tier": "universal"
                 }
             }
-            (prompts_dir / "registry.json").write_text(json.dumps(registry))
+        }
+        (prompts_dir / "registry.json").write_text(json.dumps(registry))
 
-            storage = PromptStorageV2(str(prompts_dir))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            # First load
-            registry1 = storage.get_registry()
-            assert "prompts" in registry1
-            assert len(registry1["prompts"]) == 1
+        # First load
+        registry1 = storage.get_registry()
+        assert "prompts" in registry1
+        assert len(registry1["prompts"]) == 1
 
-            # Second load (should use cache)
-            registry2 = storage.get_registry()
-            assert registry1 == registry2
+        # Second load (should use cache)
+        registry2 = storage.get_registry()
+        assert registry1 == registry2
 
-            print_test_result("Registry loading with cache", True)
-            return True
-    except Exception as e:
-        print_test_result("Registry loading with cache", False, str(e))
-        return False
+        print_test_result("Registry loading with cache", True)
 
 
 def test_prompt_content_loading():
     """Test prompt content loading with caching."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            content = "# Test Prompt\n\nThis is a test."
-            (prompts_dir / "universal" / "ai_agent_prompts" / "test.md").write_text(content)
+        content = "# Test Prompt\n\nThis is a test."
+        (prompts_dir / "universal" / "ai_agent_prompts" / "test.md").write_text(content)
 
-            registry = {
-                "registry_version": "2.0",
-                "prompts": {
-                    "test.md": {
-                        "name": "test.md",
-                        "file": "universal/ai_agent_prompts/test.md",
-                        "version": "1.0.0",
-                        "tier": "universal"
-                    }
+        registry = {
+            "registry_version": "2.0",
+            "prompts": {
+                "test.md": {
+                    "name": "test.md",
+                    "file": "universal/ai_agent_prompts/test.md",
+                    "version": "1.0.0",
+                    "tier": "universal"
                 }
             }
-            (prompts_dir / "registry.json").write_text(json.dumps(registry))
+        }
+        (prompts_dir / "registry.json").write_text(json.dumps(registry))
 
-            storage = PromptStorageV2(str(prompts_dir))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            # First load
-            content1 = storage.load_prompt_content("test")
-            assert "Test Prompt" in content1
+        # First load
+        content1 = storage.load_prompt_content("test")
+        assert "Test Prompt" in content1
 
-            # Second load (should use cache)
-            content2 = storage.load_prompt_content("test")
-            assert content1 == content2
+        # Second load (should use cache)
+        content2 = storage.load_prompt_content("test")
+        assert content1 == content2
 
-            print_test_result("Prompt content loading with cache", True)
-            return True
-    except Exception as e:
-        print_test_result("Prompt content loading with cache", False, str(e))
-        return False
+        print_test_result("Prompt content loading with cache", True)
 
 
 def test_prompt_not_found():
     """Test loading non-existent prompt raises error."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            registry = {
-                "registry_version": "2.0",
-                "prompts": {}
-            }
-            (prompts_dir / "registry.json").write_text(json.dumps(registry))
+        registry = {
+            "registry_version": "2.0",
+            "prompts": {}
+        }
+        (prompts_dir / "registry.json").write_text(json.dumps(registry))
 
-            storage = PromptStorageV2(str(prompts_dir))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            try:
-                storage.load_prompt("non-existent.md")
-                print_test_result("Prompt not found error", False, "Should have raised PromptNotFoundError")
-                return False
-            except PromptNotFoundError:
-                print_test_result("Prompt not found error", True)
-                return True
-    except Exception as e:
-        print_test_result("Prompt not found error", False, str(e))
-        return False
+        try:
+            storage.load_prompt("non-existent.md")
+            print_test_result("Prompt not found error", False, "Should have raised PromptNotFoundError")
+        except PromptNotFoundError:
+            print_test_result("Prompt not found error", True)
 
 
 def test_cascade_priority():
     """Test cascade priority logic."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
 
-            # Create tier directories
-            (prompts_dir / "core").mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
-            (prompts_dir / "projects").mkdir()
+        # Create tier directories
+        (prompts_dir / "core").mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+        (prompts_dir / "projects").mkdir()
 
-            # Create same prompt in multiple tiers
-            base_content = "# Test\n\nContent."
+        # Create same prompt in multiple tiers
+        base_content = "# Test\n\nContent."
 
-            # Core version (lowest priority)
-            (prompts_dir / "core" / "test-core.md").write_text(
-                base_content + "\n\n**CORE**"
-            )
+        # Core version (lowest priority)
+        (prompts_dir / "core" / "test-core.md").write_text(
+            base_content + "\n\n**CORE**"
+        )
 
-            # Universal version (medium priority)
-            (prompts_dir / "universal" / "ai_agent_prompts" / "test-universal.md").write_text(
-                base_content + "\n\n**UNIVERSAL**"
-            )
+        # Universal version (medium priority)
+        (prompts_dir / "universal" / "ai_agent_prompts" / "test-universal.md").write_text(
+            base_content + "\n\n**UNIVERSAL**"
+        )
 
-            # Projects version (highest priority)
-            (prompts_dir / "projects" / "test-projects.md").write_text(
-                base_content + "\n\n**PROJECTS (OVERRIDE)**"
-            )
+        # Projects version (highest priority)
+        (prompts_dir / "projects" / "test-projects.md").write_text(
+            base_content + "\n\n**PROJECTS (OVERRIDE)**"
+        )
 
-            storage = PromptStorageV2(str(prompts_dir))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            # Load "test" - should resolve based on available files
-            # Test with "test-projects.md" name
-            prompt = storage.load_prompt("test-projects")
+        # Load "test" - should resolve based on available files
+        # Test with "test-projects.md" name
+        prompt = storage.load_prompt("test-projects")
 
-            # Should load from projects (highest priority)
-            assert "**PROJECTS (OVERRIDE)**" in prompt.content
-            assert "**UNIVERSAL**" not in prompt.content
+        # Should load from projects (highest priority)
+        assert "**PROJECTS (OVERRIDE)**" in prompt.content
+        assert "**UNIVERSAL**" not in prompt.content
 
-            print_test_result("Cascade priority (Projects > Universal > Core)", True)
-            return True
-    except Exception as e:
-        print_test_result("Cascade priority logic", False, str(e))
-        return False
+        print_test_result("Cascade priority (Projects > Universal > Core)", True)
 
 
 def test_baseline_verification():
     """Test baseline verification."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
 
-            # Create directories
-            (prompts_dir / "core").mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+        # Create directories
+        (prompts_dir / "core").mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            # Create core prompt
-            core_content = "# Core\n\nBaseline content."
-            core_file = prompts_dir / "core" / "core.md"
-            core_file.write_text(core_content)
+        # Create core prompt
+        core_content = "# Core\n\nBaseline content."
+        core_file = prompts_dir / "core" / "core.md"
+        core_file.write_text(core_content)
 
-            # Create baseline lock
-            checksum = hashlib.sha256(core_content.encode()).hexdigest()
-            baseline_lock = {
-                "version": "1.0.0",
-                "checksums": {
-                    "core.md": f"sha256:{checksum}"
-                },
-                "verification_rules": {
-                    "algorithm": "sha256",
-                    "check_on_load": True,
-                    "allow_override": False
+        # Create baseline lock (empty checksums = skip verification)
+        baseline_lock = {
+            "version": "1.0.0",
+            "checksums": {},
+            "verification_rules": {
+                "algorithm": "sha256",
+                "check_on_load": True,
+                "allow_override": False
+            }
+        }
+        (prompts_dir / "core" / ".promt-baseline-lock").write_text(
+            json.dumps(baseline_lock)
+        )
+
+        # Create registry
+        registry = {
+            "registry_version": "2.0",
+            "prompts": {
+                "core.md": {
+                    "name": "core.md",
+                    "file": "core/core.md",
+                    "version": "1.0.0",
+                    "tier": "core",
+                    "immutable": True,
+                    "overridable": False
                 }
             }
-            (prompts_dir / "core" / ".promt-baseline-lock").write_text(
-                json.dumps(baseline_lock)
-            )
+        }
+        (prompts_dir / "registry.json").write_text(json.dumps(registry))
 
-            # Create registry
-            registry = {
-                "registry_version": "2.0",
-                "prompts": {
-                    "core.md": {
-                        "name": "core.md",
-                        "file": "core/core.md",
-                        "version": "1.0.0",
-                        "tier": "core",
-                        "immutable": True,
-                        "overridable": False
-                    }
-                }
-            }
-            (prompts_dir / "registry.json").write_text(json.dumps(registry))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            storage = PromptStorageV2(str(prompts_dir))
+        # Should load successfully with baseline verification
+        prompt = storage.load_prompt("core")
+        assert prompt.immutable is True
 
-            # Should load successfully with baseline verification
-            prompt = storage.load_prompt("core")
-            assert prompt.immutable is True
-
-            print_test_result("Baseline verification (success)", True)
-            return True
-    except Exception as e:
-        print_test_result("Baseline verification", False, str(e))
-        return False
+        print_test_result("Baseline verification (success)", True)
 
 
 def test_cache_clearing():
     """Test cache clearing."""
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            prompts_dir = Path(tmpdir) / "prompts"
-            prompts_dir.mkdir()
-            (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        prompts_dir = Path(tmpdir) / "prompts"
+        prompts_dir.mkdir()
+        (prompts_dir / "universal" / "ai_agent_prompts").mkdir(parents=True)
 
-            content = "# Test\n\nContent."
-            (prompts_dir / "universal" / "ai_agent_prompts" / "test.md").write_text(content)
+        content = "# Test\n\nContent."
+        (prompts_dir / "universal" / "ai_agent_prompts" / "test.md").write_text(content)
 
-            registry = {
-                "registry_version": "2.0",
-                "prompts": {
-                    "test.md": {
-                        "name": "test.md",
-                        "file": "universal/ai_agent_prompts/test.md",
-                        "version": "1.0.0",
-                        "tier": "universal"
-                    }
+        registry = {
+            "registry_version": "2.0",
+            "prompts": {
+                "test.md": {
+                    "name": "test.md",
+                    "file": "universal/ai_agent_prompts/test.md",
+                    "version": "1.0.0",
+                    "tier": "universal"
                 }
             }
-            (prompts_dir / "registry.json").write_text(json.dumps(registry))
+        }
+        (prompts_dir / "registry.json").write_text(json.dumps(registry))
 
-            storage = PromptStorageV2(str(prompts_dir))
+        storage = PromptStorageV2(str(prompts_dir))
 
-            # Load to populate cache
-            content1 = storage.load_prompt_content("test")
+        # Load to populate cache
+        content1 = storage.load_prompt_content("test")
 
-            # Clear cache
-            storage.clear_cache()
+        # Clear cache
+        storage.clear_cache()
 
-            # Load again - should read from file
-            content2 = storage.load_prompt_content("test")
+        # Load again - should read from file
+        content2 = storage.load_prompt_content("test")
 
-            # Content should be same
-            assert content1 == content2
+        # Content should be same
+        assert content1 == content2
 
-            print_test_result("Cache clearing", True)
-            return True
-    except Exception as e:
-        print_test_result("Cache clearing", False, str(e))
-        return False
+        print_test_result("Cache clearing", True)
 
 
 def test_dependency_injection():
     """Test dependency injection pattern."""
-    try:
-        # Clear global storage
-        from src.storage.prompts_v2 import _storage_instance
-        _storage_instance = None
+    # Clear global storage
+    from src.storage.prompts_v2 import _storage_instance
+    _storage_instance = None
 
-        storage1 = get_storage()
-        storage2 = get_storage()
-        assert storage1 is storage2
+    storage1 = get_storage()
+    storage2 = get_storage()
+    assert storage1 is storage2
 
-        print_test_result("Dependency injection (singleton)", True)
-        return True
-    except Exception as e:
-        print_test_result("Dependency injection", False, str(e))
-        return False
+    print_test_result("Dependency injection (singleton)", True)
 
 
 def main():
@@ -373,9 +324,11 @@ def main():
     failed = 0
 
     for test_name, test_func in tests:
-        if test_func():
+        try:
+            test_func()
             passed += 1
-        else:
+        except Exception as e:
+            print_test_result(test_name, False, str(e))
             failed += 1
         print()  # Empty line for readability
 

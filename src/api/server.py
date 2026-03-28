@@ -2507,7 +2507,7 @@ async def p9i_nl(
         orchestrator = get_orchestrator()
         logger.warning(f"P9I_NL CALLED: request={request[:50]}...")
         import sys
-        logger.warning(f"P9I_NL CALLED: request={request[:50]}", file=sys.stderr, flush=True)
+        logger.warning(f"P9I_NL CALLED: request={request[:50]}")
         result = await orchestrator.route(request)
         logger.warning(f"P9I_NL RESULT: output_len={len(result.get('output', ''))}")
         return result

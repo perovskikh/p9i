@@ -85,6 +85,12 @@ class BaselineLockManager:
             return True  # No lock file, skip verification
 
         checksums = lock.get("checksums", {})
+
+        # If no checksums defined, skip verification (baseline not set up)
+        if not checksums:
+            logger.info("No baseline checksums defined - skipping verification")
+            return True
+
         expected_checksum = checksums.get(f"{prompt_name}.md")
 
         if not expected_checksum:
@@ -456,13 +462,24 @@ class PromptStorageV2:
         lock = self._baseline_lock.load_lock()
         checksums = lock.get("checksums", {})
 
+        # If no checksums to verify, consider it verified
+        if not checksums:
+            logger.info("No baseline checksums to verify - skipping verification")
+            return results
+
         for prompt_name, expected_checksum in checksums.items():
+            # Strip .md extension for lookup (prompt_name in checksums includes extension)
+            lookup_name = prompt_name.replace(".md", "")
+
             try:
-                content = self.load_prompt_content(prompt_name, PromptTier.CORE)
+                content = self.load_prompt_content(lookup_name, PromptTier.CORE)
                 current_checksum = hashlib.sha256(content.encode()).hexdigest()
 
-                if current_checksum == expected_checksum or \
-                   current_checksum.startswith(expected_checksum):
+                # Handle both formats: with "sha256:" prefix and without
+                expected_clean = expected_checksum.replace("sha256:", "")
+
+                if current_checksum == expected_clean or \
+                   current_checksum.startswith(expected_clean):
                     results["verified_prompts"].append(prompt_name)
                 else:
                     results["failed_prompts"].append({
