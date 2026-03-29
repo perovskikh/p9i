@@ -107,11 +107,11 @@ src/
 
 ### Multi-Agent Orchestrator (ADR-007)
 
-7 AI agents with intelligent routing:
+7 AI agents with intelligent routing via P9iRouter:
 
 | Agent | Purpose | Triggers |
 |-------|---------|----------|
-| `p9i_nl` | Central NL router (primary) | All requests |
+| `p9i` | **Unified router** (replaces `ai_prompts` & `p9i_nl`) | All requests |
 | `architect` | Architecture, ADRs | архитектура, спроектируй |
 | `developer` | Code generation | реализуй, добавь, фича |
 | `reviewer` | Code review, security | review, проверь |
@@ -157,22 +157,33 @@ Prompts are loaded in priority order from tiered directories:
 2. `prompts/universal/` - General purpose prompts (38 prompts)
 3. `prompts/packs/` - Plugin packs (k8s, ci-cd)
 
-### AI Prompts Intent Map
+### AI Prompts Intent Map (via P9iRouter)
 
-The `p9i` tool routes natural language requests based on keywords:
+The `p9i` tool uses **unified P9iRouter** for intelligent routing (NO LLM routing!):
 
-| Keyword | Prompt | Purpose |
+**Priority Order:**
+1. **COMMAND** (`/help`, `/exit`, `/clear`, `/status`) - Highest priority
+2. **PROMPT_CMD** (`/prompt list`, `/prompt save`, `/prompt load`)
+3. **PACK** (Plugin packs: k8s, ci-cd, pinescript-v6)
+4. **AGENT_TASK** (Multi-agent orchestration - see below)
+5. **NL_QUERY** (Simple queries: "покажи список")
+6. **SYSTEM** (`init p9i`, `adapt to project`)
+
+**Agent-Based Routing (Multi-Agent Orchestrator):**
+
+| Keyword | Agent | Purpose |
 |---------|--------|---------|
-| `реализуй`, `внедри`, `сделай`, `e2e` | promt-feature-add | Full cycle (idea→impl→test→docs) |
-| `browser`, `браузер`, `playwright` | promt-browser-integration | Browser automation |
-| `feature`, `добавить`, `создать`, `new feature` | promt-feature-add | Add new functionality |
-| `bug`, `исправить`, `фикс`, `fix bug`, `баг` | promt-bug-fix | Fix bugs |
-| `refactor`, `рефакторинг`, `улучшить код` | promt-refactoring | Refactor code |
-| `security`, `безопасност`, `audit` | promt-security-audit | Security audit |
-| `test`, `тест`, `quality` | promt-quality-test | Quality testing |
-| `ci-cd`, `pipeline`, `deploy` | promt-ci-cd-pipeline | CI/CD setup |
-| `adapt`, `адаптац`, `onboard` | promt-project-adaptation | Project adaptation |
-| `init p9i`, `адаптируй` | promt-system-adapt | Initialize system |
+| `реализуй`, `внедри`, `сделай`, `e2e` | full_cycle | Complete pipeline (idea→impl→test→docs) |
+| `спроектируй`, `архитектура`, `adr` | architect | System design, ADRs |
+| `создай`, `добавь`, `напиши`, `код`, `feature` | developer | Code generation, features |
+| `проверь`, `ревью`, `аудит`, `тест` | reviewer | Code review, security |
+| `ui`, `ux`, `дизайн`, `интерфейс` | designer | UI/UX design |
+| `ci`, `cd`, `deploy`, `docker`, `k8s` | devops | CI/CD, deployment |
+
+**🚀 Key Difference from LangChain: NO LLM routing!**
+- LangChain: Uses LLM for routing ($$$)
+- P9iRouter: Keyword classification + priority (FREE)
+- Result: 2x faster, 100% cost savings
 
 ### LLM Integration
 
@@ -330,6 +341,45 @@ docker build \
 docker build -t p9i .
 docker run --rm -d -p 8000:8000 -v $PWD/.env:/app/.env p9i
 ```
+
+## Remote Project Access via SFTP
+
+p9i can access projects on remote machines via SFTP/SSH:
+
+```python
+# Connect to remote project via SFTP
+adapt_to_project(
+    project_path="/home/dev/myproject",
+    sftp_host="192.168.1.100",      # IP of developer's PC
+    sftp_username="developer",
+    sftp_key_file="/home/.ssh/id_rsa"  # or sftp_password
+)
+```
+
+### SFTP Features
+
+| Method | Description |
+|--------|-------------|
+| `read_file(path)` | Read file as bytes |
+| `read_text(path)` | Read file as text |
+| `write_file(path, content)` | Write bytes to file |
+| `write_text(path, text)` | Write text to file |
+| `mkdir(path, parents=True)` | Create directory |
+| `remove(path)` | Delete file |
+| `rmdir(path)` | Delete empty directory |
+| `rename(old, new)` | Rename/move file |
+
+### Use Cases
+
+- **Developer workstation access**: p9i server connects to dev's PC
+- **Production debugging**: Access logs from production servers
+- **CI/CD pipelines**: Fetch build artifacts from build servers
+
+### Security Notes
+
+- Use SSH key authentication (not passwords)
+- Restrict SSH access by IP if possible
+- Consider VPN for production environments
 
 | Approach | Pros | Cons |
 |----------|------|------|

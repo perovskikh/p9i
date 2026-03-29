@@ -40,6 +40,9 @@ import redis.asyncio as redis
 from src.services.executor import PromptExecutor
 from src.services.orchestrator import AgentOrchestrator, get_orchestrator
 
+# Import P9iRouter - Unified Smart Router
+from src.application.p9i_router import P9iRouter
+
 # Import v2 storage and middleware
 from src.storage.prompts_v2 import (
     PromptStorageV2,
@@ -65,6 +68,9 @@ from src.services.redis_rate_limiter import (
 
 # Import MCP session manager
 from src.services.mcp_session_manager import MCPSessionManager, get_session_manager
+
+# Import SFTP filesystem for remote project access
+from src.services.sftp_filesystem import SFTPFilesystem, get_sftp_connection
 
 # Import UI/UX design resources
 from src.infrastructure.uiux import register_uiux_tools
@@ -827,310 +833,91 @@ def save_memory(project_id: str, data: dict) -> None:
     memory_file.write_text(json.dumps(data, indent=2))
 
 
+# ==========================================
+# P9I ROUTER - UNIFIED SINGLE ENTRY POINT
+# ==========================================
+
+# Singleton instance for P9iRouter
+_p9i_router_instance: Optional[P9iRouter] = None
+
+
+def get_p9i_router() -> P9iRouter:
+    """Get or create singleton P9iRouter instance."""
+    global _p9i_router_instance
+    if _p9i_router_instance is None:
+        _p9i_router_instance = P9iRouter()
+        logger.info("P9iRouter singleton initialized")
+    return _p9i_router_instance
+
+
 @mcp.tool
-async def ai_prompts(request: str, context: dict = None, jwt_token: str = None) -> dict:
+async def p9i(
+    request: str,
+    context: dict = None,
+    jwt_token: str = None
+) -> dict:
     """
-    Universal handler for 'use p9i' pattern.
+    ЕДИНЫЙ УМНЫЙ МАРШРУТИЗАТОР P9i
 
-    Parse natural language request and automatically select/execute
-    the appropriate prompt from the library.
+    **ОДНА ТОЧКА ВХОДА для всех запросов!**
 
-    Usage in Claude Code:
-        "Добавь в README.md секцию с примерами. use p9i"
-        "Найди и исправь баги в коде. use p9i"
-        "Создай API эндпоинт для пользователей. use p9i"
+    Использование:
+    - Natural language: "p9i создай функцию"
+    - System commands: "p9i /help"
+    - Prompt management: "p9i /prompt list"
+    - Pack triggers: "p9i k8s deploy"
+
+    Это заменяет ai_prompts() и p9i_nl()!
 
     Args:
-        request: Natural language request (e.g., "добавь функцию")
-        context: Optional context data
-        jwt_token: JWT token for authentication (optional if JWT disabled)
-        request: Natural language request (what you want to do)
-        context: Optional context (file paths, project info, etc.)
+        request: Запрос на естественном языке
+        context: Контекст (файлы, project info)
+        jwt_token: JWT токен для аутентификации
 
     Returns:
-        dict: Execution result with selected prompt and generated content
+        dict: Результат с выбранной стратегией и выводом
 
-    Pattern:
-        "action target. use p9i"
-        - action: что сделать (добавить, найти, создать, исправить, etc.)
-        - target: над чем (README.md, API, функцию, баг, etc.)
+    Examples:
+        >>> p9i("создай систему авторизации")
+        >>> p9i("/prompt list")
+        >>> p9i("k8s deploy pod")
     """
+    # JWT Authentication
+    is_valid, auth_data = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required", "hint": "Provide valid jwt_token or API key"}
+
     try:
-        # JWT Authentication
-        is_valid, auth_data = validate_auth(jwt_token=jwt_token)
-        if not is_valid:
-            return {"status": "error", "error": "Authentication required", "hint": "Provide valid jwt_token or API key"}
+        # Получить единственный router
+        router = get_p9i_router()
 
-        # Load registry for prompt selection
-        registry = load_registry()
-        prompts_list = registry.get("prompts", [])
+        # Маршрутизировать через ЕДИНЫЙ контур
+        result = await router.route(request, context)
 
-        # Intent keywords mapping to prompts
-        INTENT_MAP = {
-            # === ORDER MATTERS: Longest/most specific first ===
-
-            # GitHub MCP - PR, Issues, Workflows (MOST SPECIFIC FIRST)
-            "github actions": "promt-github-mcp",
-            "github issue": "promt-github-mcp",
-            "pull request": "promt-github-mcp",
-            "merge request": "promt-github-mcp",
-            "create pr": "promt-github-mcp",
-            "merge pr": "promt-github-mcp",
-            "create issue": "promt-github-mcp",
-            "workflow": "promt-github-mcp",
-            "мердж": "promt-github-mcp",
-            "создай pr": "promt-github-mcp",
-            "создай issue": "promt-github-mcp",
-            "gitmcp": "promt-gitmcp",
-            "изучи репозиторий": "promt-gitmcp",
-            "изучи библиотеку": "promt-gitmcp",
-            "understand repo": "promt-gitmcp",
-            "learn library": "promt-gitmcp",
-            "repository analysis": "promt-gitmcp",
-
-            # Claude Cookbook integration
-            "claude cookbook": "promt-claude-cookbook",
-            "claude api": "promt-claude-cookbook",
-            "anthropic api": "promt-claude-cookbook",
-            "tool calling": "promt-claude-cookbook",
-            "sub-agent": "promt-claude-cookbook",
-            "multimodal": "promt-claude-cookbook",
-            "json mode": "promt-claude-cookbook",
-            "rag": "promt-claude-cookbook",
-            "tool use": "promt-claude-cookbook",
-            "vision": "promt-claude-cookbook",
-
-            # ADR & Code Review
-            "adr review": "promt-llm-review",
-            "review adr": "promt-llm-review",
-            "llm review": "promt-llm-review",
-            "code review": "promt-llm-review",
-            "ревью adr": "promt-llm-review",
-            "проверь adr": "promt-llm-review",
-
-            # Bottleneck analysis & research (2026 docs standards)
-            "проведи исследование": "promt-bottleneck-analysis-2026",
-            "узкие места": "promt-bottleneck-analysis-2026",
-            "всех узких": "promt-bottleneck-analysis-2026",
-            "bottleneck": "promt-bottleneck-analysis-2026",
-            "исследуй": "promt-bottleneck-analysis-2026",
-            "проанализируй": "promt-documentation-refactoring-standards-2026",
-
-            # System adaptation
-            "инициализация p9i": "promt-system-adapt",
-            "подключи систему": "promt-system-adapt",
-            "init p9i": "promt-system-adapt",
-            "p9i init": "promt-system-adapt",  # Alternative order
-            "новый проект": "promt-system-adapt",
-            "new project": "promt-system-adapt",
-            "адаптируй": "promt-system-adapt",
-
-            # Prompt creation (meta)
-            "создай промт": "promt-prompt-creator",
-            "добавь промт": "promt-prompt-creator",
-            "new prompt": "promt-prompt-creator",
-            "prompt creator": "promt-prompt-creator",
-            "шаблон": "promt-prompt-creator",
-
-            # CI/CD (after GitHub to avoid conflict)
-            "ci-cd": "promt-ci-cd-pipeline",
-            "pipeline": "promt-ci-cd-pipeline",
-            "деплой": "promt-ci-cd-pipeline",
-            "github": "promt-ci-cd-pipeline",
-
-            # Versioning
-            "версион": "promt-versioning-policy",
-            "version": "promt-versioning-policy",
-
-            # Onboarding/adaptation
-            "подключи": "promt-project-adaptation",
-            "адаптац": "promt-project-adaptation",
-            "onboard": "promt-project-adaptation",
-            "adapt": "promt-project-adaptation",
-
-            # Refactoring
-            "упрости код": "promt-refactoring",
-            "улучшить код": "promt-refactoring",
-            "рефакторинг": "promt-refactoring",
-            "модернизируй": "promt-refactoring",
-            "оптимизируй": "promt-refactoring",
-            "перепиши": "promt-refactoring",
-            "упрости": "promt-refactoring",
-            "улучшить": "promt-refactoring",
-            "улучши": "promt-refactoring",
-            "refactor": "promt-refactoring",
-
-            # Full Cycle Implementation → promt-feature-add (already has full cycle)
-            # Shortcuts for p9i NL router - route to existing promt-feature-add
-            "реализуй": "promt-feature-add",
-            "реализуем": "promt-feature-add",
-            "внедри": "promt-feature-add",
-            "внедряем": "promt-feature-add",
-            "сделай": "promt-feature-add",
-            "выполни": "promt-feature-add",
-            "выполни полный": "promt-feature-add",
-            "полный цикл": "promt-feature-add",
-            "end-to-end": "promt-feature-add",
-            "e2e": "promt-feature-add",
-            "implement": "promt-feature-add",
-            "build": "promt-feature-add",
-
-            # Browser Integration (full cycle)
-            "browser": "promt-browser-integration",
-            "браузер": "promt-browser-integration",
-            "автоматизация браузера": "promt-browser-integration",
-            "playwright": "promt-browser-integration",
-            "puppeteer": "promt-browser-integration",
-
-            # Security (MUST BE BEFORE bug fix!)
-            "уязвим": "promt-security-audit",  # уязвимости, уязвимость
-            "уязвимост": "promt-security-audit",
-            "security": "promt-security-audit",
-            "безопасност": "promt-security-audit",
-            "audit": "promt-security-audit",
-
-            # Bug/fix operations
-            "исправить ошибку": "promt-bug-fix",
-            "fix bug": "promt-bug-fix",
-            "найди": "promt-bug-fix",
-            "баг": "promt-bug-fix",
-            "фикс": "promt-bug-fix",
-            "ошибку": "promt-bug-fix",
-            "исправить": "promt-bug-fix",
-            "исправь": "promt-bug-fix",
-            "bug": "promt-bug-fix",
-
-            # Testing
-            "напиши тест": "promt-quality-test",
-            "проверь": "promt-quality-test",
-            "quality": "promt-quality-test",
-            "тест": "promt-quality-test",
-            "test": "promt-quality-test",
-
-            # UI/UX Design (Natural Language Routing)
-            "ui component": "promt-ui-generator",
-            "ux design": "promt-ui-generator",
-            "ui design": "promt-ui-generator",
-            "generate ui": "promt-ui-generator",
-            "create ui": "promt-ui-generator",
-            "ui ": "promt-ui-generator",
-            "ux ": "promt-ui-generator",
-            "button": "promt-ui-generator",
-            "card": "promt-ui-generator",
-            "component": "promt-ui-generator",
-            "дизайн": "promt-ui-generator",
-            "интерфейс": "promt-ui-generator",
-            "ui": "promt-ui-generator",
-            "ux": "promt-ui-generator",
-            "компонент": "promt-ui-generator",
-            "кнопка": "promt-ui-generator",
-            "карточка": "promt-ui-generator",
-            "стиль": "promt-ui-generator",
-            "палитра": "promt-ui-generator",
-            "шрифт": "promt-ui-generator",
-            "иконка": "promt-ui-generator",
-
-            # Code operations (feature-add) - MUST BE LAST (most generic)
-            "создать компонент": "promt-feature-add",
-            "новую возможность": "promt-feature-add",
-            "add feature": "promt-feature-add",
-            "new feature": "promt-feature-add",
-            "фича": "promt-feature-add",
-            "добавить функт": "promt-feature-add",
-            "создай": "promt-feature-add",
-            "создать": "promt-feature-add",
-            "добавить": "promt-feature-add",
-            "feature": "promt-feature-add",
-        }
-
-        request_lower = request.lower()
-
-        # First, check pack triggers (higher priority than INTENT_MAP)
-        pack_loader = get_pack_loader()
-        pack_match = pack_loader.find_by_trigger(request_lower)
-        if pack_match:
-            selected_prompt = pack_match["prompt_file"].replace(".md", "")
-            matched_keyword = f"pack:{pack_match['matched_keyword']}"
-            logger.info(f"Pack trigger matched: {pack_match}")
-
-        # Find matching prompt via keywords
-        selected_prompt = None
-        matched_keyword = None
-        for keyword, prompt_name in INTENT_MAP.items():
-            if keyword in request_lower:
-                selected_prompt = prompt_name
-                matched_keyword = keyword
-                break
-
-        # LLM-based routing fallback (when keyword fails)
-        if not selected_prompt or matched_keyword == "default":
-            llm_selected = await _llm_route_intent(request)
-            if llm_selected:
-                selected_prompt = llm_selected
-                matched_keyword = "llm"
-
-        # Default to feature-add if no match
-        if not selected_prompt:
-            selected_prompt = "promt-feature-add"
-            matched_keyword = "default"
-
-        # Build input data from request and context
-        input_data = {
-            "request": request,
-            "context": context or {},
-        }
-
-        # Add file/project info if provided in context
-        if context:
-            input_data.update(context)
-
-        # Extract simple info from request
-        if "readme" in request_lower:
-            input_data["file"] = "README.md"
-        elif ".md" in request_lower:
-            # Try to extract filename
-            import re
-            match = re.search(r'(\S+\.md)', request)
-            if match:
-                input_data["file"] = match.group(1)
-
-        # Execute the selected prompt
-        logger.info(f"[AI_PROMPTS] About to load prompt: {selected_prompt}")
-        prompt = load_prompt(selected_prompt)
-        logger.info(f"[AI_PROMPTS] Prompt loaded, content length: {len(prompt.get('content', ''))}")
-        logger.info(f"[AI_PROMPTS] Input data keys: {list(input_data.keys())}")
-        logger.info(f"[AI_PROMPTS] Starting executor.execute()...")
-        result = await get_prompt_executor().execute(prompt["content"], input_data)
-        logger.info(f"[AI_PROMPTS] Executor returned: status={result.get('status')}, content_len={len(result.get('content', ''))}")
-
-        # Audit logging
+        # Add audit logging
         audit_logger.log(
             action=AuditActions.PROMPT_EXECUTED,
-            resource_type="ai_prompts",
+            resource_type="p9i_unified_router",
             details={
                 "request": request[:100],
-                "selected_prompt": selected_prompt,
-                "matched_keyword": matched_keyword
+                "intent_type": result.get("intent_type", "unknown"),
+                "processor": result.get("processor", "unknown"),
+                "status": result.get("status")
             }
         )
 
-        return {
-            "status": result.get("status", "success"),
-            "request": request,
-            "selected_prompt": selected_prompt,
-            "matched_keyword": matched_keyword,
-            "model": result.get("model", "unknown"),
-            "content": result.get("content", ""),
-            "error": result.get("error"),
-            "usage": result.get("usage", {}),
-            "hint": f"Used '{matched_keyword}' intent → {selected_prompt}"
-        }
+        return result
 
-    except FileNotFoundError as e:
-        return {"status": "error", "error": str(e)}
     except Exception as e:
-        logger.error(f"Error in ai_prompts: {e}")
+        import traceback
+        logger.error(f"P9I ROUTER ERROR: {type(e).__name__}: {e}\n{traceback.format_exc()}")
         return {"status": "error", "error": str(e)}
+
+
+# ==========================================
+# END OF UNIFIED ROUTER
+# ==========================================
+
 
 
 @mcp.tool
@@ -1401,44 +1188,141 @@ def save_project_memory(project_id: str, key: str, value: Union[dict, str]) -> d
 
 
 @mcp.tool
-def adapt_to_project(project_path: str, project_description: str = None) -> dict:
+def adapt_to_project(
+    project_path: str,
+    project_description: str = None,
+    sftp_host: str = None,
+    sftp_port: int = 22,
+    sftp_username: str = "root",
+    sftp_password: str = None,
+    sftp_key_file: str = None,
+) -> dict:
     """
     Auto-detect stack and adapt prompts.
 
     Args:
         project_path: Path to the project (optional if project_description provided)
         project_description: Description of project stack (optional)
+        sftp_host: Remote SFTP host (for remote projects)
+        sftp_port: SFTP port (default: 22)
+        sftp_username: SFTP username (default: root)
+        sftp_password: SFTP password (optional if using key)
+        sftp_key_file: Path to SSH private key file
 
     Returns:
         dict: Detected stack and adaptations
     """
-    path = Path(project_path) if project_path else None
+    import os
+    from src.services.sftp_filesystem import get_sftp_connection
+
     stack = {"language": None, "framework": None, "database": None}
+    remote_access = False
+    sftp = None
 
     # Try path-based detection first
+    path = Path(project_path) if project_path else None
+
+    # If SFTP credentials provided, try remote access first
+    if sftp_host and project_path:
+        try:
+            sftp = get_sftp_connection(
+                host=sftp_host,
+                port=sftp_port,
+                username=sftp_username,
+                password=sftp_password,
+                key_file=sftp_key_file,
+            )
+            if sftp.exists(project_path):
+                path = Path(project_path)
+                remote_access = True
+                logger.info(f"Accessed remote project via SFTP: {sftp_host}:{project_path}")
+        except Exception as e:
+            logger.warning(f"SFTP connection failed: {e}, falling back to local")
+
+    # If not remote and path doesn't exist locally, try common mount mappings
+    if not remote_access and path and not path.exists():
+        # Common Docker mount patterns: /home/.../project → /project
+        # Examples: /home/user/myproject → /project
+        #          /workspace/myproject → /project
+        mount_mappings = [
+            ("/home/", "/project/"),
+            ("/workspace/", "/project/"),
+            ("/app/", "/project/"),
+            ("/root/", "/project/"),
+        ]
+        path_str = str(path)
+        for host_prefix, container_prefix in mount_mappings:
+            if path_str.startswith(host_prefix):
+                # Get everything after host prefix (e.g., "user/myproject")
+                remaining = path_str[len(host_prefix):]
+                # Take only the last part (project name)
+                project_name = remaining.split('/')[-1] if remaining else ""
+                new_path = f"/project/{project_name}"
+                mapped_path = Path(new_path)
+                if mapped_path.exists():
+                    path = mapped_path
+                    break
+
+    # Now check if path exists
     if path and path.exists():
-        # Detect language/framework
-        if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
-            stack["language"] = "Python"
-            req_content = (path / "requirements.txt").read_text() if (path / "requirements.txt").exists() else ""
-            if "fastapi" in req_content.lower():
-                stack["framework"] = "FastAPI"
-            elif "aiogram" in req_content.lower():
-                stack["framework"] = "aiogram"
+        # Detect language/framework via local or remote access
+        if remote_access and sftp:
+            # Read files via SFTP
+            try:
+                if sftp.exists(str(path / "requirements.txt")):
+                    stack["language"] = "Python"
+                    req_content = sftp.read_text(str(path / "requirements.txt"))
+                elif sftp.exists(str(path / "pyproject.toml")):
+                    stack["language"] = "Python"
+                    req_content = sftp.read_text(str(path / "pyproject.toml"))
+                else:
+                    req_content = ""
+                if "fastapi" in req_content.lower():
+                    stack["framework"] = "FastAPI"
+                elif "aiogram" in req_content.lower():
+                    stack["framework"] = "aiogram"
+                elif "fastmcp" in req_content.lower():
+                    stack["framework"] = "FastMCP"
 
-        if (path / "package.json").exists():
-            stack["language"] = "JavaScript/TypeScript"
-            pkg_content = (path / "package.json").read_text()
-            if "next" in pkg_content.lower():
-                stack["framework"] = "Next.js"
+                if sftp.exists(str(path / "package.json")):
+                    stack["language"] = "JavaScript/TypeScript"
+                    pkg_content = sftp.read_text(str(path / "package.json"))
+                    if "next" in pkg_content.lower():
+                        stack["framework"] = "Next.js"
 
-        # Detect database
-        if (path / "docker-compose.yml").exists():
-            content = (path / "docker-compose.yml").read_text()
-            if "postgres" in content:
-                stack["database"] = "PostgreSQL"
-            elif "redis" in content:
-                stack["database"] = "Redis"
+                if sftp.exists(str(path / "docker-compose.yml")):
+                    content = sftp.read_text(str(path / "docker-compose.yml"))
+                    if "postgres" in content:
+                        stack["database"] = "PostgreSQL"
+                    elif "redis" in content:
+                        stack["database"] = "Redis"
+            except Exception as e:
+                logger.error(f"Error reading remote files: {e}")
+        else:
+            # Local file reading (existing logic)
+            if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
+                stack["language"] = "Python"
+                req_content = (path / "requirements.txt").read_text() if (path / "requirements.txt").exists() else ""
+                if "fastapi" in req_content.lower():
+                    stack["framework"] = "FastAPI"
+                elif "aiogram" in req_content.lower():
+                    stack["framework"] = "aiogram"
+                elif "fastmcp" in req_content.lower():
+                    stack["framework"] = "FastMCP"
+
+            if (path / "package.json").exists():
+                stack["language"] = "JavaScript/TypeScript"
+                pkg_content = (path / "package.json").read_text()
+                if "next" in pkg_content.lower():
+                    stack["framework"] = "Next.js"
+
+            # Detect database
+            if (path / "docker-compose.yml").exists():
+                content = (path / "docker-compose.yml").read_text()
+                if "postgres" in content:
+                    stack["database"] = "PostgreSQL"
+                elif "redis" in content:
+                    stack["database"] = "Redis"
     elif project_description:
         # Fallback to description-based detection
         desc = project_description.lower()
@@ -1460,6 +1344,7 @@ def adapt_to_project(project_path: str, project_description: str = None) -> dict
     return {
         "status": "success",
         "stack": stack,
+        "access_type": "remote_sftp" if remote_access else "local",
         "adaptations": [
             f"Selected prompts for {stack.get('language', 'unknown')} project",
             f"Framework: {stack.get('framework', 'not detected')}"
@@ -2501,81 +2386,9 @@ Color Palette:"""
 # Multi-Agent Orchestrator (ADR-007)
 # ============================================================
 
-@mcp.tool()
-async def p9i_nl(
-    request: str,
-    jwt_token: str = None
-) -> dict:
-    """
-    Central router - Natural Language interface for p9i.
-
-    Automatically detects needed agents and orchestrates their execution.
-
-    Args:
-        request: Natural language request
-        jwt_token: JWT token for authentication
-
-    Returns:
-        dict: Orchestrated results from multiple agents
-
-    Examples:
-        "Спроектируй и создай систему авторизации"
-        "Добавь функцию и проведи ревью"
-        "Создай UI компонент и проверь безопасность"
-    """
-    is_valid, _ = validate_auth(jwt_token=jwt_token)
-    if not is_valid:
-        return {"status": "error", "error": "Authentication required"}
-
-    try:
-        orchestrator = get_orchestrator()
-        logger.warning(f"P9I_NL CALLED: request={request[:50]}...")
-        import sys
-        logger.warning(f"P9I_NL CALLED: request={request[:50]}")
-        result = await orchestrator.route(request)
-        logger.warning(f"P9I_NL RESULT: output_len={len(result.get('output', ''))}")
-        return result
-    except Exception as e:
-        import traceback
-        logger.error(f"P9I_NL ERROR: {type(e).__name__}: {e}\n{traceback.format_exc()}")
-        return {"status": "error", "error": str(e)}
-
-
-# Backwards compatibility alias
-p9i = p9i_nl
-
-
-@mcp.tool()
-async def architect_design(
-    specification: str,
-    jwt_token: str = None
-) -> dict:
-    """
-    Architect Agent - System design and architecture.
-
-    Args:
-        specification: What to design
-        jwt_token: JWT token for authentication
-
-    Returns:
-        dict: Architecture design
-    """
-    is_valid, _ = validate_auth(jwt_token=jwt_token)
-    if not is_valid:
-        return {"status": "error", "error": "Authentication required"}
-
-    try:
-        orchestrator = get_orchestrator()
-        result = await orchestrator.execute_agent("architect", specification, context={})
-        return {
-            "status": result.status,
-            "agent": result.agent,
-            "output": result.output,
-            "error": result.error,
-            "metadata": result.metadata
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+# ============================================================
+# Multi-Agent Orchestrator (ADR-007)
+# ============================================================
 
 
 @mcp.tool()
@@ -2825,7 +2638,7 @@ def get_available_mcp_tools() -> dict:
         dict: List of tools with descriptions
     """
     tools = [
-        {"name": "ai_prompts", "description": "Natural language prompt router (use p9i)"},
+        {"name": "p9i", "description": "Unified router - Natural language interface with intelligent agent orchestration"},
         {"name": "run_prompt", "description": "Execute a single prompt"},
         {"name": "run_prompt_chain", "description": "Execute full chain (ideation → finish)"},
         {"name": "list_prompts", "description": "List all available prompts"},
@@ -2860,8 +2673,7 @@ def get_available_mcp_tools() -> dict:
         {"name": "export_figma_nodes", "description": "Export Figma nodes as images"},
         {"name": "figma_to_code", "description": "Convert Figma to TailwindCSS/shadcn code"},
         # Agent Orchestrator tools (ADR-007)
-        {"name": "p9i_nl", "description": "Central router - Natural Language interface"},
-        {"name": "p9i", "description": "Central router - NL interface (alias for p9i_nl)"},
+        {"name": "p9i", "description": "Unified router - Natural language interface with intelligent agent orchestration"},
         {"name": "architect_design", "description": "Architect agent - system design"},
         {"name": "developer_code", "description": "Developer agent - code generation"},
         {"name": "reviewer_check", "description": "Reviewer agent - code review"},
@@ -3119,7 +2931,7 @@ async def startup_event():
         except Exception as e:
             logger.error(f"Baseline verification error: {e}")
 
-    logger.info("MCP Tools: ai_prompts, run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context, context7_lookup")
+    logger.info("MCP Tools: p9i (unified router), run_prompt, run_prompt_chain, list_prompts, get_project_memory, save_project_memory, adapt_to_project, clean_context, context7_lookup")
     logger.info(f"API Keys loaded: {len(api_keys._keys)} keys")
     logger.info(f"Rate limiting: {'distributed (Redis)' if _distributed_rate_limiter else 'in-memory (fallback)'}")
     logger.info(f"Baseline verification: {'enabled' if verify_enabled else 'disabled'}")

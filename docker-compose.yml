@@ -26,7 +26,7 @@ services:
       # App config
       - API_KEYS__SYSTEM=sk-system-dev
       - LOG_LEVEL=DEBUG
-      - MCP_TRANSPORT=sse
+      - MCP_TRANSPORT=streamable-http
       - LLM_PROVIDER=auto  # Auto-detect: ZAI → OpenRouter → MiniMax → DeepSeek → Anthropic
       # JWT Auth (Phase 5)
       - JWT_SECRET=${JWT_SECRET:-}

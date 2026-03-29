@@ -76,7 +76,7 @@ docker compose ps
 curl -X POST http://localhost:8000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"ai_prompts","arguments":{"request":"добавь функцию"}},"id":1}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"p9i","arguments":{"request":"добавь функцию"}},"id":1}'
 ```
 
 ### Подключение нового проекта
@@ -166,7 +166,7 @@ User Request (NL)
        │
        ▼
 ┌──────────────────┐
-│   p9i_nl tool    │ ─── Intent Detection
+│   p9i tool       │ ─── Intent Detection
 └────────┬─────────┘
          │
          ▼
@@ -549,7 +549,7 @@ JWT_ENABLED=false
 ### Core
 | Tool | Purpose |
 |------|---------|
-| `ai_prompts` | Universal router (`use p9i`) |
+| `p9i` | **Unified router** - Natural language interface with intelligent agent routing |
 | `run_prompt` / `run_prompt_chain` | Execute prompts |
 | `list_prompts` | List available prompts |
 
@@ -572,8 +572,7 @@ JWT_ENABLED=false
 ### Multi-Agent Orchestrator (ADR-007)
 | Tool | Purpose |
 |------|---------|
-| `p9i_nl` | Central Natural Language router (primary) |
-| `p9i` | NL router (alias for backwards compatibility) |
+| `p9i` | **Unified router** - Intelligent agent orchestration via P9iRouter |
 | `architect_design` | Architecture design |
 | `developer_code` | Code generation |
 | `reviewer_check` | Code review |

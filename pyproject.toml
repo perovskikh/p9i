@@ -22,6 +22,8 @@ dependencies = [
     "jinja2>=3.0.0",
     "psutil>=5.9.0",
     "playwright>=1.40.0",
+    # SFTP remote filesystem support
+    "paramiko>=3.0.0",
     # JWT - use python-jose for JWT (FastAPI recommended)
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
