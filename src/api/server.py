@@ -3022,16 +3022,17 @@ def _run_mcp_http_thread():
             Middleware(AuthHeaderMiddleware),  # JWT Authorization header extraction
         ]
 
-        # Run with CORS
+        # Run with CORS - stateless mode for better scaling
         mcp.run(
             transport="streamable-http",
             host="0.0.0.0",
             port=8000,
+            stateless_http=True,
             middleware=cors_middleware
         )
     else:
         logger.warning(f"Unknown transport '{transport}', defaulting to streamable-http")
-        mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=8000, stateless_http=True)
 
 
 async def main_async():

@@ -346,7 +346,7 @@ class P9iRouter:
     def _check_packs(self, request_lower: str) -> Optional[dict]:
         """Проверить pack triggers."""
         try:
-            from src.storage.pack_loader import get_pack_loader
+            from src.storage.packs import get_pack_loader
             pack_loader = get_pack_loader()
             return pack_loader.find_by_trigger(request_lower)
         except Exception as e:
@@ -712,6 +712,12 @@ class NLQueryProcessor(Processor):
             registry = load_registry()
             prompts = registry.get("prompts", [])
 
+            # Ensure prompts is a list, not dict
+            if isinstance(prompts, dict):
+                prompts = list(prompts.values())
+            elif not isinstance(prompts, list):
+                prompts = []
+
             output = f"# Available Prompts ({len(prompts)})\n\n"
             for prompt in prompts[:20]:
                 name = prompt.get("name", "Unknown")
@@ -833,29 +839,262 @@ class SystemProcessor(Processor):
         return {"status": "error", "error": "Unknown system command"}
 
     async def _handle_system_init(self, context: dict) -> dict:
+        """Handle p9i system initialization - detect project stack."""
         try:
-            from src.api.server import adapt_to_project
-            project_path = context.get("project_path", ".")
-            result = adapt_to_project(project_path=project_path)
+            import os
+            from pathlib import Path
+
+            # Use context project_path or default to current directory
+            project_path = context.get("project_path") if context else None
+            if not project_path:
+                project_path = "."
+
+            path = Path(project_path) if project_path else None
+
+            # Mount mapping for Docker patterns
+            if path and not path.exists():
+                mount_mappings = [
+                    ("/home/", "/project/"),
+                    ("/workspace/", "/project/"),
+                    ("/app/", "/project/"),
+                ]
+                path_str = str(path)
+                for host_prefix, container_prefix in mount_mappings:
+                    if path_str.startswith(host_prefix):
+                        remaining = path_str[len(host_prefix):]
+                        project_name = remaining.split('/')[-1] if remaining else ""
+                        new_path = f"/project/{project_name}"
+                        mapped = Path(new_path)
+                        if mapped.exists():
+                            path = mapped
+                            break
+                # Scattered mount pattern
+                if path and not path.exists():
+                    app_path = Path("/app")
+                    if app_path.exists() and ((app_path / "src").exists() or (app_path / "prompts").exists()):
+                        path = app_path
+
+            # Detect stack
+            language, framework, database = "Unknown", "not detected", "not detected"
+
+            if path and path.exists():
+                # Language detection
+                if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
+                    language = "Python"
+                elif (path / "package.json").exists():
+                    language = "JavaScript/TypeScript"
+                elif (path / "go.mod").exists():
+                    language = "Go"
+                elif (path / "Cargo.toml").exists():
+                    language = "Rust"
+
+                # Framework detection from requirements.txt
+                req_file = path / "requirements.txt"
+                if req_file.exists():
+                    content = req_file.read_text().lower()
+                    if "fastapi" in content:
+                        framework = "FastAPI"
+                    elif "flask" in content:
+                        framework = "Flask"
+                    elif "django" in content:
+                        framework = "Django"
+
+                # Framework detection from pyproject.toml
+                pyproject_file = path / "pyproject.toml"
+                if pyproject_file.exists():
+                    try:
+                        import tomli
+                        pyproject_content = tomli.loads(pyproject_file.read_text())
+                        deps = []
+                        deps.extend(pyproject_content.get("project", {}).get("dependencies", []))
+                        deps.extend(pyproject_content.get("project", {}).get("optional-dependencies", {}).get("dev", []))
+                        deps_str = " ".join(deps).lower()
+                        if "fastapi" in deps_str:
+                            framework = "FastAPI"
+                        elif "flask" in deps_str:
+                            framework = "Flask"
+                        elif "django" in deps_str:
+                            framework = "Django"
+                        elif "streamlit" in deps_str:
+                            framework = "Streamlit"
+                    except ImportError:
+                        # Fallback: read as text
+                        content = pyproject_file.read_text().lower()
+                        if "fastapi" in content:
+                            framework = "FastAPI"
+                        elif "flask" in content:
+                            framework = "Flask"
+                        elif "django" in content:
+                            framework = "Django"
+
+                pkg_file = path / "package.json"
+                if pkg_file.exists():
+                    try:
+                        import json
+                        pkg = json.loads(pkg_file.read_text())
+                        deps = list(pkg.get("dependencies", {}).keys())
+                        if "next" in deps:
+                            framework = "Next.js"
+                        elif "react" in deps:
+                            framework = "React"
+                        elif "vue" in deps:
+                            framework = "Vue.js"
+                    except:
+                        pass
+
+                # Database detection
+                for db_file in ["*sqlite*.py", "*postgres*", "*mysql*"]:
+                    if list(path.glob(f"**/{db_file}")):
+                        database = "Detected"
+                        break
+
+            resolved = f"- Path resolved to: {path}" if path and path != Path(project_path) else None
+            lines = [
+                "# p9i System Initialized",
+                "",
+                f"**Project**: `{project_path}`",
+                resolved if resolved else "",
+                "",
+                "**Detected Stack**:",
+                f"- Language: {language}",
+                f"- Framework: {framework}",
+                f"- Database: {database}",
+                "",
+                "**Status**: Ready for development",
+                "",
+                "**Available Commands**:",
+                '- "создай функцию" → developer agent',
+                '- "спроектируй архитектуру" → architect agent',
+                '- "проверь код" → reviewer agent',
+                '- "дизайн" → designer agent',
+            ]
+            output = "\n".join(lines)
+
             return {
                 "status": "success",
-                "output": f"System initialized for project: {project_path}",
-                "details": result,
+                "output": output.strip(),
+                "language": language,
+                "framework": framework,
+                "database": database,
+                "project_path": str(path) if path else project_path,
                 "processor": "SystemProcessor"
             }
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return {
+                "status": "error",
+                "error": str(e),
+                "processor": "SystemProcessor"
+            }
 
     async def _handle_adapt_project(self, context: dict) -> dict:
+        """Handle project adaptation - detect and configure for project."""
         try:
-            from src.api.server import adapt_to_project
-            project_path = context.get("project_path", ".")
-            result = adapt_to_project(project_path=project_path)
+            from pathlib import Path
+            import os
+            import json
+
+            project_path = context.get("project_path") if context else None
+            if not project_path:
+                project_path = "."
+
+            path = Path(project_path) if project_path else None
+
+            # Mount mapping for Docker patterns
+            if path and not path.exists():
+                mount_mappings = [
+                    ("/home/", "/project/"),
+                    ("/workspace/", "/project/"),
+                    ("/app/", "/project/"),
+                ]
+                path_str = str(path)
+                for host_prefix, container_prefix in mount_mappings:
+                    if path_str.startswith(host_prefix):
+                        remaining = path_str[len(host_prefix):]
+                        project_name = remaining.split('/')[-1] if remaining else ""
+                        new_path = f"/project/{project_name}"
+                        mapped = Path(new_path)
+                        if mapped.exists():
+                            path = mapped
+                            break
+                if path and not path.exists():
+                    app_path = Path("/app")
+                    if app_path.exists() and ((app_path / "src").exists() or (app_path / "prompts").exists()):
+                        path = app_path
+
+            language, framework, database = "Unknown", "not detected", "not detected"
+
+            if path and path.exists():
+                if (path / "requirements.txt").exists() or (path / "pyproject.toml").exists():
+                    language = "Python"
+                elif (path / "package.json").exists():
+                    language = "JavaScript/TypeScript"
+                elif (path / "go.mod").exists():
+                    language = "Go"
+                elif (path / "Cargo.toml").exists():
+                    language = "Rust"
+
+                if (path / "requirements.txt").exists():
+                    content = (path / "requirements.txt").read_text().lower()
+                    if "fastapi" in content:
+                        framework = "FastAPI"
+                    elif "flask" in content:
+                        framework = "Flask"
+                    elif "django" in content:
+                        framework = "Django"
+
+                # Framework detection from pyproject.toml
+                if (path / "pyproject.toml").exists():
+                    content = (path / "pyproject.toml").read_text().lower()
+                    if "fastapi" in content:
+                        framework = "FastAPI"
+                    elif "flask" in content:
+                        framework = "Flask"
+                    elif "django" in content:
+                        framework = "Django"
+                    elif "streamlit" in content:
+                        framework = "Streamlit"
+
+                if (path / "package.json").exists():
+                    try:
+                        pkg = json.loads((path / "package.json").read_text())
+                        deps = list(pkg.get("dependencies", {}).keys())
+                        if "next" in deps:
+                            framework = "Next.js"
+                        elif "react" in deps:
+                            framework = "React"
+                        elif "vue" in deps:
+                            framework = "Vue.js"
+                    except:
+                        pass
+
+            resolved = f"- Path resolved to: {path}" if path and path != Path(project_path) else None
+            lines = [
+                "# p9i Project Adapted",
+                "",
+                f"**Project**: `{project_path}`",
+                resolved if resolved else "",
+                "",
+                "**Detected Stack**:",
+                f"- Language: {language}",
+                f"- Framework: {framework}",
+                f"- Database: {database}",
+                "",
+                "**Ready**: p9i is now configured for this project",
+            ]
+            output = "\n".join(lines)
+
             return {
                 "status": "success",
-                "output": f"Adapted to project: {project_path}",
-                "details": result,
+                "output": output.strip(),
+                "language": language,
+                "framework": framework,
+                "database": database,
+                "project_path": str(path) if path else project_path,
                 "processor": "SystemProcessor"
             }
         except Exception as e:
-            return {"status": "error", "error": str(e)}
+            return {
+                "status": "error",
+                "error": str(e),
+                "processor": "SystemProcessor"
+            }
