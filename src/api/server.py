@@ -1138,6 +1138,34 @@ def list_prompts(tier: str = None, limit: int = None) -> dict:
 
 
 @mcp.tool()
+def get_prompt(prompt_name: str) -> dict:
+    """
+    Get a single prompt by name.
+
+    Args:
+        prompt_name: Name of the prompt (e.g. 'system-init' or 'promt-mvp-baseline-generator')
+
+    Returns:
+        dict: Prompt content and metadata
+    """
+    storage = get_storage()
+    try:
+        prompt = storage.load_prompt(prompt_name)
+        return {
+            "status": "success",
+            "prompt_name": prompt.name,
+            "version": prompt.version,
+            "tier": prompt.tier.value if hasattr(prompt.tier, 'value') else str(prompt.tier),
+            "content": prompt.content,
+            "description": getattr(prompt, 'description', None) or '',
+            "tags": prompt.tags
+        }
+    except Exception as e:
+        logger.error(f"Error loading prompt '{prompt_name}': {e}")
+        return {"status": "error", "error": f"Prompt not found: {prompt_name}"}
+
+
+@mcp.tool()
 def get_project_memory(project_id: str) -> dict:
     """
     Get memory/context for a specific project.
