@@ -850,7 +850,7 @@ def get_p9i_router() -> P9iRouter:
     return _p9i_router_instance
 
 
-@mcp.tool
+@mcp.tool()
 async def p9i(
     request: str,
     context: dict = None,
@@ -920,7 +920,7 @@ async def p9i(
 
 
 
-@mcp.tool
+@mcp.tool()
 async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, jwt_token: str = None) -> dict:
     """
     Execute a single prompt through LLM.
@@ -1040,7 +1040,7 @@ async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, j
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def run_prompt_chain(idea: str, stages: list[str], jwt_token: str = None) -> dict:
     """
     Execute full chain: idea → finish through LLM.
@@ -1137,7 +1137,7 @@ def list_prompts(tier: str = None, limit: int = None) -> dict:
     }
 
 
-@mcp.tool
+@mcp.tool()
 def get_project_memory(project_id: str) -> dict:
     """
     Get memory/context for a specific project.
@@ -1156,7 +1156,7 @@ def get_project_memory(project_id: str) -> dict:
     }
 
 
-@mcp.tool
+@mcp.tool()
 def save_project_memory(project_id: str, key: str, value: Union[dict, str]) -> dict:
     """
     Save memory entry for a project.
@@ -1187,7 +1187,7 @@ def save_project_memory(project_id: str, key: str, value: Union[dict, str]) -> d
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 def adapt_to_project(
     project_path: str,
     project_description: str = None,
@@ -1262,6 +1262,16 @@ def adapt_to_project(
                 if mapped_path.exists():
                     path = mapped_path
                     break
+        # If still not found, try scattered /app/ mount pattern
+        # e.g., /home/worker/p9i → check if key dirs exist under /app/
+        if path and not path.exists():
+            app_path = Path("/app")
+            if app_path.exists():
+                # Check if src/ or prompts/ exist in /app (scattered mount pattern)
+                if (app_path / "src").exists() or (app_path / "prompts").exists():
+                    # The project is mounted as scattered files under /app
+                    # Use /app as the effective project path
+                    path = app_path
 
     # Now check if path exists
     if path and path.exists():
@@ -1352,7 +1362,7 @@ def adapt_to_project(
     }
 
 
-@mcp.tool
+@mcp.tool()
 def context7_lookup(library: str, query: str = None) -> dict:
     """
     Get Context7 library ID and query documentation.
@@ -1543,7 +1553,7 @@ async def _context7_query_docs(library_id: str, query: str) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def context7_query(library: str, query: str) -> dict:
     """
     Query Context7 documentation via MCP.
@@ -1667,7 +1677,7 @@ async def _github_mcp_call(tool_name: str, arguments: dict) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def github_mcp_list_repos(query: str = "") -> dict:
     """List GitHub repositories accessible to the token.
 
@@ -1679,7 +1689,7 @@ async def github_mcp_list_repos(query: str = "") -> dict:
     return await _github_mcp_call("search_repositories", {})
 
 
-@mcp.tool
+@mcp.tool()
 async def github_mcp_create_pr(
     owner: str,
     repo: str,
@@ -1699,7 +1709,7 @@ async def github_mcp_create_pr(
     })
 
 
-@mcp.tool
+@mcp.tool()
 async def github_mcp_create_issue(
     owner: str,
     repo: str,
@@ -1716,7 +1726,7 @@ async def github_mcp_create_issue(
     })
 
 
-@mcp.tool
+@mcp.tool()
 async def github_mcp_list_issues(
     owner: str,
     repo: str,
@@ -1730,7 +1740,7 @@ async def github_mcp_list_issues(
     })
 
 
-@mcp.tool
+@mcp.tool()
 def clean_context(current_tokens: int, threshold: int = 35000) -> dict:
     """
     Auto-clean context when token threshold is exceeded.
@@ -1769,7 +1779,7 @@ def clean_context(current_tokens: int, threshold: int = 35000) -> dict:
 _pipeline_state: dict = {}
 
 
-@mcp.tool
+@mcp.tool()
 async def run_interview(
     goal: str,
     context: dict = None,
@@ -1828,7 +1838,7 @@ Respond in JSON format:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def decompose_prompt(
     complex_goal: str,
     output_format: str = "chain",
@@ -1884,7 +1894,7 @@ Respond in JSON format:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def generate_spec(
     prompt_group: str,
     jwt_token: str = None
@@ -1944,7 +1954,7 @@ Create a spec.md with:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 def checkpoint_save(
     session_id: str,
     state: dict,
@@ -1978,7 +1988,7 @@ def checkpoint_save(
     }
 
 
-@mcp.tool
+@mcp.tool()
 def checkpoint_load(
     session_id: str,
     jwt_token: str = None
@@ -2018,7 +2028,7 @@ def checkpoint_load(
 # UI/UX TOOLS (ADR-005: UI/UX Integration)
 # ============================================================================
 
-@mcp.tool
+@mcp.tool()
 async def generate_tailwind(
     component: str,
     style: str = "modern",
@@ -2057,7 +2067,7 @@ Output: Complete HTML with TailwindCSS classes"""
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def generate_shadcn(
     component: str,
     framework: str = "react",
@@ -2095,7 +2105,7 @@ Output: Complete component code with TypeScript types"""
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def generate_textual(
     widget: str,
     theme: str = "dark",
@@ -2134,7 +2144,7 @@ Output: Complete Python code with Textual"""
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def generate_tauri(
     app_name: str,
     template: str = "basic",
@@ -2499,7 +2509,7 @@ async def list_agents(
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 def execute_bash(command: str, cwd: str = "/app") -> dict:
     """
     Execute a bash command and return output.
@@ -2547,7 +2557,7 @@ def execute_bash(command: str, cwd: str = "/app") -> dict:
         }
 
 
-@mcp.tool
+@mcp.tool()
 def check_prompt_uniqueness(
     prompt_name: str = None,
     keywords: str = None,
@@ -2617,7 +2627,7 @@ def check_prompt_uniqueness(
     return results
 
 
-@mcp.tool
+@mcp.tool()
 def get_prompt_deduplication_report() -> dict:
     """
     Get full deduplication report for the prompt system.
@@ -2629,7 +2639,7 @@ def get_prompt_deduplication_report() -> dict:
     return guard.get_report()
 
 
-@mcp.tool
+@mcp.tool()
 def get_available_mcp_tools() -> dict:
     """
     Get list of available MCP tools in this server.
@@ -2747,7 +2757,7 @@ def get_available_mcp_tools() -> dict:
 # MCP Session Management Tools (Variant B - Server-side sessions)
 # ============================================================================
 
-@mcp.tool
+@mcp.tool()
 async def create_mcp_session(client_info: dict = None) -> dict:
     """
     Create a new MCP session for direct HTTP connections.
@@ -2775,7 +2785,7 @@ async def create_mcp_session(client_info: dict = None) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def get_mcp_session(session_id: str) -> dict:
     """
     Get MCP session information.
@@ -2799,7 +2809,7 @@ async def get_mcp_session(session_id: str) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def update_mcp_session(session_id: str, state: dict) -> dict:
     """
     Update session state.
@@ -2824,7 +2834,7 @@ async def update_mcp_session(session_id: str, state: dict) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def delete_mcp_session(session_id: str) -> dict:
     """
     Delete an MCP session.
@@ -2848,7 +2858,7 @@ async def delete_mcp_session(session_id: str) -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@mcp.tool
+@mcp.tool()
 async def list_mcp_sessions(limit: int = 100) -> dict:
     """
     List all active MCP sessions.

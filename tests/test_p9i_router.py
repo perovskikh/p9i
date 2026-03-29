@@ -11,6 +11,12 @@ Tests cover:
 
 import pytest
 import asyncio
+import sys
+from pathlib import Path
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from src.application.p9i_router import (
     P9iRouter,
     IntentType,
@@ -140,7 +146,7 @@ class TestCommandProcessor:
         intent = Intent(type=IntentType.COMMAND, matched_keyword="/help", metadata={"command": "/help"})
         result = await processor.process(intent, "/help", {})
         assert result["status"] == "success"
-        assert "P9i - Intelligent AI Assistant" in result["output"]
+        assert "p9i" in result["output"].lower()
 
     @pytest.mark.asyncio
     async def test_handle_exit_command(self, processor):

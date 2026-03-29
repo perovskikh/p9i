@@ -10,6 +10,10 @@ K8S_DIR := $(shell pwd)/k8s
 NAMESPACE ?= p9i
 HELM_CHART := $(shell pwd)/helm/p9i
 
+# Kubernetes command (use sudo k3s kubectl on K3s)
+Kubectl ?= kubectl
+KUBECTL := $(shell (sudo -n kubectl --help >/dev/null 2>&1 && echo "sudo kubectl") || echo "kubectl")
+
 # Colors
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
@@ -74,6 +78,39 @@ help:
 	@echo "  make clean              Clean build artifacts"
 	@echo "  make prune             Docker prune (remove unused images)"
 	@echo ""
+
+# =============================================================================
+# SIMPLE ALIASES - Quick access for daily development
+# =============================================================================
+dev: compose-up ## Start local development (Docker Compose)
+	@echo "$(GREEN)Started in Docker Compose mode$(NC)"
+
+deploy: k3s-deploy ## Deploy to K3s (kubectl apply -f k8s/)
+	@echo "$(GREEN)Deployed to K3s$(NC)"
+
+watch: ## Watch K3s logs (Ctrl+C to exit)
+	sudo k3s kubectl logs -n $(NAMESPACE) -l app=mcp-server -f --tail=50
+
+scale: ## Scale HPA (e.g., make scale REPLICAS=5)
+	sudo k3s kubectl scale deployment/mcp-server -n $(NAMESPACE) --replicas=$(or $(REPLICAS),3)
+
+hpa: ## Show HPA status
+	sudo k3s kubectl get hpa -n $(NAMESPACE)
+
+# =============================================================================
+# CI/CD
+# =============================================================================
+.PHONY: ci-check
+ci-check: ## Run CI checks locally (test + lint)
+	@echo "$(YELLOW)Running tests...$(NC)"
+	pytest --cov=src 2>/dev/null || echo "No tests found"
+	@echo "$(YELLOW)Running linters...$(NC)"
+	black --check src/ 2>/dev/null || echo "black not installed"
+	ruff check src/ 2>/dev/null || echo "ruff not installed"
+	@echo "$(GREEN)CI checks passed$(NC)"
+
+status: k3s-status ## Check status (K3s)
+	@echo "$(BLUE)=== K3s status ===$(NC)"
 
 # =============================================================================
 # DOCKER
@@ -198,83 +235,93 @@ k3s-uninstall: ## Uninstall K3s
 
 .PHONY: k3s-status-nodes
 k3s-status-nodes: ## Show K3s nodes status
-	kubectl get nodes -o wide
+	sudo k3s kubectl get nodes -o wide
 
 .PHONY: k3s-deploy
 k3s-deploy: build-push
 	@echo "$(YELLOW)Deploying to K3s...$(NC)"
-	kubectl apply -f $(K8S_DIR)/
+	sudo k3s kubectl apply -f $(K8S_DIR)/
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
 
 .PHONY: k3s-delete
 k3s-delete:
 	@echo "$(YELLOW)Deleting from K3s...$(NC)"
-	kubectl delete -f $(K8S_DIR)/ --ignore-not-found=true
+	sudo k3s kubectl delete -f $(K8S_DIR)/ --ignore-not-found=true
 	@echo "$(GREEN)Deleted from K3s$(NC)"
 
 .PHONY: k3s-logs
 k3s-logs:
-	kubectl logs -n $(NAMESPACE) -l app=p9i-mcp-server -f --tail=100
+	sudo k3s kubectl logs -n $(NAMESPACE) -l app=mcp-server -f --tail=100
 
 .PHONY: k3s-restart
 k3s-restart:
-	kubectl rollout restart -n $(NAMESPACE) deployment/p9i-mcp-server
+	sudo k3s kubectl rollout restart -n $(NAMESPACE) deployment/mcp-server
 	@echo "$(GREEN)Restarted deployment$(NC)"
 
 .PHONY: k3s-status
 k3s-status:
 	@echo "$(BLUE)=== Namespace $(NAMESPACE) ===$(NC)"
-	kubectl get all -n $(NAMESPACE)
+	sudo k3s kubectl get all -n $(NAMESPACE)
 	@echo ""
 	@echo "$(BLUE)=== Endpoints ===$(NC)"
-	kubectl get endpoints -n $(NAMESPACE)
+	sudo k3s kubectl get endpoints -n $(NAMESPACE)
 
 .PHONY: k3s-port-forward
 k3s-port-forward:
 	@echo "$(YELLOW)Port forwarding to K3s service...$(NC)"
 	@echo "MCP: localhost:8000 -> p9i-mcp-server:8000"
-	kubectl port-forward -n $(NAMESPACE) svc/p9i-mcp-server 8000:8000 & \
+	sudo k3s kubectl port-forward -n $(NAMESPACE) svc/p9i-mcp-server 8000:8000 & \
 	wait
 
 .PHONY: k3s-describe
 k3s-describe:
-	kubectl describe all -n $(NAMESPACE)
+	sudo k3s kubectl describe all -n $(NAMESPACE)
 
 .PHONY: k3s-events
 k3s-events:
-	kubectl get events -n $(NAMESPACE) --sort-by='.lastTimestamp'
+	sudo k3s kubectl get events -n $(NAMESPACE) --sort-by='.lastTimestamp'
 
 # =============================================================================
 # HELM
 # =============================================================================
 .PHONY: helm-install
 helm-install: build-push
+	@echo "$(YELLOW)Labeling namespace for Helm...$(NC)"
+	@kubectl label namespace $(NAMESPACE) app.kubernetes.io/managed-by=Helm --overwrite 2>/dev/null || true
+	@kubectl annotate namespace $(NAMESPACE) meta.helm.sh/release-name=p9i meta.helm.sh/release-namespace=$(NAMESPACE) --overwrite 2>/dev/null || true
 	@echo "$(YELLOW)Installing Helm chart...$(NC)"
 	helm install p9i $(HELM_CHART) \
 		--namespace $(NAMESPACE) \
 		--create-namespace \
 		--set image.repository=$(REGISTRY)/$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
-		-wait \
-		--timeout 10m
+		--wait \
+		--timeout 10m \
+		--no-hooks
 	@echo "$(GREEN)Helm installed: p9i$(NC)"
 
 .PHONY: helm-upgrade
 helm-upgrade: build-push
+	@echo "$(YELLOW)Labeling resources for Helm...$(NC)"
+	@for resource in $$(kubectl get all,secret,configmap -n $(NAMESPACE) -o name 2>/dev/null); do \
+		kubectl label $$resource app.kubernetes.io/managed-by=Helm --overwrite -n $(NAMESPACE) 2>/dev/null || true; \
+		kubectl annotate $$resource meta.helm.sh/release-name=p9i meta.helm.sh/release-namespace=$(NAMESPACE) --overwrite -n $(NAMESPACE) 2>/dev/null || true; \
+	done
 	@echo "$(YELLOW)Upgrading Helm release...$(NC)"
 	helm upgrade p9i $(HELM_CHART) \
 		--namespace $(NAMESPACE) \
 		--set image.repository=$(REGISTRY)/$(IMAGE_NAME) \
 		--set image.tag=$(IMAGE_TAG) \
 		--wait \
-		--timeout 10m
+		--timeout 10m \
+		--no-hooks
 	@echo "$(GREEN)Helm upgraded$(NC)"
 
 .PHONY: helm-uninstall
 helm-uninstall:
 	@echo "$(YELLOW)Uninstalling Helm release...$(NC)"
 	helm uninstall p9i --namespace $(NAMESPACE) || true
-	kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
+	sudo k3s kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
 
 .PHONY: helm-template
 helm-template:

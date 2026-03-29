@@ -1480,7 +1480,7 @@ async def list_tools():
 
     # Return basic tool info
     tools = [
-        {"name": "ai_prompts", "description": "Universal router (use p9i)"},
+        {"name": "p9i", "description": "Unified router - Natural language interface with intelligent agent orchestration"},
         {"name": "run_prompt", "description": "Execute a prompt"},
         {"name": "run_prompt_chain", "description": "Execute prompt chain"},
         {"name": "list_prompts", "description": "List available prompts"},

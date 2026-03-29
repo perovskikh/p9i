@@ -11,6 +11,14 @@ p9i is an MCP (Model Context Protocol) server for managing AI prompts through th
 ### Run the Server
 
 ```bash
+# Quick aliases (new!)
+make dev        # docker compose up     (локальная разработка)
+make deploy   # kubectl apply -f k8s/  (K3s деплой)
+make watch   # kubectl logs -f       (смотреть логи)
+make status  # kubectl get all -n p9i (статус)
+make scale  # scale deployment
+make hpa    # show HPA status
+
 # Local development
 pip install -e .
 python -m src.api.server
@@ -68,12 +76,29 @@ docker run --rm -i \
   p9i
 ```
 
+## p9i Agent (WebSocket Client)
+
+The `src/agents/agent.py` module provides a minimal WebSocket agent:
+
+- **WSSClient** - WebSocket клиент с reconnect + exponential backoff
+- **ShellService** - Remote shell command execution
+- **Agent** - Combines both for server-connected operations
+
+**Constants:**
+- `SHELL_TIMEOUT = 30.0` - shell command timeout (seconds)
+- `MAX_RETRIES = 5` - max reconnection attempts
+- `RECONNECT_BASE_DELAY = 1.0` - backoff delay (1→2→4→8→16s)
+
+**Protocol:** JSON with `{type, tag, data}` for 9P-like messaging
+
 ## Architecture
 
 The system follows Clean Architecture with MCP server pattern:
 
 ```
 src/
+├── agents/                   # p9i Agent (WebSocket client + shell)
+│   └── agent.py              # WSSClient, ShellService, Agent
 ├── api/server.py              # FastMCP server (20+ tools)
 ├── api/webui.py               # Web Dashboard (Streamlit)
 ├── application/               # Use cases, Agent routing, DTOs

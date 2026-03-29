@@ -29,6 +29,13 @@
 
 ---
 
+## K3s Endpoints
+
+| Endpoint | Description | Notes |
+|----------|-------------|-------|
+| `http://localhost:30080/mcp` | NodePort | ✅ Стабильно работает |
+| `http://mcp.coderweb.ru/mcp` | Traefik ingress | ⚠️ Требует правильный Accept header |
+
 ## Quick Start
 
 ### Шаг 1: Клонируй и настрой
@@ -45,21 +52,66 @@ cp .env.example .env
 # Docker (рекомендуется) — ЗАПУСКАЕТ ВСЕ СЕРВИСЫ
 docker compose up -d
 
-# Или только MCP сервер без PostgreSQL/Redis (для тестов)
-pip install -e .
-MCP_TRANSPORT=stdio python -m src.api.server
+# Или через Makefile
+make dev
 ```
 
 ### Шаг 3: Проверь статус
 
 ```bash
-# Должно показать работающие сервисы
-docker compose ps
+# Makefile (рекомендуется)
+make status
+
+# Или напрямую
+make watch   # смотреть логи
+make scale REPLICAS=5  # скейлинг
+make hpa    # статус HPA
 ```
+
+## p9i Команды
+
+### Natural Language (основные)
+
+| Команда | Описание |
+|---------|----------|
+| `init p9i` | Адаптировать к проекту |
+| `создай функцию` | Сгенерировать код |
+| `добавь кнопку` | UI компонент |
+| `deploy k8s` | Деплой в Kubernetes |
+| `сделай сайт` | Полный сайт на FastAPI |
+| `проверь код` | Code review |
+
+### Команды (системные)
+
+| Команда | Описание |
+|---------|----------|
+| `/help` | Показать help |
+| `/prompt list` | Список промтов |
+| `help` | Справка |
+| `status` | Статус системы |
+| `version` | Версия |
+| `show agents` | Доступные агенты |
+| `what can you do` | Возможности |
+
+### Agents
+
+| Agent | Назначение | Keywords |
+|-------|-----------|----------|
+| `full_cycle` | Полный цикл | реализуй, сделай, e2e |
+| `architect` | Архитектура | архитектура, спроектируй |
+| `developer` | Код | создай, добавь, напиши |
+| `reviewer` | Ревью | проверь, аудит |
+| `designer` | UI/UX | дизайн, кнопка |
+| `devops` | CI/CD | deploy, k8s, ci-cd |
 
 **После запуска:**
 - MCP SSE: `http://localhost:8000`
 - Web UI: `http://localhost:8080` (Streamlit)
+- K3s NodePort: `http://localhost:30080/mcp`
+
+**K3s Endpoints:**
+- NodePort (стабильно): `http://localhost:30080/mcp`
+- Traefik: `http://mcp.coderweb.ru/mcp`
 
 **Использование:**
 ```bash
@@ -783,6 +835,14 @@ python -m cli.main deploy cleanup    # Remove deployment
 Для удобства используй Makefile:
 
 ```bash
+# Quick aliases (новые!)
+make dev      # docker compose up          # Локальная разработка
+make deploy   # kubectl apply -f k8s/     # Деплой в K3s
+make watch  # kubectl logs -f          # Смотреть логи
+make status # kubectl get all -n p9i  # Статус
+make scale REPLICAS=5  # Scale deployment
+make hpa    # Show HPA status
+
 # Показать все цели
 make help
 
@@ -800,6 +860,9 @@ make k3s-restart            # Перезапуск
 # Helm
 make helm-install           # Установить Helm chart
 make helm-upgrade           # Обновить Helm
+
+# CI/CD
+make ci-check  # Локальные CI проверки
 
 # Backup
 make backup                 # Создать бекап

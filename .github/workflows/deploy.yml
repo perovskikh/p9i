@@ -1,0 +1,74 @@
+name: Deploy to K3s
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: pytest --cov=src --cov-report=xml
+
+      - name: Lint
+        run: |
+          pip install black ruff
+          black --check src/
+          ruff check src/
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          tags: |
+            p9i:latest
+            localhost:5000/p9i:k8s
+          load: true
+
+      - name: Push to local registry
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push localhost:5000/p9i:k8s
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to K3s
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.K3S_KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl apply -f k8s/
+          kubectl rollout status deployment/mcp-server -n p9i --timeout=300s
+
+      - name: Wait and verify
+        run: |
+          sleep 30
+          kubectl get pods -n p9i
+          kubectl get endpoints -n p9i

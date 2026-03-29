@@ -369,13 +369,21 @@ class P9iRouter:
 
     def _is_nl_query(self, request_lower: str) -> bool:
         """Определить NL query."""
+        # Expand patterns to catch more queries
         nl_patterns = [
-            r'^покажи',
-            r'^список',
-            r'^что\s+(умеешь|можешь)',
-            r'^как\s+(работает|использовать)',
-            r'^help',
-            r'^what\s+can',
+            r'^покажи',           # show
+            r'^список',           # list
+            r'^что\s+(умеешь|можешь)',  # what can
+            r'^как\s+(работает|использовать)',  # how
+            r'^help$',            # help (exact)
+            r'^what\s+can',      # what can
+            r'^status',          # status
+            r'^version',         # version
+            r'^show\s+',         # show ...
+            r'^list\s+',         # list ...
+            r'^agents',          # agents
+            r'^version\s+',     # version ...
+            r'^help\s+',        # help ...
         ]
         return any(re.match(p, request_lower) for p in nl_patterns)
 
@@ -526,6 +534,12 @@ class PromptCmdProcessor(Processor):
             registry = load_registry()
             prompts = registry.get("prompts", [])
 
+            # Ensure prompts is a list, not dict
+            if isinstance(prompts, dict):
+                prompts = list(prompts.values())
+            elif not isinstance(prompts, list):
+                prompts = []
+
             output = "# Available Prompts\n\n"
             for prompt in prompts[:20]:  # Limit output
                 name = prompt.get("name", "Unknown")
@@ -664,12 +678,31 @@ class NLQueryProcessor(Processor):
 
     async def process(self, intent: Intent, request: str, context: dict) -> dict:
         # Simple NL handling without LLM routing
-        if "список" in request.lower() or "list" in request.lower():
+        req_lower = request.lower()
+
+        # List commands
+        if "список" in req_lower or "list" in req_lower or "покажи" in req_lower:
             return await self._handle_list_prompts()
-        elif "что умеет" in request.lower() or "what can" in request.lower():
+
+        # What can you do
+        if "что умеет" in req_lower or "what can" in req_lower or "capabilities" in req_lower:
             return self._handle_capabilities()
-        elif "верси" in request.lower() or "version" in request.lower():
+
+        # Version
+        if "верси" in req_lower or "version" in req_lower or "v1" in req_lower:
             return self._handle_version()
+
+        # Help
+        if "help" in req_lower or "помощь" in req_lower or "справка" in req_lower:
+            return self._handle_help()
+
+        # Status
+        if "status" in req_lower or "статус" in req_lower:
+            return self._handle_status()
+
+        # Agents
+        if "agents" in req_lower or "агент" in req_lower:
+            return self._handle_agents()
 
         return {"status": "error", "error": "Unknown NL query"}
 
@@ -733,6 +766,55 @@ class NLQueryProcessor(Processor):
             "processor": "NLQueryProcessor"
         }
 
+    def _handle_help(self) -> dict:
+        return {
+            "status": "success",
+            "output": """# p9i Commands
+
+## Natural Language
+- "создай функцию" - Generate code
+- "добавь кнопку" - UI component
+- "deploy k8s" - Deployment
+- "сделай сайт" - Full website
+
+## Commands
+- /help - Show this help
+- /prompt list - List prompts
+- /status - System status
+- init p9i - Initialize project
+
+## Keywords
+- реализуй, добавь, создай → developer
+- проверь, ревью, аудит → reviewer
+- дизайн, ui, кнопка → designer
+- deploy, ci, cd, k8s → devops
+            """,
+            "processor": "NLQueryProcessor"
+        }
+
+    def _handle_status(self) -> dict:
+        return {
+            "status": "success",
+            "output": "System status: OK. MCP server running. Use /prompt list to see available prompts.",
+            "processor": "NLQueryProcessor"
+        }
+
+    def _handle_agents(self) -> dict:
+        return {
+            "status": "success",
+            "output": """# Available Agents
+
+- **full_cycle**: Complete development pipeline
+- **architect**: System design
+- **developer**: Code generation
+- **reviewer**: Code review
+- **designer**: UI/UX design
+- **devops**: CI/CD
+- **migration**: Migration
+            """,
+            "processor": "NLQueryProcessor"
+        }
+
 
 class SystemProcessor(Processor):
     """Обработка system команд."""
@@ -754,7 +836,7 @@ class SystemProcessor(Processor):
         try:
             from src.api.server import adapt_to_project
             project_path = context.get("project_path", ".")
-            result = await adapt_to_project(project_path=project_path)
+            result = adapt_to_project(project_path=project_path)
             return {
                 "status": "success",
                 "output": f"System initialized for project: {project_path}",
@@ -768,7 +850,7 @@ class SystemProcessor(Processor):
         try:
             from src.api.server import adapt_to_project
             project_path = context.get("project_path", ".")
-            result = await adapt_to_project(project_path=project_path)
+            result = adapt_to_project(project_path=project_path)
             return {
                 "status": "success",
                 "output": f"Adapted to project: {project_path}",
