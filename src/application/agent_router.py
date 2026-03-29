@@ -99,7 +99,7 @@ AGENT_KEYWORDS = {
     # Full cycle keywords - активируют полный цикл с арбитражом
     "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
     "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
-    "reviewer": ["проверь", "ревью", "аудит", "тест", "review", "check", "audit", "test"],
+    "reviewer": ["проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix", "ревью", "аудит", "тест", "review", "check", "audit", "test", "standard", "standards", "refactor", "рефакторинг"],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
         # English

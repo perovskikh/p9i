@@ -129,12 +129,6 @@ class PromptExecutor:
 
             # Check for section markers
             if stripped.startswith("---"):
-                if current_section == "system":
-                    system_parts.append("\n".join(system_parts))
-                elif current_section == "user":
-                    user_parts.append("\n".join(user_parts))
-                system_parts = []
-                user_parts = []
                 current_section = None
                 continue
 

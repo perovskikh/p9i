@@ -2538,6 +2538,112 @@ async def list_agents(
 
 
 @mcp.tool()
+def read_project_files(
+    project_path: str,
+    pattern: str = "*.py",
+    max_files: int = 20,
+    max_lines_per_file: int = 500
+) -> dict:
+    """
+    Read files from a project directory for agent analysis.
+
+    This tool enables agents to read actual project code for review,
+    refactoring, or understanding the codebase.
+
+    Args:
+        project_path: Path to the project directory (supports Docker mount paths)
+        pattern: Glob pattern for files (default: *.py)
+        max_files: Maximum number of files to read (default: 20)
+        max_lines_per_file: Maximum lines per file to include (default: 500)
+
+    Returns:
+        dict: File contents with structure info
+    """
+    from pathlib import Path
+    import os
+
+    # Mount mapping for Docker patterns
+    path = Path(project_path) if project_path else None
+
+    if path and not path.exists():
+        mount_mappings = [
+            ("/home/", "/project/"),
+            ("/workspace/", "/project/"),
+            ("/app/", "/project/"),
+            ("/root/", "/project/"),
+        ]
+        path_str = str(path)
+        for host_prefix, container_prefix in mount_mappings:
+            if path_str.startswith(host_prefix):
+                remaining = path_str[len(host_prefix):]
+                project_name = remaining.split('/')[-1] if remaining else ""
+                new_path = f"/project/{project_name}"
+                mapped = Path(new_path)
+                if mapped.exists():
+                    path = mapped
+                    break
+        if path and not path.exists():
+            app_path = Path("/app")
+            if app_path.exists() and (app_path / "src").exists():
+                path = app_path
+
+    if not path or not path.exists():
+        return {"status": "error", "error": f"Project path does not exist: {project_path}"}
+
+    files_data = []
+    total_lines = 0
+
+    try:
+        # Find matching files
+        for i, file_path in enumerate(sorted(path.rglob(pattern))):
+            if i >= max_files:
+                break
+
+            # Skip hidden directories and common exclusions
+            skip_dirs = {'.', '__pycache__', '.git', '.venv', 'node_modules', 'dist', 'build'}
+            if any(part.startswith('.') or part in skip_dirs for part in file_path.parts):
+                continue
+
+            try:
+                content = file_path.read_text(encoding='utf-8', errors='replace')
+                lines = content.split('\n')
+
+                # Truncate if too long
+                if len(lines) > max_lines_per_file:
+                    content = '\n'.join(lines[:max_lines_per_file])
+                    truncation_note = f"\n# ... truncated from {len(lines)} to {max_lines_per_file} lines"
+                    content += truncation_note
+
+                rel_path = file_path.relative_to(path)
+                files_data.append({
+                    "path": str(rel_path),
+                    "lines": len(lines),
+                    "size": len(content),
+                    "content": content
+                })
+                total_lines += len(lines)
+            except Exception as e:
+                logger.warning(f"Failed to read {file_path}: {e}")
+
+        return {
+            "status": "success",
+            "project_path": str(path),
+            "files_count": len(files_data),
+            "total_lines": total_lines,
+            "pattern": pattern,
+            "files": files_data,
+            "summary": {
+                "readme_exists": (path / "README.md").exists(),
+                "requirements_exists": (path / "requirements.txt").exists(),
+                "package_json_exists": (path / "package.json").exists(),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error reading project files: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
 def execute_bash(command: str, cwd: str = "/app") -> dict:
     """
     Execute a bash command and return output.
@@ -2723,6 +2829,7 @@ def get_available_mcp_tools() -> dict:
         {"name": "github_mcp_list_issues", "description": "List GitHub issues"},
         {"name": "github_mcp_create_pr", "description": "Create a pull request"},
         {"name": "execute_bash", "description": "Execute bash command"},
+        {"name": "read_project_files", "description": "Read project source files for agent analysis"},
         {"name": "generate_jwt_token", "description": "Generate JWT token"},
         {"name": "validate_jwt_token", "description": "Validate JWT token"},
         {"name": "revoke_jwt_token", "description": "Revoke JWT token"},
@@ -3016,10 +3123,14 @@ def _run_mcp_http_thread():
         from starlette.middleware.cors import CORSMiddleware
         from fastmcp.server.http import SseServerTransport
 
+        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost:8501"]
+        if os.getenv("CORS_ORIGINS"):
+            allowed_origins.extend(os.getenv("CORS_ORIGINS").split(","))
+
         cors_middleware = [
             Middleware(
                 CORSMiddleware,
-                allow_origins=["*"],
+                allow_origins=allowed_origins,
                 allow_methods=["GET", "POST", "OPTIONS"],
                 allow_headers=["*"],
                 expose_headers=["mcp-session-id"],
@@ -3039,10 +3150,14 @@ def _run_mcp_http_thread():
         from starlette.middleware import Middleware
         from starlette.middleware.cors import CORSMiddleware
 
+        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost:8501"]
+        if os.getenv("CORS_ORIGINS"):
+            allowed_origins.extend(os.getenv("CORS_ORIGINS").split(","))
+
         cors_middleware = [
             Middleware(
                 CORSMiddleware,
-                allow_origins=["*"],
+                allow_origins=allowed_origins,
                 allow_methods=["GET", "POST", "OPTIONS"],
                 allow_headers=["*"],
                 expose_headers=["mcp-session-id"],

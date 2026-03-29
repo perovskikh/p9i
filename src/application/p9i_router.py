@@ -140,6 +140,12 @@ class P9iRouter:
 
             # === REVIEWER ===
             "проверь": (IntentType.AGENT_TASK, "reviewer"),
+            "исправь": (IntentType.AGENT_TASK, "reviewer"),
+            "приведи": (IntentType.AGENT_TASK, "reviewer"),
+            "исправить": (IntentType.AGENT_TASK, "reviewer"),
+            "привести": (IntentType.AGENT_TASK, "reviewer"),
+            "фикс": (IntentType.AGENT_TASK, "reviewer"),
+            "fix": (IntentType.AGENT_TASK, "reviewer"),
             "ревью": (IntentType.AGENT_TASK, "reviewer"),
             "аудит": (IntentType.AGENT_TASK, "reviewer"),
             "тест": (IntentType.AGENT_TASK, "reviewer"),
@@ -147,6 +153,10 @@ class P9iRouter:
             "check": (IntentType.AGENT_TASK, "reviewer"),
             "audit": (IntentType.AGENT_TASK, "reviewer"),
             "test": (IntentType.AGENT_TASK, "reviewer"),
+            "standard": (IntentType.AGENT_TASK, "reviewer"),
+            "standards": (IntentType.AGENT_TASK, "reviewer"),
+            "refactor": (IntentType.AGENT_TASK, "reviewer"),
+            "рефакторинг": (IntentType.AGENT_TASK, "reviewer"),
 
             # === DESIGNER ===
             "ui": (IntentType.AGENT_TASK, "designer"),

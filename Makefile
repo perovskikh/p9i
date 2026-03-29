@@ -269,8 +269,8 @@ k3s-status:
 .PHONY: k3s-port-forward
 k3s-port-forward:
 	@echo "$(YELLOW)Port forwarding to K3s service...$(NC)"
-	@echo "MCP: localhost:8000 -> p9i-mcp-server:8000"
-	sudo k3s kubectl port-forward -n $(NAMESPACE) svc/p9i-mcp-server 8000:8000 & \
+	@echo "MCP: localhost:8000 -> mcp-server:8000"
+	sudo k3s kubectl port-forward -n $(NAMESPACE) svc/mcp-server 8000:8000 & \
 	wait
 
 .PHONY: k3s-describe
