@@ -327,7 +327,7 @@ class P9iRouter:
                 metadata={"agent": agent_match}
             )
 
-        # 5. Проверка NL queries
+        # 5. Check NL queries
         if self._is_nl_query(request_lower):
             return Intent(
                 type=IntentType.NL_QUERY,
@@ -336,7 +336,16 @@ class P9iRouter:
                 metadata={"query": request_lower}
             )
 
-        # 6. Проверка system commands
+        # 6. Check for bare "p9i" command - show capabilities
+        if request_lower.strip() == "p9i":
+            return Intent(
+                type=IntentType.NL_QUERY,
+                confidence=1.0,
+                matched_keyword="p9i",
+                metadata={"query": "what can you do"}
+            )
+
+        # 7. Check system commands
         if self._is_system_command(request_lower):
             return Intent(
                 type=IntentType.SYSTEM,
