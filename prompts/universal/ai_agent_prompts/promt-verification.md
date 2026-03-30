@@ -1,10 +1,21 @@
 ---
-name: promt-verification
-version: "3.4"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Комплексная верификация соответствия ADR, качества кода и готовности
+  к production
 layer: Meta
+name: promt-verification
 status: active
-tags: [verification, adr, code, quality, self-verification]
+tags:
+- verification
+- adr
+- code
+- quality
+- self-verification
+type: p9i
+version: '3.4'
 ---
 
 # AI Agent Prompt: Верификация качества кода и ADR

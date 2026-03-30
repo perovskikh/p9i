@@ -1,10 +1,19 @@
 ---
-name: promt-workflow-orchestration
-version: "1.2"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Оркестрация сложных multi-prompt workflows с зависимостями и параллелизацией
 layer: Meta
+name: promt-workflow-orchestration
 status: active
-tags: [workflow, orchestration, pipeline, automation]
+tags:
+- workflow
+- orchestration
+- pipeline
+- automation
+type: p9i
+version: '1.2'
 ---
 
 # AI Agent Prompt: Оркестрация workflow и цепочка задач

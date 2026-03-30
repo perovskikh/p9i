@@ -1,13 +1,16 @@
 ---
+
 name: promt-feature-add
 version: "1.5"
 type: p9i
 layer: Operations
 status: active
+description: "Управление полным жизненным циклом добавления нового функционала: исследование, ADR-решения, реализация, верификация"
 tags: [feature, adr, context7]
+dependencies: [promt-verification, promt-index-update, promt-consolidation]
 ---
 
-# AI Agent Prompt: Добавление нового функционала в 
+# AI Agent Prompt: Добавление нового функционала в проект
 
 **Version:** 1.5
 **Date:** 2026-03-06
@@ -39,7 +42,7 @@ tags: [feature, adr, context7]
 
 ## Когда использовать
 
-- При добавлении нового функционала в  (Telegram Bot, API, K8s, CI/CD)
+- При добавлении нового функционала в проект (Telegram Bot, API, K8s, CI/CD)
 - При расширении ADR идеями из внешних документов (how-to, спецификации, design doc)
 - Когда требуется новое ADR-решение перед реализацией
 - При интеграции новой зависимости или сервиса в стек

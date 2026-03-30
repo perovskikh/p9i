@@ -1,10 +1,20 @@
 ---
-name: promt-project-rules-sync
-version: "1.1"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Синхронизация правил проекта (`docs/rules/project-rules.md`) с текущим
+  состоянием ADR и промтов
 layer: Meta
+name: promt-project-rules-sync
 status: active
-tags: [rules, sync, project, configuration]
+tags:
+- rules
+- sync
+- project
+- configuration
+type: p9i
+version: '1.1'
 ---
 
 # AI Agent Prompt: Синхронизация project rules с системой

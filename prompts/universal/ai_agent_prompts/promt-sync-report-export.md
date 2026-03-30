@@ -1,10 +1,20 @@
 ---
-name: promt-sync-report-export
-version: "1.2"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Экспорт отчётов синхронизации в различные форматы для документации и
+  обмена
 layer: Meta
+name: promt-sync-report-export
 status: active
-tags: [sync, export, report, documentation]
+tags:
+- sync
+- export
+- report
+- documentation
+type: p9i
+version: '1.2'
 ---
 
 # AI Agent Prompt: Экспорт отчётов синхронизации

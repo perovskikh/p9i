@@ -1,4 +1,4 @@
-# AI Agent Prompt: Исправление дефектов (Bug Fix) в 
+# AI Agent Prompt: Исправление дефектов (Bug Fix) в проект
 
 **Version:** 1.2
 **Date:** 2026-03-06

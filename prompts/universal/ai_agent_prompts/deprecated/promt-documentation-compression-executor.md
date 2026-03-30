@@ -1,10 +1,19 @@
 ---
-name: promt-documentation-quality-compression
-version: "1.1"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Компрессия документации при сохранении качества и структурирование для
+  оптимизации
 layer: Meta
+name: promt-documentation-quality-compression
 status: active
-tags: [documentation, quality, compression]
+tags:
+- documentation
+- quality
+- compression
+type: p9i
+version: '1.1'
 ---
 
 # AI Agent Prompt: Компрессия и качество документации

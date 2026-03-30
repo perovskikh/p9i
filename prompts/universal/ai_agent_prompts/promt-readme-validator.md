@@ -1,10 +1,22 @@
 ---
-name: promt-readme-validator
-version: "1.0"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Проверка README.md на соответствие стандартам Diátaxis, GitHub Community
+  и best practices 2026
 layer: Universal
+name: promt-readme-validator
 status: active
-tags: [readme, validator, documentation, diataxis, quality, audit]
+tags:
+- readme
+- validator
+- documentation
+- diataxis
+- quality
+- audit
+type: p9i
+version: '1.0'
 ---
 
 # AI Agent Prompt: README.md Validator

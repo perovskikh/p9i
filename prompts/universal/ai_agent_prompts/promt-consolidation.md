@@ -1,10 +1,19 @@
 ---
-name: promt-consolidation
-version: "2.5"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Объединение дублирующих ADR, устранение пересечений и синхронизация ссылок
 layer: Meta
+name: promt-consolidation
 status: active
-tags: [consolidation, dedup, sync, adr]
+tags:
+- consolidation
+- dedup
+- sync
+- adr
+type: p9i
+version: '2.5'
 ---
 
 # AI Agent Prompt: Консолидация изменений и синхронизация ADR

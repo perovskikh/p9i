@@ -1,10 +1,20 @@
 ---
-name: promt-system-evolution
-version: "1.2"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Планирование эволюции AI Prompt System, roadmap развития, архитектурные
+  улучшения
 layer: Meta
+name: promt-system-evolution
 status: active
-tags: [evolution, roadmap, architecture, planning]
+tags:
+- evolution
+- roadmap
+- architecture
+- planning
+type: p9i
+version: '1.2'
 ---
 
 # AI Agent Prompt: Эволюция системы и roadmap

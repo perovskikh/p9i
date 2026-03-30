@@ -1,10 +1,18 @@
 ---
-name: promt-readme-sync
-version: "1.0"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Автоматическая синхронизация README.md с текущим состоянием prompt registry
 layer: Meta
+name: promt-readme-sync
 status: active
-tags: [sync, readme, documentation]
+tags:
+- sync
+- readme
+- documentation
+type: p9i
+version: '1.0'
 ---
 
 # AI Agent Prompt: Синхронизация README.md с registry.json

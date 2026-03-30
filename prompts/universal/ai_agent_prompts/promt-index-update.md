@@ -1,10 +1,20 @@
 ---
-name: promt-index-update
-version: "2.6"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Синхронизация index.md, README.md и других индексных файлов с текущим
+  состоянием ADR
 layer: Meta
+name: promt-index-update
 status: active
-tags: [index, sync, documentation, readme]
+tags:
+- index
+- sync
+- documentation
+- readme
+type: p9i
+version: '2.6'
 ---
 
 # AI Agent Prompt: Обновление индексов и документации

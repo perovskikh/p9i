@@ -1,10 +1,20 @@
 ---
-name: promt-adr-implementation-planner
-version: "2.3"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Планирование очереди внедрения ADR, трекинг прогресса, Critical Path
+  анализ
 layer: Meta
+name: promt-adr-implementation-planner
 status: active
-tags: [adr, planning, implementation, tracking]
+tags:
+- adr
+- planning
+- implementation
+- tracking
+type: p9i
+version: '2.3'
 ---
 
 # AI Agent Prompt: Планирование и трекинг ADR implementation

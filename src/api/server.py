@@ -10,15 +10,32 @@ MCP-сервер для управления AI-промтами с полным
 """
 
 # Load .env FIRST, before any imports that might use os.getenv
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-env_paths = [
-    Path.cwd() / ".env",
-    Path(__file__).parent.parent / ".env",
-    Path("/app/.env"),
+# Define safe paths for .env loading (in order of priority)
+# Only load from trusted locations to prevent path traversal
+SAFE_ENV_PATHS = [
+    Path("/app/.env"),                    # Production Docker
+    Path.home() / ".p9i" / ".env",       # User config directory
 ]
-for env_path in env_paths:
+
+# Add project root .env only if it's not writable by others (security check)
+project_root = Path.cwd()
+project_env = project_root / ".env"
+if project_env.exists():
+    try:
+        # Check if .env is not world-writable
+        stat_info = project_env.stat()
+        mode = stat_info.st_mode
+        if not (mode & 0o002):  # Not world-writable
+            SAFE_ENV_PATHS.append(project_env)
+    except OSError:
+        pass  # Skip if can't check
+
+# Load from first valid path
+for env_path in SAFE_ENV_PATHS:
     if env_path.exists():
         load_dotenv(env_path, override=True)
         break
@@ -99,7 +116,10 @@ JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
     if JWT_ENABLED:
         raise ValueError("JWT_SECRET environment variable must be set when JWT_ENABLED=true")
-    JWT_SECRET = "dev-only-secret"  # Only used when JWT is disabled
+    # Generate random secret at startup for dev mode only
+    import secrets
+    JWT_SECRET = secrets.token_urlsafe(32)
+    logger.warning("JWT_SECRET not set, generated random secret. JWT authentication will not persist across restarts.")
 
 # Import JWT service if enabled
 _jwt_service = None

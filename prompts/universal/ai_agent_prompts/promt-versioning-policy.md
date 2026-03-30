@@ -1,10 +1,20 @@
 ---
-name: promt-versioning-policy
-version: "1.3"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Зафиксировать единые правила version bump (MAJOR/MINOR/PATCH) для prompt-файлов
+  и проверяемый workflow синхронизации header/footer/README registry
 layer: Meta
+name: promt-versioning-policy
 status: active
-tags: [versioning, policy, semver, registry]
+tags:
+- versioning
+- policy
+- semver
+- registry
+type: p9i
+version: '1.3'
 ---
 
 # AI Agent Prompt: Формальная semver-политика промптов для 

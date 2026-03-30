@@ -1,10 +1,19 @@
 ---
-name: promt-adr-template-migration
-version: "1.4"
-type: p9i
+
+dependencies:
+- promt-verification
+- promt-index-update
+description: Миграция существующих ADR на новые форматы шаблонов с dual-status и чеклистами
 layer: Meta
+name: promt-adr-template-migration
 status: active
-tags: [adr, template, migration, standards]
+tags:
+- adr
+- template
+- migration
+- standards
+type: p9i
+version: '1.4'
 ---
 
 # AI Agent Prompt: Миграция на новые форматы ADR template
