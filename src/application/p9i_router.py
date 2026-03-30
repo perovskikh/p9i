@@ -699,6 +699,10 @@ class NLQueryProcessor(Processor):
         # Simple NL handling without LLM routing
         req_lower = request.lower()
 
+        # Handle bare "p9i" command - show capabilities
+        if intent.matched_keyword == "p9i" or req_lower.strip() == "p9i":
+            return self._handle_capabilities()
+
         # List commands
         if "список" in req_lower or "list" in req_lower or "покажи" in req_lower:
             return await self._handle_list_prompts()
