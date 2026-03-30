@@ -17,6 +17,7 @@ p9i — это MCP (Model Context Protocol) сервер для управлен
 - [Возможности](#возможности)
 - [Быстрый старт](#быстрый-старт)
 - [Установка](#установка)
+- [Development Setup](#development-setup)
 - [Использование](#использование)
 - [Конфигурация](#конфигурация)
 - [MCP Инструменты](#mcp-инструменты)
@@ -92,6 +93,31 @@ docker push localhost:5000/p9i:k8s
 
 # Деплой
 sudo k3s kubectl apply -f k8s/
+```
+
+## Development Setup
+
+### Pre-commit Hooks
+
+Проект использует pre-commit хуки для автоматической валидации ADR файлов при коммите.
+
+```bash
+# Установить pre-commit
+pip install -r .pre-commit-requirements.txt
+
+# Активировать хуки
+pre-commit install --install-hooks
+
+# Запустить вручную
+pre-commit run --all-files
+```
+
+**Валидация ADR:** hook проверяет формат именования (ADR-NNN-title.md), уникальность номеров и тем.
+
+### Запуск без хуков (не рекомендуется)
+
+```bash
+git commit --no-verify -m "message"
 ```
 
 ## Использование
@@ -281,6 +307,8 @@ pytest --cov=src
 | 8 | ✅ | UI/UX Generation |
 | 9 | ✅ | Multi-Agent Orchestrator (7 agents) |
 | 10 | ✅ | Clean Architecture |
+| 11 | ✅ | Pre-commit hooks installation |
+| **Total** | **8 ADRs** | See [docs/explanation/adr/](docs/explanation/adr/) |
 
 ## Лицензия
 
