@@ -1,0 +1,2 @@
+# Pre-commit hooks requirements
+pre-commit>=3.0.0
