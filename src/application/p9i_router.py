@@ -225,8 +225,6 @@ class P9iRouter:
             "ui design": (IntentType.AGENT_TASK, "designer"),
             "generate ui": (IntentType.AGENT_TASK, "designer"),
             "create ui": (IntentType.AGENT_TASK, "designer"),
-            "ui ": (IntentType.AGENT_TASK, "designer"),
-            "ux ": (IntentType.AGENT_TASK, "designer"),
 
             # === BROWSER INTEGRATION ===
             "browser": (IntentType.AGENT_TASK, "developer"),

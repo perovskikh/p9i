@@ -331,8 +331,11 @@ class AgentRouter:
 
         # Check for full cycle commands first (реализуй, внедри, сделай, e2e)
         if "full_cycle" in AGENT_KEYWORDS:
+            import re
             for keyword in AGENT_KEYWORDS["full_cycle"]:
-                if keyword in request_lower:
+                # Use word boundary matching to avoid substring matches
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, request_lower):
                     # Full cycle detected - determine orchestration based on context
                     return self._orchestrate_full_cycle(request_lower)
 
@@ -452,7 +455,8 @@ class AgentRouter:
         request_lower = request.lower()
 
         # Try semantic matching via PromptRegistry first
-        if self._initialized and self._registry:
+        # Access self.registry to trigger lazy initialization if needed
+        if self._registry is not None:
             # Get agent's category for filtering
             agent_category = agent.category
 
