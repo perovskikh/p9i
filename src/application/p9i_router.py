@@ -298,8 +298,7 @@ class P9iRouter:
             if request_stripped:
                 # Рекурсивно классифицируем без префикса
                 # Но сохраняем информацию что был префикс
-                stripped_request = request_stripped if len(request_stripped) < len(request) else request_stripped
-                result = self._classify_internal(stripped_request)
+                result = self._classify_internal(request_stripped)
                 # Увеличиваем confidence если был p9i prefix
                 if result.confidence < 1.0:
                     result.confidence = min(1.0, result.confidence + 0.1)
@@ -318,7 +317,7 @@ class P9iRouter:
     def _classify_internal(self, request_lower: str) -> Intent:
 
         # 1. Проверка prompt commands (HIGHER priority than system commands!)
-        if request_lower.startswith('/prompt'):
+        if request_lower.startswith('/prompt ') or request_lower == '/prompt':
             return Intent(
                 type=IntentType.PROMPT_CMD,
                 confidence=1.0,

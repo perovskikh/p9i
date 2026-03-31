@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -89,7 +90,9 @@ class RuleBasedRouter(BaseRouter[RoutingResult]):
 
         # Try keyword matching first
         for keyword, prompt_id in self._keyword_patterns.items():
-            if keyword in query_lower:
+            # Use word boundary matching to avoid substring matches
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, query_lower):
                 prompt_entry = candidates_by_id.get(prompt_id)
                 if prompt_entry:
                     return RoutingResult(

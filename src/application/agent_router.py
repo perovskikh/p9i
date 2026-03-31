@@ -9,6 +9,9 @@ Now integrated with PromptRegistry for unified pipeline: Intent → Agent → Pr
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Import PromptRegistry from cascade module
 from src.application.router.cascade import (
@@ -125,7 +128,7 @@ AGENT_KEYWORDS = {
     # Full cycle keywords - активируют полный цикл с арбитражом
     "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
     "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
-    "reviewer": ["проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix", "ревью", "аудит", "тест", "review", "check", "audit", "test", "standard", "standards", "refactor", "рефакторинг"],
+    "reviewer": ["проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix", "ревью", "аудит", "тест", "review", "check", "audit", "test", "standard", "standards"],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
         # English
@@ -269,9 +272,9 @@ class AgentRouter:
 
                 except Exception as e:
                     # Skip problematic files
-                    pass
+                    logger.warning(f"Skipped prompt file {md_file}: {e}")
         except Exception as e:
-            pass
+            logger.warning(f"Error scanning directory {directory}: {e}")
 
     def _register_agent_rules(self) -> None:
         """
