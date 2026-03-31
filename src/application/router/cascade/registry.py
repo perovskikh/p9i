@@ -216,9 +216,14 @@ class PromptRegistry:
 
         # Remove from indices
         self._index_by_name.pop(entry.name, None)
-        self._index_by_category.get(entry.metadata.category, []).remove(prompt_id)
+        # Safely remove from category index (list.remove can raise ValueError)
+        cat_list = self._index_by_category.get(entry.metadata.category)
+        if cat_list and prompt_id in cat_list:
+            cat_list.remove(prompt_id)
         for tag in entry.metadata.tags:
-            self._index_by_tag.get(tag, set()).discard(prompt_id)
+            tag_set = self._index_by_tag.get(tag)
+            if tag_set:
+                tag_set.discard(prompt_id)
 
         return entry
 

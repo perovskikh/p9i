@@ -79,6 +79,9 @@ class HybridPromptRouter:
 
         self._logger = logging.getLogger(f"{__name__}.HybridPromptRouter")
 
+        # Initialize _variants to avoid AttributeError if route() called before register_prompts()
+        self._variants: list["PromptEntry"] = []
+
     def register_prompts(self, variants: Sequence[PromptEntry]) -> None:
         """Register all available prompt variants."""
         self._variants = list(variants)

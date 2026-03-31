@@ -830,10 +830,10 @@ class AgentTaskProcessor(Processor):
             # Get initial PromptEntry for this request - use orchestrator's registry
             prompt_entry = None
             if intent.agent_name:
-                # Get prompt entry from orchestrator's registry
-                registry = getattr(self.orchestrator, 'registry', None)
+                # Get prompt entry from orchestrator's router registry
+                registry = getattr(self.orchestrator.router, 'registry', None)
                 if registry:
-                    prompt_entry = registry.find_by_name(intent.agent_name)
+                    prompt_entry = registry.get_by_name(intent.agent_name)
 
             # Route with PromptEntry propagation
             result = await self.orchestrator.route_with_entry(
@@ -1134,8 +1134,8 @@ class SystemProcessor(Processor):
                             framework = "React"
                         elif "vue" in deps:
                             framework = "Vue.js"
-                    except:
-                        pass
+                    except (json.JSONDecodeError, OSError, KeyError):
+                        pass  # Framework detection is best-effort
 
                 # Database detection
                 db_detected = False
@@ -1274,8 +1274,8 @@ class SystemProcessor(Processor):
                             framework = "React"
                         elif "vue" in deps:
                             framework = "Vue.js"
-                    except:
-                        pass
+                    except (json.JSONDecodeError, OSError, KeyError):
+                        pass  # Framework detection is best-effort
 
                 # Database detection
                 db_detected = False
