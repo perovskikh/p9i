@@ -247,10 +247,6 @@ class P9iRouter:
             "исправить ошибку": (IntentType.AGENT_TASK, "developer"),
             "fix bug": (IntentType.AGENT_TASK, "developer"),
             "найди": (IntentType.AGENT_TASK, "developer"),
-            "фикс": (IntentType.AGENT_TASK, "developer"),
-            "ошибку": (IntentType.AGENT_TASK, "developer"),
-            "исправить": (IntentType.AGENT_TASK, "developer"),
-            "исправь": (IntentType.AGENT_TASK, "developer"),
             "bug": (IntentType.AGENT_TASK, "developer"),
 
             # === TESTING ===
