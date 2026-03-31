@@ -404,6 +404,27 @@ class P9iRouter:
     def _check_agents(self, request_lower: str) -> Optional[tuple]:
         """Проверить agent keywords (longest first) with word boundary matching."""
         import re
+
+        # === CONTEXT-AWARE OVERRIDES ===
+        # When "проверь" OR "анализ" appears WITH architecture/system/design keywords,
+        # route to architect instead of reviewer (code review)
+        architect_context_keywords = [
+            "архитектур", "систем", "дизайн", "design", "architect",
+            "структур", "компонент", "модул", "архитектура", "architecture",
+            "промт", "агент", "маршрут"
+        ]
+
+        # Check if request has architect/system context keywords
+        has_architect_context = any(kw in request_lower for kw in architect_context_keywords)
+
+        # "проверь + architect context" OR "анализ + architect context" → architect
+        has_proverь = re.search(r'\bпроверь\b', request_lower)
+        has_analysis = re.search(r'\bанализ\b', request_lower)
+
+        if has_architect_context and (has_proverь or has_analysis):
+            return "architect"
+        # === END CONTEXT-AWARE OVERRIDES ===
+
         # Priority order (longest first!) для избежания конфликтов
         for keyword, mapping in sorted(
             self.KEYWORD_MAP.items(),
