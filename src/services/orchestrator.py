@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 from src.services.executor import PromptExecutor
+from src.services.checkpoint_executor import get_checkpoint_executor, CheckpointExecutor
 from src.application.agent_router import AgentRouter, AGENTS
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def load_prompt(prompt_name: str) -> str:
     ]
 
     # Subdirectories to check
-    subdirs = ["architect", "developer", "reviewer", "designer", "devops"]
+    subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration"]
 
     # First try with exact name as provided
     for search_dir in search_dirs:
@@ -64,6 +65,20 @@ def load_prompt(prompt_name: str) -> str:
                 if prompt_file.exists():
                     return prompt_file.read_text()
 
+            # Also check inside pack subdirectories (e.g. prompts/packs/pinescript-v6/)
+            if search_dir.name == "packs":
+                for subpack in search_dir.iterdir():
+                    if subpack.is_dir():
+                        prompt_file = subpack / f"{alt_name}.md"
+                        if prompt_file.exists():
+                            return prompt_file.read_text()
+                        # Check deeper subdirectories within pack
+                        for deeper in subpack.iterdir():
+                            if deeper.is_dir():
+                                prompt_file = deeper / f"{alt_name}.md"
+                                if prompt_file.exists():
+                                    return prompt_file.read_text()
+
     return ""
 
 
@@ -74,10 +89,12 @@ class AgentOrchestrator:
     Now delegates routing to AgentRouter and execution to PromptExecutor.
     """
 
-    def __init__(self):
+    def __init__(self, use_checkpoint: bool = True):
         self.router = AgentRouter()
         self.executor = PromptExecutor()
         self.memory: Dict[str, Any] = {}
+        self._checkpoint_executor: Optional[CheckpointExecutor] = None
+        self._use_checkpoint = use_checkpoint
 
     def _detect_agents(self, request: str) -> list[str]:
         """Detect which agents are needed based on request."""
@@ -105,7 +122,8 @@ class AgentOrchestrator:
         self,
         agent_name: str,
         request: str,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        use_checkpoint: bool = None
     ):
         """Execute a single agent."""
         from dataclasses import dataclass
@@ -117,6 +135,10 @@ class AgentOrchestrator:
             output: str = ""
             error: str = None
             metadata: dict = None
+
+        # Use instance default if not specified
+        if use_checkpoint is None:
+            use_checkpoint = self._use_checkpoint
 
         agent = AGENTS.get(agent_name)
         if not agent:
@@ -148,7 +170,52 @@ class AgentOrchestrator:
             exec_context["task"] = request
             exec_context["memory"] = self.get_agent_context(agent_name)
 
-            # Execute prompt with content
+            # Use checkpoint executor for write-heavy tasks
+            if use_checkpoint and agent_name in ("developer", "full_cycle"):
+                checkpoint_exec = get_checkpoint_executor()
+                result = await checkpoint_exec.execute_with_checkpoint(
+                    prompt=prompt_content,
+                    request=request,
+                    context=exec_context,
+                    write_to_disk=True,
+                )
+
+                # Map checkpoint result to AgentResult
+                exec_status = result.get("status", "error")
+                exec_output = result.get("content", "")
+
+                # Add file info to metadata
+                files_result = result.get("files", {})
+                metadata = {
+                    "prompt": prompt_name,
+                    "agent_description": agent.description,
+                    "execution_id": result.get("execution_id"),
+                    "files_written": files_result.get("written", []),
+                    "files_failed": files_result.get("failed", {}),
+                }
+
+                if files_result.get("written"):
+                    logger.info(f"Checkpoint executor wrote {len(files_result['written'])} files")
+                if files_result.get("failed"):
+                    logger.error(f"Checkpoint executor failed to write: {files_result['failed']}")
+
+                # Save to memory
+                self.save_agent_context(agent_name, {
+                    "last_request": request,
+                    "output": exec_output,
+                    "prompt": prompt_name,
+                    "execution_id": result.get("execution_id"),
+                })
+
+                return AgentResult(
+                    agent=agent_name,
+                    status=exec_status,
+                    output=exec_output,
+                    error=result.get("error"),
+                    metadata=metadata,
+                )
+
+            # Original execution path
             result = await self.executor.execute(prompt_content, exec_context)
 
             logger.info(f"Agent {agent_name} executor result: status={result.get('status')}, content_len={len(result.get('content', ''))}, error={result.get('error')}")

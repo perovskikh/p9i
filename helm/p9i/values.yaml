@@ -10,6 +10,12 @@ microk8s:
 
 replicaCount: 1
 
+hpa:
+  enabled: true
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
 image:
   repository: localhost:5000/p9i
   tag: latest
@@ -24,13 +30,14 @@ service:
 ingress:
   enabled: true
   className: traefik
+  path: /mcp
   annotations:
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts:
     - host: mcp.coderweb.ru
       paths:
-        - path: /
+        - path: /mcp
           pathType: Prefix
   tls:
     - secretName: p9i-tls
@@ -40,10 +47,10 @@ ingress:
 resources:
   limits:
     cpu: 1000m
-    memory: 1Gi
+    memory: 512Mi
   requests:
     cpu: 250m
-    memory: 512Mi
+    memory: 256Mi
 
 env:
   SERVER_HOST: 0.0.0.0

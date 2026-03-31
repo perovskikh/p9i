@@ -239,8 +239,9 @@ k3s-status-nodes: ## Show K3s nodes status
 
 .PHONY: k3s-deploy
 k3s-deploy: build-push
-	@echo "$(YELLOW)Deploying to K3s...$(NC)"
-	sudo k3s kubectl apply -f $(K8S_DIR)/
+	@echo "$(YELLOW)Deploying to K3s via Helm...$(NC)"
+	sudo k3s kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | sudo k3s kubectl apply -f -
+	sudo k3s helm upgrade --install $(NAMESPACE) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace -f $(HELM_CHART)/values.yaml --wait --timeout 5m
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
 
 .PHONY: k3s-delete

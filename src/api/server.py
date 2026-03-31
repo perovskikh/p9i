@@ -714,6 +714,44 @@ def load_prompt(prompt_name: str) -> dict:
                 "content": content
             }
 
+    # Try in subdirectories (including pack subdirectories like pinescript-v6/prompts/)
+    subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration", "ai_agent_prompts", "universal"]
+    for subdir in subdirs:
+        prompt_file = PROMPTS_DIR / subdir / f"{prompt_name}.md"
+        if prompt_file.exists():
+            content = prompt_file.read_text()
+            return {
+                "name": prompt_name,
+                "file": str(subdir / prompt_file.name),
+                "content": content
+            }
+
+    # Try in pack subdirectories (prompts/packs/*/prompts/)
+    packs_dir = PROMPTS_DIR / "packs"
+    if packs_dir.exists():
+        for pack in packs_dir.iterdir():
+            if pack.is_dir():
+                # Check prompts/ subdirectory
+                prompts_subdir = pack / "prompts"
+                if prompts_subdir.exists():
+                    prompt_file = prompts_subdir / f"{prompt_name}.md"
+                    if prompt_file.exists():
+                        content = prompt_file.read_text()
+                        return {
+                            "name": prompt_name,
+                            "file": str(pack.name / "prompts" / prompt_file.name),
+                            "content": content
+                        }
+                # Also check pack root
+                prompt_file = pack / f"{prompt_name}.md"
+                if prompt_file.exists():
+                    content = prompt_file.read_text()
+                    return {
+                        "name": prompt_name,
+                        "file": str(pack.name / prompt_file.name),
+                        "content": content
+                    }
+
     # Use registry to find the correct path
     registry = load_registry()
     prompts = registry.get("prompts", {})

@@ -189,6 +189,14 @@ class P9iRouter:
             "k8s": (IntentType.AGENT_TASK, "devops"),
             "pipeline": (IntentType.AGENT_TASK, "devops"),
 
+            # === MIGRATION ===
+            "миграция": (IntentType.AGENT_TASK, "migration"),
+            "мигрируй": (IntentType.AGENT_TASK, "migration"),
+            "миграц": (IntentType.AGENT_TASK, "migration"),
+            "migrate": (IntentType.AGENT_TASK, "migration"),
+            "migration": (IntentType.AGENT_TASK, "migration"),
+            "переход": (IntentType.AGENT_TASK, "migration"),
+
             # === SYSTEM ADAPTATION ===
             "init p9i": IntentType.SYSTEM,
             "p9i init": IntentType.SYSTEM,
@@ -304,7 +312,18 @@ class P9iRouter:
                 metadata={"command": request_lower}
             )
 
-        # 3. Проверка pack triggers
+        # 3. Проверка agent tasks FIRST (before packs to prevent conflicts)
+        agent_match = self._check_agents(request_lower)
+        if agent_match:
+            return Intent(
+                type=IntentType.AGENT_TASK,
+                confidence=0.90,
+                agent_name=agent_match,
+                matched_keyword=request_lower,
+                metadata={"agent": agent_match}
+            )
+
+        # 4. Проверка pack triggers
         pack_match = self._check_packs(request_lower)
         if pack_match:
             return Intent(
@@ -313,18 +332,6 @@ class P9iRouter:
                 prompt_name=pack_match.get("prompt_file"),
                 matched_keyword=pack_match.get("matched_keyword"),
                 metadata=pack_match
-            )
-
-        # 4. Проверка agent tasks (самый важный слой!)
-        agent_match = self._check_agents(request_lower)
-        if agent_match:
-            # agent_match returns agent_name (string)
-            return Intent(
-                type=IntentType.AGENT_TASK,
-                confidence=0.90,
-                agent_name=agent_match,
-                matched_keyword=request_lower,
-                metadata={"agent": agent_match}
             )
 
         # 5. Check NL queries
@@ -425,25 +432,96 @@ class P9iRouter:
         КОНТУР:
         User → P9iRouter.classify() → P9iRouter.route()
           → Processor.process() → Response
+
+        Hybrid mode: если confidence < 0.5, использует Router V2 как fallback
         """
         # 1. Классифицировать намерение
         intent = self.classify(request)
         logger.info(f"[P9I_ROUTER] Intent classified: {intent.type.name}, confidence={intent.confidence}, agent={intent.agent_name}")
 
-        # 2. Найти подходящий processor
+        # 2. Проверить необходимость V2 fallback
+        use_v2_fallback = (
+            intent.confidence < 0.5 and
+            intent.type in (IntentType.UNKNOWN, IntentType.NL_QUERY)
+        )
+
+        if use_v2_fallback:
+            v2_result = await self._route_with_v2(request, context or {})
+            if v2_result:
+                v2_result["fallback_used"] = True
+                v2_result["original_intent"] = intent.type.name
+                return v2_result
+
+        # 3. Найти подходящий processor
         for processor in self.processors:
             if processor.can_handle(intent):
-                # 3. Выполнить через processor
+                # 4. Выполнить через processor
                 result = await processor.process(intent, request, context or {})
                 return result
 
-        # 4. Fallback
+        # 5. Fallback - попробовать V2 как последний шанс
+        v2_result = await self._route_with_v2(request, context or {})
+        if v2_result:
+            return v2_result
+
+        # 6. Error
         return {
             "status": "error",
             "error": f"Could not route request: {request[:50]}...",
             "intent_type": intent.type.name,
             "confidence": intent.confidence
         }
+
+    async def _route_with_v2(self, request: str, context: dict) -> dict:
+        """Router V2 fallback для сложных запросов."""
+        try:
+            from src.application.router.v2 import (
+                HybridPromptRouter,
+                RoutingContext as V2Context,
+                PromptRegistry,
+                PromptEntry,
+                PromptMetadata,
+            )
+
+            # Инициализация V2 роутера
+            if not hasattr(self, '_v2_router'):
+                self._v2_router = HybridPromptRouter()
+                # Регистрация базовых промтов
+                registry = PromptRegistry()
+                # Добавляем дефолтные промты для V2
+                for name, template, tags in [
+                    ("developer", "Создай код: {query}", {"code", "feature"}),
+                    ("architect", "Спроектируй: {query}", {"architecture", "design"}),
+                    ("reviewer", "Проверь: {query}", {"review", "security"}),
+                    ("designer", "Создай UI: {query}", {"ui", "design"}),
+                    ("devops", "Деплой: {query}", {"deploy", "k8s"}),
+                ]:
+                    entry = PromptEntry(
+                        name=name,
+                        template=template,
+                        metadata=PromptMetadata(tags=tags, description=f"{name} task")
+                    )
+                    registry.register(entry)
+
+                self._v2_router.register_prompts(registry.list_all())
+
+            # V2 роутинг
+            v2_context = V2Context(query=request, metadata=context)
+            result = await self._v2_router.route(v2_context)
+
+            if result.is_successful():
+                return {
+                    "status": "success",
+                    "output": f"[V2 Router] {result.prompt_entry.name}: {result.reasoning}",
+                    "v2_strategy": result.routing_strategy,
+                    "confidence": result.confidence_score,
+                    "processor": "V2FallbackProcessor"
+                }
+
+        except Exception as e:
+            logger.warning(f"V2 fallback failed: {e}")
+
+        return None
 
 
 # ==================== PROCESSORS ====================

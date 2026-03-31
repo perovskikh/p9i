@@ -116,7 +116,7 @@ AGENT_KEYWORDS = {
 
 # Prompt keywords for selection
 PROMPT_KEYWORDS = {
-    "promt-migration-planner": ["миграц", "migrat", "план миграции", "migrate plan"],
+    "promt-migration-planner": ["миграц", "миграция", "migrat", "план миграции", "migrate plan", "monolith", "microservices", "переход с", "на микросервисы"],
     "promt-migration-implementation": ["выполни миграцию", "запусти миграцию", "execute migration"],
     "promt-migration-review": ["проверь миграцию", "верифицируй миграцию", "verify migration"],
     "promt-migration-devops": ["тест миграции", "ci/cd миграции"],
