@@ -28,6 +28,8 @@ class Agent:
     description: str
     # Agent category for PromptRegistry mapping
     category: PromptCategory = PromptCategory.CUSTOM
+    # Whether to use checkpoint executor for write operations
+    use_checkpoint: bool = True
 
 
 # Agent definitions
@@ -52,6 +54,7 @@ AGENTS = {
         memory_key="architecture",
         description="System design, ADRs, architecture decisions",
         category=PromptCategory.ANALYSIS,
+        use_checkpoint=False,
     ),
     "developer": Agent(
         name="Developer",
@@ -76,6 +79,7 @@ AGENTS = {
         memory_key="reviews",
         description="Code review, security, quality checks",
         category=PromptCategory.QA,
+        use_checkpoint=False,
     ),
     "designer": Agent(
         name="Designer",
@@ -85,6 +89,7 @@ AGENTS = {
         memory_key="design",
         description="UI/UX design and generation",
         category=PromptCategory.CREATIVE,
+        use_checkpoint=False,
     ),
     "devops": Agent(
         name="DevOps",
@@ -95,6 +100,7 @@ AGENTS = {
         memory_key="devops",
         description="CI/CD, deployment, infrastructure",
         category=PromptCategory.CUSTOM,
+        use_checkpoint=False,
     ),
     "migration": Agent(
         name="Migration",
@@ -107,6 +113,7 @@ AGENTS = {
         memory_key="migration",
         description="Migration planning and execution",
         category=PromptCategory.CUSTOM,
+        use_checkpoint=False,
     ),
 }
 
@@ -139,8 +146,6 @@ PROMPT_KEYWORDS = {
     "promt-migration-implementation": ["выполни миграцию", "запусти миграцию", "execute migration"],
     "promt-migration-review": ["проверь миграцию", "верифицируй миграцию", "verify migration"],
     "promt-migration-devops": ["тест миграции", "ci/cd миграции"],
-    "promt-architect-design": ["спроектируй", "проектирование", "design"],
-    "promt-architect-review": ["ревью", "review", "анализ"],
     "create_adr": ["adr", "документация"],
     # Full cycle implementation (idea → implementation → testing → fixes → docs)
     # Full cycle shortcuts now route to promt-feature-add (already has full cycle)

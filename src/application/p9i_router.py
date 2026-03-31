@@ -401,7 +401,7 @@ class P9iRouter:
             pack_loader = get_pack_loader()
             return pack_loader.find_by_trigger(request_lower)
         except Exception as e:
-            logger.warning(f"Pack check failed: {e}")
+            logger.error(f"Pack check failed: {e}", exc_info=True)
             return None
 
     def _check_agents(self, request_lower: str) -> Optional[tuple]:

@@ -151,7 +151,13 @@ class HybridPromptRouter:
     def route_sync(self, context: RoutingContext) -> RoutingResult:
         """Synchronous wrapper for non-async contexts."""
         import asyncio
-        return asyncio.run(self.route(context))
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context - shouldn't call sync wrapper
+            raise RuntimeError("route_sync called from async context, use route() instead")
+        except RuntimeError:
+            # No running loop - safe to create one
+            return asyncio.run(self.route(context))
 
     def _finish(
         self,

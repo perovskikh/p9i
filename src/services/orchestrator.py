@@ -191,7 +191,8 @@ class AgentOrchestrator:
                 }
 
             # Use checkpoint executor for write-heavy tasks
-            if use_checkpoint and agent_name in ("developer", "full_cycle"):
+            agent = AGENTS.get(agent_name)
+            if use_checkpoint and agent and agent.use_checkpoint:
                 checkpoint_exec = get_checkpoint_executor()
                 result = await checkpoint_exec.execute_with_checkpoint(
                     prompt=prompt_content,
