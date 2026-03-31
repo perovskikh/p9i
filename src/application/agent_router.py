@@ -3,10 +3,20 @@
 Agent Router - Handles agent detection and prompt selection.
 
 Part of Clean Architecture - Application layer.
+Now integrated with PromptRegistry for unified pipeline: Intent → Agent → Prompt
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+# Import PromptRegistry from cascade module
+from src.application.router.cascade import (
+    PromptRegistry,
+    PromptEntry,
+    PromptMetadata,
+    PromptCategory,
+)
 
 
 @dataclass
@@ -16,6 +26,8 @@ class Agent:
     prompts: List[str]
     memory_key: str
     description: str
+    # Agent category for PromptRegistry mapping
+    category: PromptCategory = PromptCategory.CUSTOM
 
 
 # Agent definitions
@@ -27,7 +39,8 @@ AGENTS = {
             "promt-feature-add",  # Includes: research → ADR → impl → test → docs
         ],
         memory_key="full_cycle",
-        description="Complete development cycle: idea → implementation → tests → fixes → docs"
+        description="Complete development cycle: idea → implementation → tests → fixes → docs",
+        category=PromptCategory.CODE,
     ),
     "architect": Agent(
         name="Architect",
@@ -37,7 +50,8 @@ AGENTS = {
             "create_adr"
         ],
         memory_key="architecture",
-        description="System design, ADRs, architecture decisions"
+        description="System design, ADRs, architecture decisions",
+        category=PromptCategory.ANALYSIS,
     ),
     "developer": Agent(
         name="Developer",
@@ -48,7 +62,8 @@ AGENTS = {
             "promt-implementation"
         ],
         memory_key="code",
-        description="Code generation, features, bug fixes"
+        description="Code generation, features, bug fixes",
+        category=PromptCategory.CODE,
     ),
     "reviewer": Agent(
         name="Reviewer",
@@ -59,7 +74,8 @@ AGENTS = {
             "promt-readme-validator"
         ],
         memory_key="reviews",
-        description="Code review, security, quality checks"
+        description="Code review, security, quality checks",
+        category=PromptCategory.QA,
     ),
     "designer": Agent(
         name="Designer",
@@ -67,7 +83,8 @@ AGENTS = {
             "promt-ui-generator",
         ],
         memory_key="design",
-        description="UI/UX design and generation"
+        description="UI/UX design and generation",
+        category=PromptCategory.CREATIVE,
     ),
     "devops": Agent(
         name="DevOps",
@@ -76,7 +93,8 @@ AGENTS = {
             "promt-onboarding"
         ],
         memory_key="devops",
-        description="CI/CD, deployment, infrastructure"
+        description="CI/CD, deployment, infrastructure",
+        category=PromptCategory.CUSTOM,
     ),
     "migration": Agent(
         name="Migration",
@@ -87,7 +105,8 @@ AGENTS = {
             "promt-migration-devops"
         ],
         memory_key="migration",
-        description="Migration planning and execution"
+        description="Migration planning and execution",
+        category=PromptCategory.CUSTOM,
     ),
 }
 
@@ -143,12 +162,110 @@ PROMPT_KEYWORDS = {
 
 
 class AgentRouter:
-    """Handles agent detection and prompt selection."""
+    """
+    Handles agent detection and prompt selection.
+
+    Unified pipeline: Intent → Agent → Prompt
+    Now uses PromptRegistry for semantic prompt selection.
+    """
 
     # Priority order - more specific agents first
     AGENT_PRIORITY = ["migration", "full_cycle", "architect", "reviewer", "developer", "designer", "devops"]
 
-    def detect_agents(self, request: str) -> List[str]:
+    def __init__(self):
+        """Initialize AgentRouter with PromptRegistry."""
+        self._registry: Optional[PromptRegistry] = None
+        self._initialized = False
+
+    @property
+    def registry(self) -> PromptRegistry:
+        """Lazy initialization of PromptRegistry."""
+        if self._registry is None:
+            self._registry = PromptRegistry()
+            self._load_prompts_from_storage()
+        return self._registry
+
+    def _load_prompts_from_storage(self) -> None:
+        """Load prompts from file storage into PromptRegistry."""
+        from pathlib import Path
+
+        PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+
+        # Walk through prompts directory and register prompts
+        search_dirs = [
+            PROMPTS_DIR,
+            PROMPTS_DIR / "universal" / "ai_agent_prompts",
+            PROMPTS_DIR / "universal" / "mpv_stages",
+            PROMPTS_DIR / "agents",
+        ]
+
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
+            self._scan_directory(search_dir)
+
+        self._initialized = True
+
+    def _scan_directory(self, directory: Path) -> None:
+        """Recursively scan directory for prompt files."""
+        try:
+            for md_file in directory.rglob("*.md"):
+                # Skip deprecated and non-prompt files
+                if "deprecated" in md_file.parts:
+                    continue
+
+                # Extract prompt name from filename
+                prompt_name = md_file.stem  # Remove .md
+
+                # Skip non-prompt files
+                if prompt_name in ["README", "index", "config"]:
+                    continue
+
+                # Read file to extract metadata (first 500 chars)
+                try:
+                    content = md_file.read_text(encoding="utf-8", errors="ignore")
+                    # Extract description from first heading or first line
+                    description = ""
+                    lines = content.split("\n")
+                    for line in lines[:10]:
+                        if line.strip() and not line.startswith("---"):
+                            description = line.strip()[:200]
+                            break
+
+                    # Determine category from path
+                    from src.application.router.cascade import PromptCategory
+                    category = PromptCategory.GENERAL
+                    if "architect" in md_file.parts:
+                        category = PromptCategory.ANALYSIS
+                    elif "developer" in md_file.parts:
+                        category = PromptCategory.CODE
+                    elif "reviewer" in md_file.parts:
+                        category = PromptCategory.QA
+                    elif "designer" in md_file.parts:
+                        category = PromptCategory.CREATIVE
+
+                    # Create PromptEntry
+                    entry = PromptEntry(
+                        name=prompt_name,
+                        template=content[:500],  # First 500 chars as template
+                        metadata=PromptMetadata(
+                            category=category,
+                            description=description,
+                            tags={prompt_name},
+                        ),
+                    )
+
+                    # Register if not exists
+                    if not self._registry.get_by_name(prompt_name):
+                        self._registry.register(entry)
+
+                except Exception as e:
+                    # Skip problematic files
+                    pass
+        except Exception as e:
+            pass
+
+    def detect_agents(self, request: str, intent_agent: Optional[str] = None) -> List[str]:
         """
         Detect which agents are needed based on request.
 
@@ -156,10 +273,15 @@ class AgentRouter:
 
         Args:
             request: User request
+            intent_agent: Optional agent from P9iRouter.classify() to avoid duplication
 
         Returns:
             List of agent names to execute
         """
+        # If we already have agent from P9iRouter, use it directly
+        if intent_agent and intent_agent in AGENTS:
+            return [intent_agent]
+
         request_lower = request.lower()
         needed = []
 
@@ -179,6 +301,12 @@ class AgentRouter:
                 if keyword in request_lower:
                     needed.append(agent_name)
                     break
+
+        # Default to developer if no specific agent detected
+        if not needed:
+            needed = ["developer"]
+
+        return needed
 
         # Default to developer if no specific agent detected
         if not needed:
@@ -245,6 +373,9 @@ class AgentRouter:
         """
         Select appropriate prompt for agent based on request.
 
+        Uses PromptRegistry for semantic matching when available,
+        falls back to keyword matching.
+
         Args:
             agent_name: Agent name
             request: User request
@@ -258,7 +389,21 @@ class AgentRouter:
 
         request_lower = request.lower()
 
-        # Try to match prompt based on keywords
+        # Try semantic matching via PromptRegistry first
+        if self._initialized:
+            # Get agent's category for filtering
+            agent_category = agent.category
+
+            # Search prompts in registry (keyword-based for now, can upgrade to semantic)
+            results = self.registry.search(request, limit=5)
+
+            # Filter by agent's prompts
+            agent_prompts_set = set(agent.prompts)
+            for entry in results:
+                if entry.name in agent_prompts_set:
+                    return entry.name
+
+        # Fallback to keyword matching (legacy)
         for prompt in agent.prompts:
             keywords = PROMPT_KEYWORDS.get(prompt, [])
             for keyword in keywords:
@@ -267,6 +412,20 @@ class AgentRouter:
 
         # Default to first prompt
         return agent.prompts[0]
+
+    def select_prompt_entry(self, agent_name: str, request: str) -> Optional[PromptEntry]:
+        """
+        Select prompt as PromptEntry with full metadata.
+
+        Args:
+            agent_name: Agent name
+            request: User request
+
+        Returns:
+            PromptEntry or None
+        """
+        prompt_name = self.select_prompt(agent_name, request)
+        return self.registry.get_by_name(prompt_name)
 
     def get_agent(self, agent_name: str) -> Optional[Agent]:
         """Get agent by name."""

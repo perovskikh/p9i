@@ -96,9 +96,14 @@ class AgentOrchestrator:
         self._checkpoint_executor: Optional[CheckpointExecutor] = None
         self._use_checkpoint = use_checkpoint
 
-    def _detect_agents(self, request: str) -> list[str]:
-        """Detect which agents are needed based on request."""
-        return self.router.detect_agents(request)
+    def _detect_agents(self, request: str, intent_agent: Optional[str] = None) -> list[str]:
+        """Detect which agents are needed based on request.
+
+        Args:
+            request: User request
+            intent_agent: Optional agent from P9iRouter to avoid duplication
+        """
+        return self.router.detect_agents(request, intent_agent)
 
     def _select_prompt(self, agent_name: str, request: str) -> str:
         """Select appropriate prompt for agent based on request."""
