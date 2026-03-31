@@ -131,6 +131,13 @@ if JWT_ENABLED:
 # Create MCP server
 mcp = FastMCP("AI Prompt System")
 
+# Add HTTP health endpoint (for K8s probes)
+@app.get("/health")
+def http_health_check():
+    """HTTP health check endpoint for K8s probes."""
+    return {"status": "healthy", "service": "p9i-mcp"}
+
+
 # Health check endpoint
 @mcp.resource("health://system")
 def health_check() -> str:

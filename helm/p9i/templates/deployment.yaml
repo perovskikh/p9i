@@ -5,10 +5,6 @@ metadata:
   name: {{ include "p9i.fullname" . }}
   labels:
     {{- include "p9i.labels" . | nindent 4 }}
-  annotations:
-    helm.sh/hook: pre-upgrade
-    helm.sh/hook-weight: "1"
-    helm.sh/hook-delete-policy: before-hook-creation
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -56,46 +52,52 @@ spec:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: zaiKey
+                  optional: true
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: anthropicKey
+                  optional: true
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: openrouterKey
+                  optional: true
             - name: MINIMAX_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: minimaxKey
+                  optional: true
             - name: DEEPSEEK_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: deepseekKey
+                  optional: true
             - name: FIGMA_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ include "p9i.fullname" . }}-secrets
                   key: figmaToken
+                  optional: true
             - name: TUI_THEME
               value: {{ .Values.env.TUI_THEME | quote }}
+            - name: MCP_TRANSPORT
+              value: {{ .Values.env.MCP_TRANSPORT | default "streamable-http" | quote }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           livenessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /health
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5

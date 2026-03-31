@@ -241,13 +241,13 @@ k3s-status-nodes: ## Show K3s nodes status
 k3s-deploy: build-push
 	@echo "$(YELLOW)Deploying to K3s via Helm...$(NC)"
 	sudo k3s kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | sudo k3s kubectl apply -f -
-	sudo k3s helm upgrade --install $(NAMESPACE) $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace -f $(HELM_CHART)/values.yaml --wait --timeout 5m
+	helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace -f $(HELM_CHART)/values.yaml --wait --timeout 5m
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
 
 .PHONY: k3s-delete
 k3s-delete:
 	@echo "$(YELLOW)Deleting from K3s (Helm)...$(NC)"
-	sudo k3s helm uninstall p9i --namespace $(NAMESPACE) || true
+	helm uninstall p9i --namespace $(NAMESPACE) 2>/dev/null || true
 	sudo k3s kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
 	@echo "$(GREEN)Deleted from K3s$(NC)"
 

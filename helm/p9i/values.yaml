@@ -18,8 +18,8 @@ hpa:
 
 image:
   repository: localhost:5000/p9i
-  tag: latest
-  pullPolicy: Always
+  tag: k8s
+  pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
@@ -76,6 +76,7 @@ env:
   DEEPSEEK_API_KEY: ""
   FIGMA_TOKEN: ""
   TUI_THEME: dark
+  MCP_TRANSPORT: streamable-http
 
 mcp_server:
   enabled: true
