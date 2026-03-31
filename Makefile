@@ -246,8 +246,9 @@ k3s-deploy: build-push
 
 .PHONY: k3s-delete
 k3s-delete:
-	@echo "$(YELLOW)Deleting from K3s...$(NC)"
-	sudo k3s kubectl delete -f $(K8S_DIR)/ --ignore-not-found=true
+	@echo "$(YELLOW)Deleting from K3s (Helm)...$(NC)"
+	sudo k3s helm uninstall p9i --namespace $(NAMESPACE) || true
+	sudo k3s kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
 	@echo "$(GREEN)Deleted from K3s$(NC)"
 
 .PHONY: k3s-logs
@@ -258,6 +259,10 @@ k3s-logs:
 k3s-restart:
 	sudo k3s kubectl rollout restart -n $(NAMESPACE) deployment/mcp-server
 	@echo "$(GREEN)Restarted deployment$(NC)"
+
+.PHONY: k3s-redeploy
+k3s-redeploy: k3s-delete build-push k3s-deploy
+	@echo "$(GREEN)Full redeploy complete!$(NC)"
 
 .PHONY: k3s-status
 k3s-status:
