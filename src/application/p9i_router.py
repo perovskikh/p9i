@@ -411,7 +411,8 @@ class P9iRouter:
             return None
 
     def _check_agents(self, request_lower: str) -> Optional[tuple]:
-        """Проверить agent keywords (longest first)."""
+        """Проверить agent keywords (longest first) with word boundary matching."""
+        import re
         # Priority order (longest first!) для избежания конфликтов
         for keyword, mapping in sorted(
             self.KEYWORD_MAP.items(),
@@ -419,7 +420,9 @@ class P9iRouter:
             reverse=True
         ):
             if isinstance(mapping, tuple) and mapping[0] == IntentType.AGENT_TASK:
-                if keyword in request_lower:
+                # Use word boundary matching to avoid substring matches
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, request_lower):
                     return mapping[1]  # Return agent_name
 
         return None
