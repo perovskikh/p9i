@@ -122,28 +122,22 @@ ADR-расхождения, и обеспечить, что фикс не нар
 
 ### О проекте
 
-**** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
+**p9i** — MCP (Model Context Protocol) сервер для управления AI промптами через их полный жизненный цикл: от идеи до продакшена. Предоставляет 18+ MCP tools для выполнения, чейнинга, версионирования промптов, JWT аутентификации и управления project memory.
 
 **Стек:**
-- **Infrastructure:** Kubernetes (k3s/microk8s), Helm, Traefik, cert-manager
-- **Bot:** Python, aiogram 3.x / python-telegram-bot, FastAPI webhooks
-- **Payments:** YooKassa API (HMAC webhook validation, idempotency keys)
-- **Storage:** Longhorn (prod), local-path (dev)
-- **Database:** PostgreSQL (SQL baseline `scripts/utils/init-saas-database.sql`)
-- **GitOps:** ArgoCD
+- **Core:** Python, FastAPI, Pydantic
+- **LLM:** MiniMax, GLM-4, DeepSeek, Anthropic (multi-provider failover)
+- **Infrastructure:** Kubernetes (k3s), Helm, Traefik
+- **Storage:** PostgreSQL, Redis
+- **Protocol:** MCP (Model Context Protocol)
 
-### ADR Topic Registry
+### Архитектура роутинга
 
-> **КРИТИЧНО:** ADR идентифицируются по **topic slug** (не по номеру). Номера нестабильны.
-> Поиск: `find docs/explanation/adr -name "ADR-*-{slug}*.md" | head -1`
-
-| Topic Slug | Краткое описание | Критический |
-|---|---|---|
-| `path-based-routing` | Single domain, path-based routing | ⭐ |
-| `k8s-provider-abstraction` | `$KUBECTL_CMD`, never hardcode | ⭐ |
-| `storage-provider-selection` | Longhorn (prod), local-path (dev) | ⭐ |
-| `telegram-bot-saas-platform` | pydantic-settings, env vars, PLAN_SPECS | ⭐ |
-| `documentation-generation` | Reference docs AUTO-GENERATED only | ⭐ |
+**Важные директории для bug fixing:**
+- `src/application/router/cascade/` — Cascade routing (rule → semantic → LLM)
+- `src/application/p9i_router.py` — Unified P9iRouter (Intent → Agent → Prompt)
+- `src/application/agent_router.py` — Agent detection and routing
+- `src/services/orchestrator.py` — Multi-agent orchestration
 
 ---
 
@@ -162,14 +156,14 @@ ADR-расхождения, и обеспечить, что фикс не нар
 
 ### 0.2. Классифицировать баг
 
-| Категория | Признаки | Связанные ADR |
+| Категория | Признаки | Связанные файлы |
 |---|---|---|
-| **Bot/API** | Ошибки в Telegram командах, webhook | `telegram-bot-saas-platform` |
-| **Payments** | YooKassa webhook, платежи, статусы | `telegram-bot-saas-platform` |
-| **Infrastructure** | Pods, PVC, Ingress, SSL | `storage-provider-selection`, `path-based-routing` |
-| **Auth** | JWT, Telegram auth, RBAC | `unified-auth-architecture` |
-| **Database** | SQL, PostgreSQL, миграции | `telegram-bot-saas-platform` (schema) |
-| **K8s Provider** | k3s/microk8s команды | `k8s-provider-abstraction` |
+| **Router/Routing** | Ошибки маршрутизации, неверный agent | `src/application/router/cascade/*.py` |
+| **LLM/Provider** | Ошибки LLM, неверный provider | `src/services/llm_client.py` |
+| **MCP Tools** | MCP tool errors, missing tools | `src/api/server.py` |
+| **Auth/JWT** | JWT errors, access denied | `src/middleware/jwt_auth.py` |
+| **Orchestration** | Multi-agent errors, chain broken | `src/services/orchestrator.py` |
+| **K8s/Helm** | Deployment, pods, ingress | `helm/p9i/`, `k8s/` |
 
 ---
 
@@ -210,27 +204,26 @@ grep -r "[ключевые слова бага]" docs/official_document/ --inclu
 ### 2.1. Найти затронутый код
 
 ```bash
-# Поиск по ключевым словам ошибки
-grep -rn "[текст ошибки]" telegram-bot/app/ --include="*.py"
-grep -rn "[текст ошибки]" templates/ --include="*.yaml"
-grep -rn "[текст ошибки]" scripts/ --include="*.sh"
+# Поиск по ключевым словам ошибки в p9i
+grep -rn "[текст ошибки]" src/ --include="*.py"
+grep -rn "[текст ошибки]" tests/ --include="*.py"
 
 # Проверить логи (если K8s)
-kubectl logs -n $NAMESPACE deployment/telegram-bot --tail=100
-kubectl describe pod -n $NAMESPACE -l app=telegram-bot
+kubectl logs -n p9i deployment/p9i --tail=100
+kubectl describe pod -n p9i -l app=p9i-p9i
 ```
 
 ### 2.2. Воспроизвести баг локально (если возможно)
 
 ```bash
 # Для Python кода
-cd telegram-bot && poetry run pytest tests/ -v -k "[test_name]"
+pytest tests/ -v -k "[test_name]"
+
+# Для router/cascade тестов
+pytest tests/test_p9i_router.py -v
 
 # Для Helm templates
-helm template . -f config/values-dev.yaml --debug 2>&1 | grep -A5 "[ключевое слово]"
-
-# Для bash scripts
-bash -x scripts/[script].sh 2>&1 | tail -50
+helm template . -f helm/p9i/values.yaml --debug 2>&1 | grep -A5 "[ключевое слово]"
 ```
 
 ---
@@ -240,14 +233,11 @@ bash -x scripts/[script].sh 2>&1 | tail -50
 ### 3.1. Определить связанные ADR
 
 ```bash
-# Найти ADR по ключевым словам бага/файлу
-grep -l "[затронутый модуль/файл/технология]" docs/explanation/adr/ADR-*.md
+# Найти затронутые файлы
+grep -rl "[затронутый модуль]" src/ --include="*.py"
 
-# Проверить критические ADR-топики
-for topic in path-based-routing k8s-provider-abstraction storage-provider-selection \
-             telegram-bot-saas-platform documentation-generation; do
-  find docs/explanation/adr -name "ADR-*-${topic}*.md" -exec echo "Found: {}" \;
-done
+# Проверить router cascade
+ls -la src/application/router/cascade/
 ```
 
 ### 3.2. Проверить: является ли баг следствием ADR-расхождения?
@@ -275,11 +265,11 @@ done
 
 ```bash
 # Для Python
-# Добавить тест в telegram-bot/tests/ воспроизводящий баг
-poetry run pytest tests/test_[module].py -v
+# Добавить тест в tests/ воспроизводящий баг
+pytest tests/test_[module].py -v
 
-# Для E2E
-# Добавить проверку в scripts/test.sh
+# Для router тестов
+pytest tests/test_p9i_router.py -v
 ```
 
 ### 4.3. Проверить фикс локально

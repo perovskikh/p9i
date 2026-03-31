@@ -140,6 +140,7 @@ class P9iRouter:
 
             # === REVIEWER ===
             "проверь": (IntentType.AGENT_TASK, "reviewer"),
+            "проведи": (IntentType.AGENT_TASK, "reviewer"),
             "исправь": (IntentType.AGENT_TASK, "reviewer"),
             "приведи": (IntentType.AGENT_TASK, "reviewer"),
             "исправить": (IntentType.AGENT_TASK, "reviewer"),
