@@ -321,7 +321,8 @@ class AgentOrchestrator:
         self,
         request: str,
         prompt_entry: Any = None,
-        intent_agent: Optional[str] = None
+        intent_agent: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Route request with PromptEntry propagation.
@@ -350,6 +351,7 @@ class AgentOrchestrator:
             result = await self.execute_agent(
                 agent_name,
                 request,
+                context=context,
                 prompt_entry=current_entry
             )
             logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")

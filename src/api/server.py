@@ -45,6 +45,7 @@ from fastmcp import FastMCP
 import json
 import logging
 import os
+import sys
 import time
 from typing import Optional, Union
 from functools import wraps
@@ -130,13 +131,6 @@ if JWT_ENABLED:
 
 # Create MCP server
 mcp = FastMCP("AI Prompt System")
-
-# Add HTTP health endpoint (for K8s probes)
-@app.get("/health")
-def http_health_check():
-    """HTTP health check endpoint for K8s probes."""
-    return {"status": "healthy", "service": "p9i-mcp"}
-
 
 # Health check endpoint
 @mcp.resource("health://system")
@@ -953,8 +947,21 @@ async def p9i(
         return {"status": "error", "error": "Authentication required", "hint": "Provide valid jwt_token or API key"}
 
     try:
-        # Получить единственный router
         router = get_p9i_router()
+
+        # Load current project context if not provided (for state between calls)
+        if context is None:
+            context = {}
+        if not context.get("project_path"):
+            try:
+                from src.services.memory import get_memory_service
+                memory = get_memory_service()
+                current = memory.get("current_project")
+                if current and current.get("project_path"):
+                    context["project_path"] = current["project_path"]
+                    context["stack"] = current.get("stack", {})
+            except Exception:
+                pass  # Memory not available, continue without it
 
         # Маршрутизировать через ЕДИНЫЙ контур
         result = await router.route(request, context)
@@ -1444,10 +1451,26 @@ def adapt_to_project(
     else:
         return {"status": "error", "error": "Project path does not exist and no description provided"}
 
+    # Save detected stack to project memory for later use by agents
+    try:
+        from src.services.memory import get_memory_service
+        memory = get_memory_service()
+        project_id = str(path) if path else project_description
+        memory_data = memory.get(project_id)
+        memory_data["stack"] = stack
+        memory_data["project_path"] = str(path) if path else None
+        memory_data["remote_access"] = remote_access
+        memory.save(project_id, memory_data)
+        # Also save as current_project for subsequent p9i calls
+        memory.save("current_project", memory_data)
+    except Exception as e:
+        logger.warning(f"Failed to save project memory: {e}")
+
     return {
         "status": "success",
         "stack": stack,
         "access_type": "remote_sftp" if remote_access else "local",
+        "project_path": str(path) if path else None,
         "adaptations": [
             f"Selected prompts for {stack.get('language', 'unknown')} project",
             f"Framework: {stack.get('framework', 'not detected')}"

@@ -45,6 +45,9 @@ class PromptExecutor:
         """
         logger.info(f"[EXECUTOR] Starting execution: model={self.model}, stream={stream}, input_keys={list(input_data.keys())}")
 
+        # Substitute variables in prompt template before parsing
+        prompt_content = self._substitute_vars(prompt_content, input_data)
+
         # Parse prompt - extract system instruction and user query
         logger.info("[EXECUTOR] Parsing prompt...")
         system_prompt, user_prompt = self._parse_prompt(prompt_content)
@@ -160,6 +163,59 @@ class PromptExecutor:
         user = "\n".join(user_parts).strip() if user_parts else "Process the following input:"
 
         return system, user
+
+    def _substitute_vars(self, prompt_content: str, input_data: dict) -> str:
+        """
+        Substitute variables in prompt template with values from input_data.
+
+        Supported variables:
+        - ${PROJECT_ROOT} - project_path from context
+        - ${PROJECT_PATH} - same as PROJECT_ROOT
+        - ${LANGUAGE} - language from stack (e.g., Python, JavaScript)
+        - ${FRAMEWORK} - framework from stack (e.g., FastAPI, React)
+        - ${APP_DIR} - inferred app directory (src/ for Python, app/ for JS, ./ for others)
+
+        Args:
+            prompt_content: The prompt template
+            input_data: Context with project info
+
+        Returns:
+            str: Prompt with substituted variables
+        """
+        if not input_data:
+            return prompt_content
+
+        # Extract project info from context (passed via exec_context from orchestrator)
+        project_path = input_data.get("project_path", ".")
+        stack = input_data.get("stack", {})
+        language = stack.get("language", "unknown")
+        framework = stack.get("framework", "")
+
+        # Infer APP_DIR based on language
+        if language.lower().startswith("python"):
+            app_dir = "src"
+        elif language.lower() in ("javascript", "typescript"):
+            app_dir = "app"
+        elif language.lower().startswith("go"):
+            app_dir = "."
+        else:
+            app_dir = "."
+
+        # Perform substitutions
+        substitutions = {
+            "${PROJECT_ROOT}": project_path,
+            "${PROJECT_PATH}": project_path,
+            "${LANGUAGE}": language,
+            "${FRAMEWORK}": framework,
+            "${APP_DIR}": f"{project_path}/{app_dir}" if app_dir != "." else project_path,
+        }
+
+        result = prompt_content
+        for var, value in substitutions.items():
+            if value and value != "unknown" and value != ".":
+                result = result.replace(var, str(value))
+
+        return result
 
     async def execute_chain(self, prompts: list[dict], input_data: dict) -> list[dict]:
         """
