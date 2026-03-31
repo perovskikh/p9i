@@ -301,10 +301,9 @@ class AgentRouter:
             return
 
         self._hybrid_router = HybridPromptRouter()
-        # Register all prompts with the hybrid router
+        # Register all prompts with the hybrid router (single call to avoid N rebuilds)
         all_prompts = self._registry.list_all()
-        for entry in all_prompts:
-            self._hybrid_router.register_prompts([entry])
+        self._hybrid_router.register_prompts(all_prompts)
 
     def detect_agents(self, request: str, intent_agent: Optional[str] = None) -> List[str]:
         """
@@ -352,7 +351,7 @@ class AgentRouter:
             try:
                 from src.application.router.cascade import RoutingContext
                 context = RoutingContext(query=request)
-                result = self._hybrid_router.route(context)
+                result = self._hybrid_router.route_sync(context)
                 if result.prompt_entry and result.confidence_score >= 0.5:
                     # Extract agent from matched prompt entry rules
                     agent_name = self._get_agent_for_prompt(result.prompt_entry.name)
