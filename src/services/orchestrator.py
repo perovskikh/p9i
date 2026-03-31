@@ -128,9 +128,10 @@ class AgentOrchestrator:
         agent_name: str,
         request: str,
         context: Optional[Dict[str, Any]] = None,
-        use_checkpoint: bool = None
+        use_checkpoint: bool = None,
+        prompt_entry: Any = None  # PromptEntry passed through orchestration
     ):
-        """Execute a single agent."""
+        """Execute a single agent with optional PromptEntry metadata."""
         from dataclasses import dataclass
 
         @dataclass
@@ -154,8 +155,15 @@ class AgentOrchestrator:
             )
 
         try:
+            # Use provided PromptEntry or fetch it
+            if prompt_entry is None:
+                prompt_entry = self.router.select_prompt_entry(agent_name, request)
+
             # Select appropriate prompt name
-            prompt_name = self._select_prompt(agent_name, request)
+            if prompt_entry:
+                prompt_name = prompt_entry.name
+            else:
+                prompt_name = self._select_prompt(agent_name, request)
 
             # Load prompt content from file
             prompt_content = load_prompt(prompt_name)
@@ -169,11 +177,18 @@ class AgentOrchestrator:
                     error=f"Prompt {prompt_name} not found"
                 )
 
-            # Build context
+            # Build context with PromptEntry metadata
             exec_context = context or {}
             exec_context["agent"] = agent.name
             exec_context["task"] = request
             exec_context["memory"] = self.get_agent_context(agent_name)
+            # Propagate PromptEntry metadata through orchestration
+            if prompt_entry:
+                exec_context["prompt_entry"] = {
+                    "name": prompt_entry.name,
+                    "category": str(prompt_entry.metadata.category) if prompt_entry.metadata else None,
+                    "tags": list(prompt_entry.metadata.tags) if prompt_entry.metadata and prompt_entry.metadata.tags else [],
+                }
 
             # Use checkpoint executor for write-heavy tasks
             if use_checkpoint and agent_name in ("developer", "full_cycle"):
@@ -193,6 +208,7 @@ class AgentOrchestrator:
                 files_result = result.get("files", {})
                 metadata = {
                     "prompt": prompt_name,
+                    "prompt_entry": prompt_entry,
                     "agent_description": agent.description,
                     "execution_id": result.get("execution_id"),
                     "files_written": files_result.get("written", []),
@@ -244,6 +260,7 @@ class AgentOrchestrator:
                 error=exec_error,
                 metadata={
                     "prompt": prompt_name,
+                    "prompt_entry": prompt_entry,
                     "agent_description": agent.description
                 }
             )
@@ -298,6 +315,75 @@ class AgentOrchestrator:
             "results": results,
             "output": "\n\n---\n\n".join(all_outputs) if all_outputs else "",
             "errors": errors
+        }
+
+    async def route_with_entry(
+        self,
+        request: str,
+        prompt_entry: Any = None,
+        intent_agent: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Route request with PromptEntry propagation.
+
+        This method ensures PromptEntry metadata flows through the orchestration chain,
+        enabling better context for downstream agents.
+
+        Args:
+            request: User request
+            prompt_entry: Optional initial PromptEntry to propagate
+            intent_agent: Optional agent from P9iRouter to skip detection
+
+        Returns:
+            Dict with status, agents_used, results, output, errors
+        """
+        # Detect which agents are needed
+        needed_agents = self._detect_agents(request, intent_agent)
+
+        logger.info(f"Routing request to agents (with entry): {needed_agents}")
+
+        results = []
+        current_entry = prompt_entry
+
+        # Execute each agent sequentially, propagating PromptEntry
+        for agent_name in needed_agents:
+            result = await self.execute_agent(
+                agent_name,
+                request,
+                prompt_entry=current_entry
+            )
+            logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")
+
+            results.append({
+                "agent": result.agent,
+                "status": result.status,
+                "output": result.output,
+                "error": result.error,
+                "metadata": result.metadata
+            })
+
+            # Chain: next agent gets PromptEntry from previous result
+            if result.metadata and result.metadata.get("prompt_entry"):
+                current_entry = result.metadata.get("prompt_entry")
+
+            # If agent failed, stop the chain
+            if result.status == "error":
+                break
+
+        # Compile final response
+        all_outputs = [r["output"] for r in results if r["output"]]
+        errors = [r["error"] for r in results if r["error"]]
+
+        logger.info(f"Orchestrator (with entry) results: outputs_count={len(all_outputs)}, errors_count={len(errors)}")
+
+        return {
+            "status": "success" if not errors else "partial" if all_outputs else "error",
+            "request": request,
+            "agents_used": needed_agents,
+            "results": results,
+            "output": "\n\n---\n\n".join(all_outputs) if all_outputs else "",
+            "errors": errors,
+            "prompt_entry": prompt_entry
         }
 
     def list_agents(self) -> list[Dict[str, Any]]:

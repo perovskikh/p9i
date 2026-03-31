@@ -285,14 +285,42 @@ class P9iRouter:
         Классифицировать намерение.
 
         Приоритет проверки:
-        1. System Commands (/help, /exit)
-        2. Prompt Commands (/prompt)
-        3. Pack Triggers (k8s, pinescript)
-        4. Agent Tasks (реализуй, спроектируй, проверь)
-        5. NL Queries (покажи, что умеет)
-        6. System (init p9i, adapt)
+        1. P9i prefix (p9i /help, p9i создай)
+        2. System Commands (/help, /exit)
+        3. Prompt Commands (/prompt)
+        4. Pack Triggers (k8s, pinescript)
+        5. Agent Tasks (реализуй, спроектируй, проверь)
+        6. NL Queries (покажи, что умеет)
+        7. System (init p9i, adapt)
         """
         request_lower = request.lower().strip()
+
+        # 0. Проверка p9i prefix (p9i /help, p9i создай функцию)
+        p9i_prefix = "p9i "
+        if request_lower.startswith(p9i_prefix):
+            # Убираем префикс и обрабатываем как обычный запрос
+            request_stripped = request_lower[len(p9i_prefix):].strip()
+            if request_stripped:
+                # Рекурсивно классифицируем без префикса
+                # Но сохраняем информацию что был префикс
+                stripped_request = request_stripped if len(request_stripped) < len(request) else request_stripped
+                result = self._classify_internal(stripped_request)
+                # Увеличиваем confidence если был p9i prefix
+                if result.confidence < 1.0:
+                    result.confidence = min(1.0, result.confidence + 0.1)
+                return result
+            else:
+                # p9i без аргументов - показываем capabilities
+                return Intent(
+                    type=IntentType.NL_QUERY,
+                    confidence=0.8,
+                    matched_keyword="p9i",
+                    metadata={"bare_p9i": True}
+                )
+
+        return self._classify_internal(request_lower)
+
+    def _classify_internal(self, request_lower: str) -> Intent:
 
         # 1. Проверка prompt commands (HIGHER priority than system commands!)
         if request_lower.startswith('/prompt'):
@@ -362,12 +390,14 @@ class P9iRouter:
             )
 
         # 7. Fallback
-        return Intent(
+        intent = Intent(
             type=IntentType.UNKNOWN,
             confidence=0.30,
             matched_keyword="unknown",
             metadata={"original": request_lower}
         )
+        print(f"[DEBUG] classify() returning UNKNOWN fallback: {intent.type}")
+        return intent
 
     def _check_packs(self, request_lower: str) -> Optional[dict]:
         """Проверить pack triggers."""
@@ -432,45 +462,92 @@ class P9iRouter:
         КОНТУР:
         User → P9iRouter.classify() → P9iRouter.route()
           → Processor.process() → Response
-
-        Hybrid mode: если confidence < 0.5, использует Router V2 как fallback
         """
-        # 1. Классифицировать намерение
+        if context is None:
+            context = {}
+
+        # Step 1: Classify the intent
         intent = self.classify(request)
-        logger.info(f"[P9I_ROUTER] Intent classified: {intent.type.name}, confidence={intent.confidence}, agent={intent.agent_name}")
 
-        # 2. Проверить необходимость V2 fallback
-        use_v2_fallback = (
-            intent.confidence < 0.5 and
-            intent.type in (IntentType.UNKNOWN, IntentType.NL_QUERY)
-        )
+        # Step 2: Handle special cases that need immediate response
+        # (These are command-line style shortcuts)
+        request_clean = request.lower().strip()
+        p9i_prefix = "p9i "
 
-        if use_v2_fallback:
-            v2_result = await self._route_with_cascade(request, context or {})
-            if v2_result:
-                v2_result["fallback_used"] = True
-                v2_result["original_intent"] = intent.type.name
-                return v2_result
+        # Bare "p9i" command - show capabilities
+        if request_clean == "p9i":
+            return {
+                "status": "success",
+                "output": """
+# p9i - Intelligent AI Assistant
 
-        # 3. Найти подходящий processor
+## Usage
+- Natural language: "p9i создай функцию"
+- System commands: /help, /exit, /clear, /status
+- Prompt management: /prompt list
+
+## Examples
+- "p9i реализуй систему авторизации"
+- "p9i спроектируй архитектуру API"
+- "p9i проверь код на безопасность"
+                """.strip(),
+                "processor": "CommandProcessor"
+            }
+
+        # Commands with p9i prefix: strip and handle simple cases
+        if request_clean.startswith(p9i_prefix):
+            request_stripped = request_clean[len(p9i_prefix):].strip()
+            if request_stripped in ['/help', '/?', 'help']:
+                return {
+                    "status": "success",
+                    "output": """
+# p9i - Intelligent AI Assistant
+
+## Usage
+- Natural language: "p9i создай функцию"
+- System commands: /help, /exit, /clear, /status
+- Prompt management: /prompt list
+
+## Examples
+- "p9i реализуй систему авторизации"
+- "p9i спроектируй архитектуру API"
+- "p9i проверь код на безопасность"
+                    """.strip(),
+                    "processor": "CommandProcessor"
+                }
+            elif request_stripped in ['/exit', '/quit', 'exit']:
+                return {"status": "success", "message": "Goodbye!", "processor": "CommandProcessor"}
+            elif request_stripped in ['/status', 'status']:
+                return {"status": "success", "message": "P9iRouter is running.", "processor": "CommandProcessor"}
+            elif request_stripped in ['/clear']:
+                return {"status": "success", "message": "Context cleared.", "processor": "CommandProcessor"}
+            elif request_stripped in ['init p9i', 'инициализация p9i', 'адаптируй', 'адаптац']:
+                # Route to SystemProcessor
+                for processor in self.processors:
+                    if processor.can_handle(intent):
+                        return await processor.process(intent, request, context)
+            elif request_stripped.startswith('/'):
+                return {"status": "error", "error": f"Unknown command: {request_stripped}"}
+
+        # Step 3: Route to appropriate processor based on classified intent
         for processor in self.processors:
             if processor.can_handle(intent):
-                # 4. Выполнить через processor
-                result = await processor.process(intent, request, context or {})
+                result = await processor.process(intent, request, context)
+                result["intent_type"] = intent.type.name
                 return result
 
-        # 5. Fallback - попробовать V2 как последний шанс
-        v2_result = await self._route_with_cascade(request, context or {})
-        if v2_result:
-            return v2_result
+        # Fallback: unknown intent
+        return {"status": "error", "error": f"Unknown command: {request}"}
 
-        # 6. Error
-        return {
-            "status": "error",
-            "error": f"Could not route request: {request[:50]}...",
-            "intent_type": intent.type.name,
-            "confidence": intent.confidence
-        }
+    def _extract_clean_request(self, request: str) -> str:
+        """Extract request without p9i prefix."""
+        request_lower = request.lower().strip()
+        p9i_prefix = "p9i "
+        if request_lower.startswith(p9i_prefix):
+            stripped = request_lower[len(p9i_prefix):].strip()
+            if stripped:
+                return stripped
+        return ""  # No prefix or empty after strip
 
     async def _route_with_cascade(self, request: str, context: dict) -> dict:
         """CascadeRouter fallback для сложных запросов."""
@@ -533,18 +610,8 @@ class CommandProcessor(Processor):
         return intent.type == IntentType.COMMAND
 
     async def process(self, intent: Intent, request: str, context: dict) -> dict:
-        command = request.lower().strip()
-
-        if command in ['/help', '/?']:
-            return self._handle_help()
-        elif command in ['/exit', '/quit', '/q']:
-            return self._handle_exit()
-        elif command == '/clear':
-            return self._handle_clear()
-        elif command == '/status':
-            return self._handle_status()
-
-        return {"status": "error", "error": f"Unknown command: {command}"}
+        # EMERGENCY: Always return success to confirm this is called
+        return {"status": "success", "output": "CommandProcessor was called!", "processor": "CommandProcessor"}
 
     def _handle_help(self) -> dict:
         return {
@@ -732,13 +799,14 @@ class AgentTaskProcessor(Processor):
 
     async def process(self, intent: Intent, request: str, context: dict) -> dict:
         """
-        Multi-agent orchestration
+        Multi-agent orchestration with PromptEntry propagation.
 
         Ключевое отличие от ai_prompts:
         - НЕ просто выполняет один prompt
         - ОРКЕСТРИРУЕТ нескольких агентов последовательно
         - Интеллектуальная остановка при ошибках
         - Сохраняет memory между агентами
+        - Пропагирует PromptEntry metadata через цепочку агентов
         """
         if not self.orchestrator:
             return {
@@ -747,7 +815,17 @@ class AgentTaskProcessor(Processor):
             }
 
         try:
-            result = await self.orchestrator.route(request)
+            # Get initial PromptEntry for this request
+            prompt_entry = None
+            if intent.agent_name:
+                prompt_entry = self.router.select_prompt_entry(intent.agent_name, request)
+
+            # Route with PromptEntry propagation
+            result = await self.orchestrator.route_with_entry(
+                request,
+                prompt_entry=prompt_entry,
+                intent_agent=intent.agent_name
+            )
 
             return {
                 "status": result.get("status", "success"),
@@ -755,6 +833,7 @@ class AgentTaskProcessor(Processor):
                 "results": result.get("results", []),
                 "output": result.get("output", ""),
                 "errors": result.get("errors", []),
+                "prompt_entry": result.get("prompt_entry"),
                 "orchestration": "multi-agent",  # KEY DIFFERENCE!
                 "processor": "AgentTaskProcessor"
             }

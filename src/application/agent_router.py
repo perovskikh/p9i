@@ -175,6 +175,7 @@ class AgentRouter:
     def __init__(self):
         """Initialize AgentRouter with PromptRegistry."""
         self._registry: Optional[PromptRegistry] = None
+        self._hybrid_router: Optional[Any] = None  # HybridPromptRouter, lazy init
         self._initialized = False
 
     @property
@@ -183,6 +184,8 @@ class AgentRouter:
         if self._registry is None:
             self._registry = PromptRegistry()
             self._load_prompts_from_storage()
+            self._register_agent_rules()
+            self._init_hybrid_router()
         return self._registry
 
     def _load_prompts_from_storage(self) -> None:
@@ -265,9 +268,51 @@ class AgentRouter:
         except Exception as e:
             pass
 
+    def _register_agent_rules(self) -> None:
+        """
+        Register routing rules for each agent's prompts with PromptRegistry.
+
+        This enables HybridPromptRouter to use rules for agent detection.
+        """
+        if self._registry is None:
+            return
+
+        for agent_name, agent in AGENTS.items():
+            keywords = AGENT_KEYWORDS.get(agent_name, [])
+            for prompt_name in agent.prompts:
+                entry = self._registry.get_by_name(prompt_name)
+                if entry:
+                    # Add agent-specific rules to the entry
+                    entry.rules.append({
+                        "type": "agent_keyword",
+                        "keywords": keywords,
+                        "agent": agent_name
+                    })
+
+    def _init_hybrid_router(self) -> None:
+        """
+        Initialize HybridPromptRouter with registered prompts.
+
+        Uses cascade: Rule-based → Semantic → LLM fallback
+        """
+        from src.application.router.cascade import HybridPromptRouter
+
+        if self._registry is None:
+            return
+
+        self._hybrid_router = HybridPromptRouter()
+        # Register all prompts with the hybrid router
+        all_prompts = self._registry.list_all()
+        for entry in all_prompts:
+            self._hybrid_router.register_prompts([entry])
+
     def detect_agents(self, request: str, intent_agent: Optional[str] = None) -> List[str]:
         """
         Detect which agents are needed based on request.
+
+        Uses HybridPromptRouter cascade:
+        1. Static keyword matching (fast path)
+        2. HybridPromptRouter semantic matching (if available)
 
         Priority: migration > full_cycle > architect > reviewer > developer > designer > devops
 
@@ -292,7 +337,7 @@ class AgentRouter:
                     # Full cycle detected - determine orchestration based on context
                     return self._orchestrate_full_cycle(request_lower)
 
-        # Check in priority order for other keywords
+        # Check in priority order for other keywords (fast path)
         for agent_name in self.AGENT_PRIORITY:
             if agent_name == "full_cycle":
                 continue
@@ -302,17 +347,32 @@ class AgentRouter:
                     needed.append(agent_name)
                     break
 
+        # If no explicit keyword match, try HybridPromptRouter semantic matching
+        if not needed and self._hybrid_router is not None:
+            try:
+                from src.application.router.cascade import RoutingContext
+                context = RoutingContext(query=request)
+                result = self._hybrid_router.route(context)
+                if result.prompt_entry and result.confidence_score >= 0.5:
+                    # Extract agent from matched prompt entry rules
+                    agent_name = self._get_agent_for_prompt(result.prompt_entry.name)
+                    if agent_name:
+                        needed = [agent_name]
+            except Exception:
+                pass  # Fall back to default
+
         # Default to developer if no specific agent detected
         if not needed:
             needed = ["developer"]
 
         return needed
 
-        # Default to developer if no specific agent detected
-        if not needed:
-            needed = ["developer"]
-
-        return needed
+    def _get_agent_for_prompt(self, prompt_name: str) -> Optional[str]:
+        """Get agent name for a given prompt name."""
+        for agent_name, agent in AGENTS.items():
+            if prompt_name in agent.prompts:
+                return agent_name
+        return None
 
     def _orchestrate_full_cycle(self, request_lower: str) -> List[str]:
         """
@@ -390,18 +450,30 @@ class AgentRouter:
         request_lower = request.lower()
 
         # Try semantic matching via PromptRegistry first
-        if self._initialized:
+        if self._initialized and self._registry:
             # Get agent's category for filtering
             agent_category = agent.category
 
-            # Search prompts in registry (keyword-based for now, can upgrade to semantic)
-            results = self.registry.search(request, limit=5)
+            # First try: find prompts by category
+            category_results = self.registry.find_by_category(agent_category)
 
-            # Filter by agent's prompts
+            # Filter by agent's prompts and keyword match
             agent_prompts_set = set(agent.prompts)
+            for entry in category_results:
+                if entry.name in agent_prompts_set and entry.matches_keyword(request_lower):
+                    return entry.name
+
+            # Second try: search prompts in registry and filter
+            results = self.registry.search(request, limit=10)
             for entry in results:
                 if entry.name in agent_prompts_set:
                     return entry.name
+
+            # Third: use keyword matching within agent's prompts
+            for prompt_name in agent.prompts:
+                entry = self._registry.get_by_name(prompt_name)
+                if entry and entry.matches_keyword(request_lower):
+                    return prompt_name
 
         # Fallback to keyword matching (legacy)
         for prompt in agent.prompts:
@@ -443,3 +515,19 @@ class AgentRouter:
             }
             for key, agent in AGENTS.items()
         ]
+
+    def get_unified_keyword_map(self) -> Dict[str, str]:
+        """
+        Generate unified keyword -> agent_name mapping from AGENT_KEYWORDS.
+
+        This provides a single source of truth for agent keywords,
+        replacing duplicative KEYWORD_MAP in P9iRouter.
+
+        Returns:
+            Dict mapping keywords to agent names
+        """
+        unified = {}
+        for agent_name, keywords in AGENT_KEYWORDS.items():
+            for keyword in keywords:
+                unified[keyword] = agent_name
+        return unified
