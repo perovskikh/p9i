@@ -10,9 +10,11 @@ K8S_DIR := $(shell pwd)/k8s
 NAMESPACE ?= p9i
 HELM_CHART := $(shell pwd)/helm/p9i
 
-# Kubernetes command (use sudo k3s kubectl on K3s)
-Kubectl ?= kubectl
+# Kubernetes command (use $(KUBECTL) on K3s)
 KUBECTL := $(shell (sudo -n kubectl --help >/dev/null 2>&1 && echo "sudo kubectl") || echo "kubectl")
+
+# App label for K8s selectors
+APP_LABEL := app=p9i-p9i
 
 # Colors
 GREEN := \033[0;32m
@@ -22,6 +24,19 @@ NC := \033[0m
 
 # Default target
 .DEFAULT_GOAL := help
+
+# =============================================================================
+# PHONY DECLARATIONS
+# =============================================================================
+.PHONY: help dev deploy watch scale hpa status
+.PHONY: build build-push run start stop logs shell
+.PHONY: compose-up compose-down compose-logs compose-restart compose-clean
+.PHONY: k3s-install k3s-install-server k3s-install-agent k3s-uninstall
+.PHONY: k3s-deploy k3s-delete k3s-logs k3s-restart k3s-redeploy
+.PHONY: k3s-status k3s-status-nodes k3s-port-forward k3s-describe k3s-events
+.PHONY: helm-install helm-upgrade helm-uninstall helm-template helm-values helm-list
+.PHONY: backup restore backup-rotate backup-list
+.PHONY: lint test clean prune info ci-check
 
 # =============================================================================
 # HELP
@@ -89,13 +104,13 @@ deploy: k3s-deploy ## Deploy to K3s (kubectl apply -f k8s/)
 	@echo "$(GREEN)Deployed to K3s$(NC)"
 
 watch: ## Watch K3s logs (Ctrl+C to exit)
-	sudo k3s kubectl logs -n $(NAMESPACE) -l app=mcp-server -f --tail=50
+	$(KUBECTL) logs -n $(NAMESPACE) -l $(APP_LABEL) -f --tail=50
 
 scale: ## Scale HPA (e.g., make scale REPLICAS=5)
-	sudo k3s kubectl scale deployment/mcp-server -n $(NAMESPACE) --replicas=$(or $(REPLICAS),3)
+	$(KUBECTL) scale deployment/p9i-p9i -n $(NAMESPACE) --replicas=$(or $(REPLICAS),3)
 
 hpa: ## Show HPA status
-	sudo k3s kubectl get hpa -n $(NAMESPACE)
+	$(KUBECTL) get hpa -n $(NAMESPACE)
 
 # =============================================================================
 # CI/CD
@@ -235,12 +250,12 @@ k3s-uninstall: ## Uninstall K3s
 
 .PHONY: k3s-status-nodes
 k3s-status-nodes: ## Show K3s nodes status
-	sudo k3s kubectl get nodes -o wide
+	$(KUBECTL) get nodes -o wide
 
 .PHONY: k3s-deploy
 k3s-deploy: build-push
 	@echo "$(YELLOW)Deploying to K3s via Helm...$(NC)"
-	sudo k3s kubectl create namespace $(NAMESPACE) --dry-run=client -o yaml | sudo k3s kubectl apply -f -
+	$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
 	helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace -f $(HELM_CHART)/values.yaml --wait --timeout 5m
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
 
@@ -248,16 +263,16 @@ k3s-deploy: build-push
 k3s-delete:
 	@echo "$(YELLOW)Deleting from K3s (Helm)...$(NC)"
 	helm uninstall p9i --namespace $(NAMESPACE) 2>/dev/null || true
-	sudo k3s kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
+	$(KUBECTL) delete namespace $(NAMESPACE) --ignore-not-found=true
 	@echo "$(GREEN)Deleted from K3s$(NC)"
 
 .PHONY: k3s-logs
 k3s-logs:
-	sudo k3s kubectl logs -n $(NAMESPACE) -l app=p9i-p9i -f --tail=100
+	$(KUBECTL) logs -n $(NAMESPACE) -l $(APP_LABEL) -f --tail=100
 
 .PHONY: k3s-restart
 k3s-restart:
-	sudo k3s kubectl rollout restart -n $(NAMESPACE) deployment/mcp-server
+	$(KUBECTL) rollout restart -n $(NAMESPACE) deployment/p9i-p9i
 	@echo "$(GREEN)Restarted deployment$(NC)"
 
 .PHONY: k3s-redeploy
@@ -267,25 +282,25 @@ k3s-redeploy: k3s-delete build-push k3s-deploy
 .PHONY: k3s-status
 k3s-status:
 	@echo "$(BLUE)=== Namespace $(NAMESPACE) ===$(NC)"
-	sudo k3s kubectl get all -n $(NAMESPACE)
+	$(KUBECTL) get all -n $(NAMESPACE)
 	@echo ""
 	@echo "$(BLUE)=== Endpoints ===$(NC)"
-	sudo k3s kubectl get endpoints -n $(NAMESPACE)
+	$(KUBECTL) get endpoints -n $(NAMESPACE)
 
 .PHONY: k3s-port-forward
 k3s-port-forward:
 	@echo "$(YELLOW)Port forwarding to K3s service...$(NC)"
-	@echo "MCP: localhost:8000 -> mcp-server:8000"
-	sudo k3s kubectl port-forward -n $(NAMESPACE) svc/mcp-server 8000:8000 & \
+	@echo "MCP: localhost:8000 -> p9i-p9i:8000"
+	$(KUBECTL) port-forward -n $(NAMESPACE) svc/p9i-p9i 8000:8000 & \
 	wait
 
 .PHONY: k3s-describe
 k3s-describe:
-	sudo k3s kubectl describe all -n $(NAMESPACE)
+	$(KUBECTL) describe all -n $(NAMESPACE)
 
 .PHONY: k3s-events
 k3s-events:
-	sudo k3s kubectl get events -n $(NAMESPACE) --sort-by='.lastTimestamp'
+	$(KUBECTL) get events -n $(NAMESPACE) --sort-by='.lastTimestamp'
 
 # =============================================================================
 # HELM
@@ -327,7 +342,7 @@ helm-upgrade: build-push
 helm-uninstall:
 	@echo "$(YELLOW)Uninstalling Helm release...$(NC)"
 	helm uninstall p9i --namespace $(NAMESPACE) || true
-	sudo k3s kubectl delete namespace $(NAMESPACE) --ignore-not-found=true
+	$(KUBECTL) delete namespace $(NAMESPACE) --ignore-not-found=true
 
 .PHONY: helm-template
 helm-template:

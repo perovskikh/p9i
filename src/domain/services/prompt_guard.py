@@ -57,7 +57,7 @@ class PromptDeduplicationGuard:
     def _load_index(self):
         """Load all existing prompts and build index."""
         # Scan all prompt directories
-        for tier in ["core", "universal", "packs"]:
+        for tier in ["core", "universal", "packs", "agents"]:
             tier_dir = self.prompts_dir / tier
             if not tier_dir.exists():
                 continue
@@ -67,6 +67,11 @@ class PromptDeduplicationGuard:
                 for pack_dir in tier_dir.iterdir():
                     if pack_dir.is_dir():
                         self._scan_directory(pack_dir, f"packs/{pack_dir.name}")
+            elif tier == "agents":
+                # Agents have subdirectories by agent name
+                for agent_dir in tier_dir.iterdir():
+                    if agent_dir.is_dir():
+                        self._scan_directory(agent_dir, f"agents/{agent_dir.name}")
             else:
                 self._scan_directory(tier_dir, tier)
 
@@ -129,17 +134,66 @@ class PromptDeduplicationGuard:
 
         try:
             content = router_file.read_text()
-            # Extract PROMPT_KEYWORDS
+            # Extract PROMPT_KEYWORDS - format: "prompt_name": ["keyword1", "keyword2", ...]
             if "PROMPT_KEYWORDS" in content:
                 import re
-                pattern = r'["\'](\w+)["\']\s*:\s*\[[^\]]*["\']([^"\']+)["\']'
-                matches = re.findall(pattern, content)
+                # Find PROMPT_KEYWORDS block
+                start = content.find("PROMPT_KEYWORDS = {")
+                if start == -1:
+                    return
+                # Find the matching closing brace
+                brace_count = 0
+                pos = start
+                while pos < len(content):
+                    if content[pos] == '{':
+                        brace_count += 1
+                    elif content[pos] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            break
+                    pos += 1
+                keywords_block = content[start:pos+1]
 
-                for prompt, keywords in matches:
-                    for kw in keywords.split(","):
-                        kw = kw.strip().strip("'\"")
+                # Match: "prompt-name": ["keyword1", "keyword2", ...]
+                # Each entry is: "prompt_name": ["kw1", "kw2", ...]
+                entry_pattern = r'"(\w+(?:-\w+)*)":\s*\[([^\]]*)\]'
+                for match in re.finditer(entry_pattern, keywords_block):
+                    prompt_name = match.group(1)
+                    keywords_str = match.group(2)
+                    # Extract individual keywords from the list
+                    kw_pattern = r'"([^"]+)"'
+                    for kw_match in re.finditer(kw_pattern, keywords_str):
+                        kw = kw_match.group(1).lower()
                         if kw and kw not in self._keyword_map:
-                            self._keyword_map[kw.lower()] = prompt
+                            self._keyword_map[kw] = prompt_name
+
+            # Also extract AGENT_KEYWORDS
+            if "AGENT_KEYWORDS" in content:
+                import re
+                start = content.find("AGENT_KEYWORDS = {")
+                if start == -1:
+                    return
+                brace_count = 0
+                pos = start
+                while pos < len(content):
+                    if content[pos] == '{':
+                        brace_count += 1
+                    elif content[pos] == '}':
+                        brace_count -= 1
+                        if brace_count == 0:
+                            break
+                    pos += 1
+                keywords_block = content[start:pos+1]
+
+                entry_pattern = r'"(\w+)":\s*\[([^\]]*)\]'
+                for match in re.finditer(entry_pattern, keywords_block):
+                    agent_name = match.group(1)
+                    keywords_str = match.group(2)
+                    kw_pattern = r'"([^"]+)"'
+                    for kw_match in re.finditer(kw_pattern, keywords_str):
+                        kw = kw_match.group(1).lower()
+                        if kw and kw not in self._keyword_map:
+                            self._keyword_map[kw] = f"agent:{agent_name}"
         except Exception as e:
             logger.warning(f"Could not load keywords from router: {e}")
 
@@ -154,14 +208,40 @@ class PromptDeduplicationGuard:
             # Find AGENTS definition
             if "AGENTS" in content:
                 import re
-                # Find agent blocks
-                pattern = r'"(\w+)":\s*Agent\([^)]+prompts=\[([^\]]+)\]'
-                matches = re.findall(pattern, content)
+                # Find all Agent blocks - extract name and prompts separately
+                # Pattern: "agent_name": Agent(
+                agent_blocks = re.finditer(
+                    r'"(\w+)":\s*Agent\s*\(',
+                    content
+                )
 
-                for agent_name, prompts_str in matches:
-                    # Extract prompt names
-                    prompt_names = re.findall(r'"(\w+[-]?\w+)"', prompts_str)
-                    self._agent_prompts[agent_name] = set(prompt_names)
+                for agent_match in agent_blocks:
+                    agent_name = agent_match.group(1)
+                    start_pos = agent_match.end()
+
+                    # Find the matching closing paren by counting nesting level
+                    paren_count = 1
+                    pos = start_pos
+                    while pos < len(content) and paren_count > 0:
+                        if content[pos] == '(':
+                            paren_count += 1
+                        elif content[pos] == ')':
+                            paren_count -= 1
+                        pos += 1
+
+                    agent_block = content[agent_match.start():pos]
+
+                    # Extract prompts from the block
+                    prompts_match = re.search(r'prompts=\[([^\]]*)\]', agent_block, re.DOTALL)
+                    if prompts_match:
+                        prompts_str = prompts_match.group(1)
+                        # Match prompt names with optional hyphens (e.g., promt-feature-add)
+                        prompt_names = re.findall(r'"(\w+(?:-\w+)*)"', prompts_str)
+                        self._agent_prompts[agent_name] = set(prompt_names)
+                    else:
+                        self._agent_prompts[agent_name] = set()
+
+                logger.debug(f"Loaded {len(self._agent_prompts)} agents")
         except Exception as e:
             logger.warning(f"Could not load agents: {e}")
 
@@ -393,16 +473,24 @@ class PromptDeduplicationGuard:
         }
 
     def _get_prompts_by_tier(self) -> Dict[str, List[str]]:
-        """Group prompts by tier."""
+        """Group prompts by tier based on path."""
         tiers = {"core": [], "universal": [], "packs": []}
 
         for name, path in self._prompt_index.items():
-            if path.startswith("core"):
+            path_lower = path.lower()
+            parts = path_lower.split("/")
+            if "core" in parts:
                 tiers["core"].append(name)
-            elif path.startswith("universal"):
+            elif "universal" in parts:
                 tiers["universal"].append(name)
-            elif path.startswith("packs"):
+            elif "packs" in parts:
                 tiers["packs"].append(name)
+            elif "agents" in parts:
+                # Agents directory is part of universal tier
+                tiers["universal"].append(name)
+            else:
+                # Unknown tier - default to universal
+                tiers["universal"].append(name)
 
         return tiers
 

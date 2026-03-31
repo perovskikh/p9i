@@ -86,13 +86,11 @@ MCP_TRANSPORT=streamable-http python -m src.api.server
 ### K3s (Production)
 
 ```bash
-# Сборка и пуш в локальный registry
-docker build -f docker/Dockerfile -t p9i .
-docker tag p9i:latest localhost:5000/p9i:k8s
-docker push localhost:5000/p9i:k8s
-
-# Деплой
-sudo k3s kubectl apply -f k8s/
+# Через Makefile (рекомендуется)
+make deploy          # build-push + helm upgrade
+make k3s-logs       # посмотреть логи
+make k3s-restart     # перезапустить pod
+make scale REPLICAS=3  # масштабировать
 ```
 
 ## Development Setup
@@ -136,6 +134,18 @@ git commit --no-verify -m "message"
 }
 ```
 
+### p9i Prefix Commands
+
+p9i supports the `p9i ` prefix for explicit routing:
+
+| Command | Description |
+|---------|-------------|
+| `p9i /help` | Show help |
+| `p9i /status` | Check status |
+| `p9i создай функцию` | Generate code |
+| `p9i спроектируй архитектуру` | Design architecture |
+| `p9i проверь код` | Code review |
+
 ### Команды
 
 | Команда | Описание |
@@ -144,6 +154,8 @@ git commit --no-verify -m "message"
 | `создай функцию` | Сгенерировать код |
 | `проверь код` | Code review |
 | `приведи к стандарту` | Привести к стандартам |
+| `миграция` | Запустить миграцию |
+| `deploy` | Деплой в K8s |
 
 ### HTTP API
 
@@ -248,6 +260,7 @@ p9i/
 | `reviewer` | Ревью | проверь, приведи |
 | `designer` | UI/UX | дизайн, кнопка |
 | `devops` | CI/CD | deploy, k8s, ci-cd |
+| `migration` | Миграция | миграция, переход |
 
 ### Endpoints
 
@@ -262,15 +275,16 @@ p9i/
 ### Makefile команды
 
 ```bash
-make dev         # docker compose up
-make deploy      # kubectl apply -f k8s/
+make dev         # docker compose up (локальная разработка)
+make deploy      # build-push + helm upgrade (K3s)
 make watch       # kubectl logs -f
 make status      # kubectl get all -n p9i
 make scale REPLICAS=5
 make hpa
+make k3s-redeploy   # полный передеплой
 ```
 
-### Helm
+### Helm (ручной)
 
 ```bash
 helm upgrade --install p9i ./helm/p9i \
@@ -308,7 +322,7 @@ pytest --cov=src
 | 9 | ✅ | Multi-Agent Orchestrator (7 agents) |
 | 10 | ✅ | Clean Architecture |
 | 11 | ✅ | Pre-commit hooks installation |
-| **Total** | **8 ADRs** | See [docs/explanation/adr/](docs/explanation/adr/) |
+| **Total** | **11 ADRs** | See [docs/explanation/adr/](docs/explanation/adr/) |
 
 ## Лицензия
 
