@@ -834,7 +834,9 @@ class AgentTaskProcessor(Processor):
                 # Get prompt entry from orchestrator's router registry
                 registry = getattr(self.orchestrator.router, 'registry', None)
                 if registry:
-                    prompt_entry = registry.get_by_name(intent.agent_name)
+                    # Get actual prompt name for this agent + request, then look up in registry
+                    prompt_name = self.orchestrator.router.select_prompt(intent.agent_name, request)
+                    prompt_entry = registry.get_by_name(prompt_name)
 
             # Route with PromptEntry propagation
             result = await self.orchestrator.route_with_entry(

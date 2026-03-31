@@ -474,11 +474,14 @@ class AgentRouter:
                 if entry and entry.matches_keyword(request_lower):
                     return prompt_name
 
-        # Fallback to keyword matching (legacy)
+        # Fallback to keyword matching (legacy) - use word boundaries
+        import re
         for prompt in agent.prompts:
             keywords = PROMPT_KEYWORDS.get(prompt, [])
             for keyword in keywords:
-                if keyword in request_lower:
+                # Use word boundary matching - keyword must be standalone word, not substring
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, request_lower):
                     return prompt
 
         # Default to first prompt
