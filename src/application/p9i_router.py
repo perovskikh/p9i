@@ -840,8 +840,8 @@ class AgentTaskProcessor(Processor):
             result = await self.orchestrator.route_with_entry(
                 request,
                 prompt_entry=prompt_entry,
-                intent_agent=intent.agent_name
-            )
+                intent_agent=intent.agent_name,
+                context=context)
 
             return {
                 "status": result.get("status", "success"),
