@@ -265,7 +265,7 @@ cat config/manifests/${PROJECT_NAME_LOWER}-rbac.yaml
 | ServiceAccount | Namespace | Permissions | Concern |
 |---|---|---|---|
 | `${PROJECT_NAME_LOWER}` | `${K8S_NAMESPACE}` | | |
-| `code-server` | `codeshift` | | |
+| `${CODE_SERVER}` | `codeshift` | | |
 | `default` | (any) | Should be restricted | |
 
 ---

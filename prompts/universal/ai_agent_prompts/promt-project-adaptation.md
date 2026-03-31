@@ -124,7 +124,7 @@
 - User registration + JWT auth
 - Product catalog (CRUD)
 - Shopping cart
-- Payment integration (YooKassa)
+- Payment integration (${PAYMENT_PROVIDER})
 
 ## Should Have (Deadline: 2026-Q2)
 - Admin dashboard
@@ -277,7 +277,7 @@
    - [ ] Code: `app/auth/`
 
    ### 🟡 In Progress (50–99%)
-   - [ ] Item: Payment integration (YooKassa)
+   - [ ] Item: Payment integration (${PAYMENT_PROVIDER})
    - [ ] Complexity: High
    - [ ] Owner: Integration lead
    - [ ] Code: `app/payments/`

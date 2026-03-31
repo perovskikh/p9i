@@ -147,7 +147,7 @@
 
 **Примеры:**
 
-*SaaS MVP:* "Provide developers with a quick, affordable way to deploy code-server instances via Telegram with automatic provisioning"
+*SaaS MVP:* "Provide developers with a quick, affordable way to deploy ${CODE_SERVER} instances via Telegram with automatic provisioning"
 
 *Mobile MVP:* "Enable users to manage their tasks offline and sync when online, with beautiful, responsive UI"
 
@@ -242,7 +242,7 @@
 |-----------|-----------|----------|-------------------|------|
 | API endpoints | Database schema | YES | Week 2 | Medium |
 | Frontend | API endpoints | YES | Week 4 | Medium |
-| Payment integration | YooKassa account | YES | Week 1 | High |
+| Payment integration | ${PAYMENT_PROVIDER} account | YES | Week 1 | High |
 | ... | ... | ... | ... | ... |
 
 ---

@@ -46,11 +46,11 @@
 ADR-расхождения, и обеспечить, что фикс не нарушит архитектурные решения.
 
 **Примеры задач, которые решает этот промпт:**
-- Исправление ошибок в Telegram Bot (webhook, команды, платежи)
+- Исправление ошибок в ${PRIMARY_INTERFACE} (webhook, команды, платежи)
 - Фикс багов в Helm templates (deployment, ingress, middlewares)
 - Исправление проблем с K8s provisioning (namespaces, PVC, RBAC)
 - Фикс ошибок в CI/CD pipeline (scripts, GitHub Actions)
-- Исправление багов в интеграциях (YooKassa, Nextcloud, Redis)
+- Исправление багов в интеграциях (${PAYMENT_PROVIDER}, Nextcloud, Redis)
 
 **Ожидаемый результат:**
 - Баг исправлен без нарушения ADR-решений
@@ -183,8 +183,8 @@ ADR-расхождения, и обеспечить, что фикс не нар
 
 | Тип бага | Запрос к Context7 |
 |---|---|
-| aiogram handler не срабатывает | `aiogram 3.22 router filter order middleware priority registration` |
-| YooKassa webhook 403 | `yookassa webhook hmac signature validation ip whitelist` |
+| ${FRAMEWORK} handler не срабатывает | `${PRIMARY_INTERFACE} router filter order middleware priority registration` |
+| ${PAYMENT_PROVIDER} webhook 403 | `yookassa webhook hmac signature validation ip whitelist` |
 | PVC pending | `kubernetes pvc pending storageclass longhorn provisioner events` |
 | Ingress 502 | `traefik ingress backend service endpoint health routing` |
 

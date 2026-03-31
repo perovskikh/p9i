@@ -303,7 +303,7 @@ docs/
 ├── reference/          # Справка по API, CLI, config (AUTO-GENERATED)
 ├── tutorials/          # Обучение новым концепциям
 └── official_document/  # Official documentation (READ-ONLY)
-    ├── code-server/
+    ├── ${CODE_SERVER}/
     ├── k3s/
     └── ...
 ```

@@ -135,7 +135,7 @@
 
 **Стек:**
 - **Infrastructure:** Kubernetes (${K8S_PROVIDER}), Helm, Traefik, cert-manager
-- **Bot:** Python, aiogram 3.x / python-telegram-bot, FastAPI webhooks
+- **Bot:** Python, ${PRIMARY_INTERFACE}, FastAPI webhooks
 - **Payments:** ${PAYMENT_PROVIDER} API (HMAC webhook validation, idempotency keys)
 - **Storage:** Longhorn (prod), local-path (dev)
 - **Database:** PostgreSQL (SQL baseline `scripts/utils/init-saas-database.sql`)

@@ -45,7 +45,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 ## Когда использовать
 
-- При добавлении нового функционала в проект (Telegram Bot, API, K8s, CI/CD)
+- При добавлении нового функционала в проект (${PRIMARY_INTERFACE}, API, K8s, CI/CD)
 - При расширении ADR идеями из внешних документов (how-to, спецификации, design doc)
 - Когда требуется новое ADR-решение перед реализацией
 - При интеграции новой зависимости или сервиса в стек
@@ -61,7 +61,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 Твоя задача — провести полный цикл: от исследования best practices до реализации и верификации соответствия ADR.
 
 **Примеры задач, которые решает этот промпт:**
-- Добавление новой команды или функции в Telegram Bot и т.д.
+- Добавление новой команды или функции в ${PRIMARY_INTERFACE} и т.д.
 - Интеграция нового способа оплаты (ЮKassa, Stripe, Telegram Payments и т.д.)
 - Создание Web UI/UX интерфейса для управления пользователями
 - Добавление нового способа аутентификации (GitHub OAuth, Google, Telegram Login Widget и т.д.)
@@ -147,7 +147,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 **Стек:**
 - **Infrastructure:** Kubernetes (${K8S_PROVIDER}), Helm, Traefik, cert-manager
-- **Bot:** Python, aiogram 3.x / python-telegram-bot, FastAPI webhooks
+- **Bot:** Python, ${PRIMARY_INTERFACE}, FastAPI webhooks
 - **Payments:** ${PAYMENT_PROVIDER} API (HMAC webhook validation, idempotency keys)
 - **Storage:** Longhorn (prod), local-path (dev)
 - **Database:** PostgreSQL (SQL baseline `scripts/utils/init-saas-database.sql`)
@@ -193,7 +193,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 | Тип функционала | Запрос к Context7 |
 |---|---|
-| ${PRIMARY_INTERFACE} Bot команды | `aiogram 3.22 router middleware flags dependency injection error handling` |
+| ${PRIMARY_INTERFACE} Bot команды | `${PRIMARY_INTERFACE} router middleware flags dependency injection error handling` |
 | ${PAYMENT_PROVIDER} платежи | `${PAYMENT_PROVIDER_lower} python sdk payment create webhook idempotency` |
 | GitHub OAuth | `fastapi oauth2 github authlib httpx social login` |
 | Web UI управления | `fastapi jinja2 templates admin dashboard htmx` |
@@ -203,7 +203,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 | Helm chart dependencies | `helm chart dependencies Chart.yaml helm dependency update subcharts globals` |
 
 **Context7-факты, которые учитывать в реализации:**
-- **aiogram 3.x:** middleware-context проходит end-to-end через middlewares/filters/handlers; использовать flags для классификации handler-логики; DI через type hints; ошибки обрабатывать локально (`try/except`) и на уровне router/dispatcher.
+- **$(FRAMEWORK) 3.x:
 - **Helm:** зависимости описывать в `Chart.yaml`, синхронизировать через `helm dependency update`; subcharts stand-alone; общие параметры прокидывать через global values.
 
 ### 0.2. Официальная документация (READ-ONLY)
@@ -216,7 +216,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 | Технология | Путь | Использовать для |
 |---|---|---|
-| **code-server** | `docs/official_document/code-server/` | Параметры запуска, настройка workspace |
+| **${CODE_SERVER}** | `docs/official_document/${CODE_SERVER}/` | Параметры запуска, настройка workspace |
 | **k3s** | `docs/official_document/k3s/` | K8s API, CNI, storage classes |
 | **Longhorn** | `docs/official_document/longhorn/` | StorageClass, PVC, volume lifecycle |
 | **local-path-provisioner** | `docs/official_document/local-path-provisioner/` | Dev storage, PVC имена |
@@ -429,8 +429,8 @@ Related ADR: docs/explanation/adr/ADR-NNN-{slug}.md
 # Пример для ${PAYMENT_PROVIDER}:
 cat docs/official_document/${PAYMENT_PROVIDER_lower}/README.md | grep -A5 "payment"
 
-# Пример для code-server:
-find docs/official_document/code-server -name "*.md" | xargs grep -l "config"
+# Пример для ${CODE_SERVER}:
+find docs/official_document/${CODE_SERVER} -name "*.md" | xargs grep -l "config"
 
 # Пример для K3s:
 grep -r "StorageClass\|PersistentVolume" docs/official_document/k3s/
