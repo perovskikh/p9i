@@ -446,7 +446,7 @@ class P9iRouter:
         )
 
         if use_v2_fallback:
-            v2_result = await self._route_with_v2(request, context or {})
+            v2_result = await self._route_with_cascade(request, context or {})
             if v2_result:
                 v2_result["fallback_used"] = True
                 v2_result["original_intent"] = intent.type.name
@@ -460,7 +460,7 @@ class P9iRouter:
                 return result
 
         # 5. Fallback - попробовать V2 как последний шанс
-        v2_result = await self._route_with_v2(request, context or {})
+        v2_result = await self._route_with_cascade(request, context or {})
         if v2_result:
             return v2_result
 
@@ -472,10 +472,10 @@ class P9iRouter:
             "confidence": intent.confidence
         }
 
-    async def _route_with_v2(self, request: str, context: dict) -> dict:
-        """Router V2 fallback для сложных запросов."""
+    async def _route_with_cascade(self, request: str, context: dict) -> dict:
+        """CascadeRouter fallback для сложных запросов."""
         try:
-            from src.application.router.v2 import (
+            from src.application.router.cascade import (
                 HybridPromptRouter,
                 RoutingContext as V2Context,
                 PromptRegistry,

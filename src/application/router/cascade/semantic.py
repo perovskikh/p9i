@@ -6,9 +6,9 @@ import logging
 import math
 from typing import TYPE_CHECKING, Any, Protocol
 
-from src.application.router.v2.base import BaseRouter, RouterConfig, RouterStrategy
-from src.application.router.v2.context import RoutingContext, RoutingResult, Confidence
-from src.application.router.v2.registry import PromptEntry, PromptRegistry
+from src.application.router.cascade.base import BaseRouter, RouterConfig, RouterStrategy
+from src.application.router.cascade.context import RoutingContext, RoutingResult, Confidence
+from src.application.router.cascade.registry import PromptEntry, PromptRegistry
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

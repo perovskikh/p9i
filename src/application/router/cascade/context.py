@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.application.router.v2.registry import PromptEntry
+    from src.application.router.cascade.registry import PromptEntry
 
 
 class Confidence(Enum):

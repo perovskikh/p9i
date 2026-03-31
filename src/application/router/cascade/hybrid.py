@@ -7,16 +7,16 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from src.application.router.v2.base import BaseRouter, RouterConfig, RouterStrategy
-from src.application.router.v2.context import RoutingContext, RoutingResult, Confidence
-from src.application.router.v2.registry import PromptEntry
+from src.application.router.cascade.base import BaseRouter, RouterConfig, RouterStrategy
+from src.application.router.cascade.context import RoutingContext, RoutingResult, Confidence
+from src.application.router.cascade.registry import PromptEntry
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from src.application.router.v2.rule_based import RuleBasedRouter
-    from src.application.router.v2.semantic import SemanticRouter
-    from src.application.router.v2.llm import LLMRouter
+    from src.application.router.cascade.rule_based import RuleBasedRouter
+    from src.application.router.cascade.semantic import SemanticRouter
+    from src.application.router.cascade.llm import LLMRouter
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +56,9 @@ class HybridPromptRouter:
         self.hybrid_config = hybrid_config or HybridConfig()
 
         # Initialize routers
-        from src.application.router.v2.rule_based import RuleBasedRouter
-        from src.application.router.v2.semantic import SemanticRouter
-        from src.application.router.v2.llm import LLMRouter
+        from src.application.router.cascade.rule_based import RuleBasedRouter
+        from src.application.router.cascade.semantic import SemanticRouter
+        from src.application.router.cascade.llm import LLMRouter
 
         self._rule = rule_router or RuleBasedRouter(self.config)
         self._semantic = semantic_router or SemanticRouter(self.config)
