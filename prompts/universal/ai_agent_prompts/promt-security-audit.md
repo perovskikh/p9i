@@ -1,8 +1,11 @@
-# AI Agent Prompt: Аудит безопасности 
+# AI Agent Prompt: Аудит безопасности (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 1.2
 **Date:** 2026-03-06
-**Purpose:** Комплексный аудит безопасности SaaS-платформы с платёжной интеграцией YooKassa
+**Purpose:** Комплексный аудит безопасности ${PROJECT_TYPE} с платёжной интеграцией ${PAYMENT_PROVIDER}
 
 ---
 
@@ -17,7 +20,7 @@
 **Пример запроса:**
 
 > «Используя `promt-security-audit.md`, проведи аудит безопасности по компонентам:
-> `<Telegram Bot / YooKassa webhooks / K8s secrets>`
+> `<${PRIMARY_INTERFACE} Bot / ${PAYMENT_PROVIDER} webhooks / K8s secrets>`
 > и выдай приоритизированный remediation plan.»
 
 **Ожидаемый результат:**
@@ -31,7 +34,7 @@
 ## Когда использовать
 
 - Перед production release фичи с чувствительными данными
-- При интеграции платёжных систем (YooKassa webhooks, HMAC)
+- При интеграции платёжных систем (${PAYMENT_PROVIDER} webhooks, HMAC)
 - При подозрении на security vulnerability (из CVE, audit, code review)
 - Плановый quarterly security review
 - После обнаружения ADR-расхождения в области безопасности
@@ -49,7 +52,7 @@
 **Примеры задач, которые решает этот промпт:**
 - Аудит RBAC конфигураций в Kubernetes
 - Проверка Network Policies
-- Валидация webhook HMAC (YooKassa)
+- Валидация webhook HMAC (${PAYMENT_PROVIDER})
 - Аудит secrets management
 - Проверка SQL injection prevention
 - Анализ rate limiting конфигураций
@@ -125,12 +128,12 @@
 
 ### О проекте (Security-relevant)
 
-**** — multi-tenant SaaS платформа с критичными security requirements:
+**${PROJECT_NAME}** — ${PROJECT_TYPE} с критичными security requirements:
 
 | Компонент | Security Concern |
 |---|---|
-| **YooKassa payments** | PCI DSS, webhook HMAC validation, idempotency |
-| **Telegram Bot** | User authentication, bot token protection |
+| **${PAYMENT_PROVIDER} payments** | PCI DSS, webhook HMAC validation, idempotency |
+| **${PRIMARY_INTERFACE} Bot** | User authentication, bot token protection |
 | **PostgreSQL** | SQL injection, credential management |
 | **Kubernetes** | RBAC, Network Policies, Secrets |
 | **JWT Auth** | Token signing, expiration, refresh |
@@ -140,7 +143,7 @@
 
 | Topic Slug | Security Aspect |
 |---|---|
-| `telegram-bot-saas-platform` | Webhook HMAC, JWT, pydantic-settings (no hardcode) |
+| `${PLATFORM_SLUG}` | Webhook HMAC, JWT, pydantic-settings (no hardcode) |
 | `unified-auth-architecture` | Auth flow, token management |
 | `path-based-routing` | Single domain → easier SSL/TLS |
 | `k8s-provider-abstraction` | No hardcoded credentials |
@@ -172,7 +175,7 @@
 
 - [ ] **Authentication & Authorization** (JWT, Telegram auth, RBAC)
 - [ ] **Data Protection** (Secrets, DB credentials, PII)
-- [ ] **Payment Security** (YooKassa, HMAC, idempotency)
+- [ ] **Payment Security** (${PAYMENT_PROVIDER}, HMAC, idempotency)
 - [ ] **Network Security** (TLS, Network Policies, Ingress)
 - [ ] **Container Security** (Image scanning, Pod Security)
 - [ ] **All of the above** (Full audit)
@@ -194,7 +197,7 @@
 
 | Компонент | Context7 Query |
 |---|---|
-| YooKassa | `payment webhook security hmac signature validation replay attack` |
+| ${PAYMENT_PROVIDER} | `payment webhook security hmac signature validation replay attack` |
 | JWT | `jwt security best practices expiration refresh token rotation` |
 | PostgreSQL | `postgresql security injection prepared statements credentials` |
 | Kubernetes | `kubernetes rbac security pod security policy network policy` |
@@ -208,8 +211,8 @@
 
 ```bash
 # Проверить JWT конфигурацию
-grep -rn "JWT\|jwt\|token\|secret" telegram-bot/app/auth/ --include="*.py"
-grep -rn "JWT_SECRET\|JWT_ALGORITHM\|JWT_EXPIRE" telegram-bot/app/config.py
+grep -rn "JWT\|jwt\|token\|secret" ${PROJECT_ROOT}/src/auth/ --include="*.py"
+grep -rn "JWT_SECRET\|JWT_ALGORITHM\|JWT_EXPIRE" ${PROJECT_ROOT}/src/config.py
 
 # Checklist:
 # [ ] JWT_SECRET из env var (не hardcoded)
@@ -233,8 +236,8 @@ grep -rn "JWT_SECRET\|JWT_ALGORITHM\|JWT_EXPIRE" telegram-bot/app/config.py
 
 ```bash
 # Проверить Telegram auth
-grep -rn "TELEGRAM_BOT_TOKEN\|bot_token" telegram-bot/app/ --include="*.py"
-grep -rn "check_telegram_authorization\|validate" telegram-bot/app/auth/ --include="*.py"
+grep -rn "TELEGRAM_BOT_TOKEN\|bot_token" ${PROJECT_ROOT}/src/ --include="*.py"
+grep -rn "check_telegram_authorization\|validate" ${PROJECT_ROOT}/src/auth/ --include="*.py"
 
 # Checklist:
 # [ ] BOT_TOKEN из env var
@@ -248,7 +251,7 @@ grep -rn "check_telegram_authorization\|validate" telegram-bot/app/auth/ --inclu
 ```bash
 # Проверить RBAC конфигурации
 cat templates/rbac-preinstall.yaml
-cat config/manifests/saas-telegram-bot-rbac.yaml
+cat config/manifests/${PROJECT_NAME_LOWER}-rbac.yaml
 
 # Checklist:
 # [ ] Minimal privileges (не cluster-admin)
@@ -261,7 +264,7 @@ cat config/manifests/saas-telegram-bot-rbac.yaml
 
 | ServiceAccount | Namespace | Permissions | Concern |
 |---|---|---|---|
-| `telegram-bot` | `codeshift-saas` | | |
+| `${PROJECT_NAME_LOWER}` | `${K8S_NAMESPACE}` | | |
 | `code-server` | `codeshift` | | |
 | `default` | (any) | Should be restricted | |
 
@@ -274,7 +277,7 @@ cat config/manifests/saas-telegram-bot-rbac.yaml
 ```bash
 # Найти все секреты
 grep -rn "password\|secret\|token\|key" config/ templates/ --include="*.yaml" | grep -v "#"
-grep -rn "os\.environ\|getenv" telegram-bot/app/ --include="*.py"
+grep -rn "os\.environ\|getenv" ${PROJECT_ROOT}/src/ --include="*.py"
 
 # Проверить .env.example (не должен содержать реальных значений)
 cat .env.example
@@ -301,11 +304,11 @@ cat .env.example
 
 ```bash
 # Проверить SQL queries на injection
-grep -rn "execute\|raw_sql\|text(" telegram-bot/app/ --include="*.py"
-grep -rn "f\".*SELECT\|f'.*SELECT" telegram-bot/app/ --include="*.py"
+grep -rn "execute\|raw_sql\|text(" ${PROJECT_ROOT}/src/ --include="*.py"
+grep -rn "f\".*SELECT\|f'.*SELECT" ${PROJECT_ROOT}/src/ --include="*.py"
 
 # Проверить DB credentials
-grep -rn "POSTGRES\|DATABASE_URL" telegram-bot/app/config.py
+grep -rn "POSTGRES\|DATABASE_URL" ${PROJECT_ROOT}/src/config.py
 
 # Checklist:
 # [ ] Parameterized queries (не string concatenation)
@@ -319,7 +322,7 @@ grep -rn "POSTGRES\|DATABASE_URL" telegram-bot/app/config.py
 
 ```bash
 # Найти обработку PII
-grep -rn "email\|phone\|name\|user_id\|telegram_id" telegram-bot/app/ --include="*.py" | head -20
+grep -rn "email\|phone\|name\|user_id\|telegram_id" ${PROJECT_ROOT}/src/ --include="*.py" | head -20
 
 # Checklist:
 # [ ] PII не логируется в plain text
@@ -330,26 +333,26 @@ grep -rn "email\|phone\|name\|user_id\|telegram_id" telegram-bot/app/ --include=
 
 ---
 
-## Шаг 4: Payment Security Audit (YooKassa)
+## Шаг 4: Payment Security Audit (${PAYMENT_PROVIDER})
 
 ### 4.1. Webhook HMAC Validation
 
 ```bash
 # Найти webhook handler
-grep -rn "webhook\|yookassa" telegram-bot/app/payments/ --include="*.py"
+grep -rn "webhook\|${PAYMENT_PROVIDER_lower}" ${PROJECT_ROOT}/src/payments/ --include="*.py"
 
 # Проверить HMAC validation
-grep -rn "hmac\|signature\|verify" telegram-bot/app/payments/ --include="*.py"
+grep -rn "hmac\|signature\|verify" ${PROJECT_ROOT}/src/payments/ --include="*.py"
 ```
 
-**YooKassa Security Checklist:**
+**${PAYMENT_PROVIDER} Security Checklist:**
 
 | Check | Requirement | File | Status |
 |---|---|---|---|
 | HMAC validation | Before processing any webhook | `app/payments/webhooks.py` | |
 | Idempotency keys | For payment creation | `app/payments/service.py` | |
 | Webhook secret | From env var, not hardcoded | `app/config.py` | |
-| IP whitelist | YooKassa IPs only (optional) | Ingress/firewall | |
+| IP whitelist | ${PAYMENT_PROVIDER} IPs only (optional) | Ingress/firewall | |
 | Replay protection | Check timestamp/idempotency | `app/payments/webhooks.py` | |
 | HTTPS only | Webhook endpoint | Ingress TLS | |
 
@@ -357,10 +360,10 @@ grep -rn "hmac\|signature\|verify" telegram-bot/app/payments/ --include="*.py"
 
 ```bash
 # Проверить что payment data не логируется
-grep -rn "log\|print\|logger" telegram-bot/app/payments/ --include="*.py" | grep -i "card\|payment\|secret"
+grep -rn "log\|print\|logger" ${PROJECT_ROOT}/src/payments/ --include="*.py" | grep -i "card\|payment\|secret"
 
 # Checklist:
-# [ ] Card data не обрабатывается (redirect to YooKassa)
+# [ ] Card data не обрабатывается (redirect to ${PAYMENT_PROVIDER})
 # [ ] Payment amounts validated server-side
 # [ ] Currency validated
 # [ ] Webhook events logged для audit trail
@@ -510,7 +513,7 @@ grep -rn "image:" templates/*.yaml
 
 | ADR Topic | Compliant | Notes |
 |---|---|---|
-| `telegram-bot-saas-platform` | ✅/⚠️/❌ | |
+| `${PLATFORM_SLUG}` | ✅/⚠️/❌ | |
 | `unified-auth-architecture` | ✅/⚠️/❌ | |
 
 ## Next Steps
@@ -555,7 +558,7 @@ grep -rn "image:" templates/*.yaml
 - [ ] Authentication & Authorization проверены
 - [ ] Secrets management проверен
 - [ ] Database security проверена
-- [ ] Payment security (YooKassa) проверена
+- [ ] Payment security (${PAYMENT_PROVIDER}) проверена
 - [ ] Network security проверена
 - [ ] Container security проверена
 - [ ] Findings классифицированы по severity
@@ -579,7 +582,7 @@ grep -rn "image:" templates/*.yaml
 
 | Resource | URL/Path |
 |---|---|
-| YooKassa Security | `docs/official_document/yookassa/` |
+| ${PAYMENT_PROVIDER} Security | `docs/official_document/${PAYMENT_PROVIDER_lower}/` |
 | OWASP Top 10 | https://owasp.org/Top10/ |
 | K8s Security | https://kubernetes.io/docs/concepts/security/ |
 | CIS Benchmarks | https://www.cisecurity.org/benchmark/kubernetes |
@@ -592,7 +595,7 @@ grep -rn "image:" templates/*.yaml
 |--------|------|-----------|
 | 1.2 | 2026-03-06 | Добавлены секции Gate I: `## Быстрый старт`, `## Когда использовать`, `## Журнал изменений`. |
 | 1.1 | 2026-02-25 | Добавлены `## Чеклист`, `## Связанные промпты`, Security Resources; unified Mission Statement. |
-| 1.0 | 2026-02-24 | Первая версия: аудит безопасности с YooKassa HMAC и K8s RBAC. |
+| 1.0 | 2026-02-24 | Первая версия: аудит безопасности с ${PAYMENT_PROVIDER} HMAC и K8s RBAC. |
 
 ---
 

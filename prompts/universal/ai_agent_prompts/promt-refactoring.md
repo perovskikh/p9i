@@ -1,4 +1,7 @@
-# AI Agent Prompt: Рефакторинг кода 
+# AI Agent Prompt: Рефакторинг кода (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 1.2
 **Date:** 2026-03-06
@@ -46,7 +49,7 @@
 **без изменения функциональности** и с сохранением соответствия ADR-решениям.
 
 **Примеры задач, которые решает этот промпт:**
-- Оптимизация обработки ошибок в `telegram-bot/app/`
+- Оптимизация обработки ошибок в `${PROJECT_ROOT}/src/`
 - Улучшение структуры Helm templates (вынос в `_helpers.tpl`)
 - Рефакторинг bash-скриптов (DRY, helpers)
 - Оптимизация SQL-запросов
@@ -128,12 +131,12 @@
 
 ### О проекте
 
-**** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
+**${PROJECT_NAME}** — ${PROJECT_TYPE}, развёртывающая ${PRIMARY_SERVICE} в браузере через ${PRIMARY_INTERFACE} с интеграцией ${PAYMENT_PROVIDER} на ${K8S_PROVIDER}.
 
 **Стек:**
-- **Infrastructure:** Kubernetes (k3s/microk8s), Helm, Traefik, cert-manager
+- **Infrastructure:** Kubernetes (${K8S_PROVIDER}), Helm, Traefik, cert-manager
 - **Bot:** Python, aiogram 3.x / python-telegram-bot, FastAPI webhooks
-- **Payments:** YooKassa API (HMAC webhook validation, idempotency keys)
+- **Payments:** ${PAYMENT_PROVIDER} API (HMAC webhook validation, idempotency keys)
 - **Storage:** Longhorn (prod), local-path (dev)
 - **Database:** PostgreSQL (SQL baseline `scripts/utils/init-saas-database.sql`)
 - **GitOps:** ArgoCD
@@ -158,7 +161,7 @@
 | `path-based-routing` | Single domain, path-based | Ingress, middleware templates |
 | `k8s-provider-abstraction` | `$KUBECTL_CMD`, never hardcode | Все bash-скрипты с kubectl |
 | `storage-provider-selection` | Longhorn (prod), local-path (dev) | PVC templates |
-| `telegram-bot-saas-platform` | pydantic-settings, env vars | Python config, handlers |
+| `${PLATFORM_SLUG}` | pydantic-settings, env vars | Python config, handlers |
 | `documentation-generation` | Reference docs AUTO-GENERATED | Не трогать reference/ |
 | `bash-formatting-standard` | 4 spaces, set -euo pipefail | Все .sh файлы |
 
@@ -227,7 +230,7 @@ grep -l "[модуль/паттерн]" docs/explanation/adr/ADR-*.md
 # Проверить критические топики
 echo "Проверка критических ADR:"
 for topic in path-based-routing k8s-provider-abstraction storage-provider-selection \
-             telegram-bot-saas-platform bash-formatting-standard; do
+             ${PLATFORM_SLUG} bash-formatting-standard; do
   ADR=$(find docs/explanation/adr -name "ADR-*-${topic}*.md" | head -1)
   [ -n "$ADR" ] && echo "  $topic: $ADR"
 done
@@ -238,7 +241,7 @@ done
 | ADR Topic | Constraint для рефакторинга |
 |---|---|
 | `k8s-provider-abstraction` | Не hardcode `kubectl`/`k3s kubectl` — использовать `get_kubectl_cmd()` |
-| `telegram-bot-saas-platform` | Не hardcode env vars — использовать pydantic-settings `Settings` |
+| `${PLATFORM_SLUG}` | Не hardcode env vars — использовать pydantic-settings `Settings` |
 | `bash-formatting-standard` | 4 spaces, `set -euo pipefail`, shellcheck-clean |
 | `storage-provider-selection` | Не hardcode storage class — использовать переменные |
 | `path-based-routing` | Не менять path-based на subdomain-based |
@@ -257,7 +260,7 @@ make test 2>&1 | tee /tmp/refactor-before-tests.log
 ./scripts/verify-all-adr.sh 2>&1 | tee /tmp/refactor-before-adr.log
 
 # Для конкретного модуля Python
-cd telegram-bot && poetry run pytest tests/test_[module].py -v 2>&1 | tee /tmp/refactor-before-module.log
+cd ${PROJECT_ROOT} && poetry run pytest tests/test_[module].py -v 2>&1 | tee /tmp/refactor-before-module.log
 
 # Сохранить checksum затронутых файлов (для отката)
 find [scope] -type f -name "*.py" -o -name "*.sh" -o -name "*.yaml" | xargs md5sum > /tmp/refactor-checksums.txt
@@ -270,7 +273,7 @@ find [scope] -type f -name "*.py" -o -name "*.sh" -o -name "*.yaml" | xargs md5s
 make lint 2>&1 | tee /tmp/refactor-before-lint.log
 
 # Для Python: coverage, complexity
-cd telegram-bot && poetry run pytest --cov=app --cov-report=term-missing tests/ 2>&1 | head -50
+cd ${PROJECT_ROOT} && poetry run pytest --cov=app --cov-report=term-missing tests/ 2>&1 | head -50
 ```
 
 ---
@@ -314,7 +317,7 @@ cd telegram-bot && poetry run pytest --cov=app --cov-report=term-missing tests/ 
 
 ```bash
 # Python
-cd telegram-bot && poetry run black app/ tests/
+cd ${PROJECT_ROOT} && poetry run black app/ tests/
 poetry run ruff check --fix app/ tests/
 
 # Bash
@@ -479,7 +482,7 @@ No functional changes.
 
 ## Типичные рефакторинги по области
 
-### Telegram Bot (`telegram-bot/app/`)
+### ${PRIMARY_INTERFACE} Bot (`${PROJECT_ROOT}/src/`)
 
 | Рефакторинг | Паттерн |
 |---|---|
@@ -511,7 +514,7 @@ No functional changes.
 
 | Ресурс | Путь | Назначение |
 |---|---|---|
-| **Code baseline** | `telegram-bot/app/`, `templates/`, `scripts/` | Затрагиваемые модули |
+| **Code baseline** | `${PROJECT_ROOT}/src/`, `templates/`, `scripts/` | Затрагиваемые модули |
 | **ADR-файлы** | `docs/explanation/adr/ADR-*.md` | Проверка ADR-ограничений |
 | **Скрипт верификации** | `scripts/verify-all-adr.sh` | Валидация архитектуры |
 | **Скрипт прогресса** | `scripts/verify-adr-checklist.sh` | Реальный прогресс ADR |

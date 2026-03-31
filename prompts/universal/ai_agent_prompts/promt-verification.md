@@ -18,7 +18,10 @@ type: p9i
 version: '3.4'
 ---
 
-# AI Agent Prompt: Верификация качества кода и ADR
+# AI Agent Prompt: Верификация качества кода и ADR (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 3.4
 **Date:** 2026-03-18
@@ -257,7 +260,7 @@ Layer 5: Documentation
 
 ```bash
 # Invariant 1: No hardcoded kubectl
-grep -r "k3s kubectl\|microk8s kubectl" scripts/ makefiles/ telegram-bot/
+grep -r "k3s kubectl\|microk8s kubectl" scripts/ makefiles/ ${PROJECT_ROOT}/
 # Expected: 0 matches
 
 # Invariant 2: No subdomains in ingress
@@ -265,11 +268,11 @@ grep -E "host:.*\.(com|ru|io)" templates/ingress.yaml
 # Expected: 0 matches (only path-based routing)
 
 # Invariant 3: pydantic-settings for Python config
-grep "from pydantic_settings import" telegram-bot/app/config.py
+grep "from pydantic_settings import" ${PROJECT_ROOT}/src/config.py
 # Expected: found
 
 # Invariant 4: No hardcoded secrets
-grep -rE "(password|secret|token)\s*=\s*['\"][^{]" telegram-bot/app/
+grep -rE "(password|secret|token)\s*=\s*['\"][^{]" ${PROJECT_ROOT}/src/
 # Expected: 0 matches
 ```
 
@@ -299,8 +302,8 @@ find templates -name "*.yaml" -exec grep -l "kind: Ingress" {} \; | \
 
 ```bash
 # Python lint
-cd telegram-bot && python -m flake8 app/ tests/
-cd telegram-bot && python -m mypy app/
+cd ${PROJECT_ROOT} && python -m flake8 app/ tests/
+cd ${PROJECT_ROOT} && python -m mypy app/
 
 # Bash lint
 shellcheck scripts/**/*.sh
@@ -319,20 +322,20 @@ make validate-make-no-aliases
 
 ```bash
 # Run tests with coverage
-cd telegram-bot && poetry run pytest --cov=app --cov-report=term-missing
+cd ${PROJECT_ROOT} && poetry run pytest --cov=app --cov-report=term-missing
 
 # Check threshold (should be ≥ 70%)
-cd telegram-bot && poetry run pytest --cov=app --cov-fail-under=70
+cd ${PROJECT_ROOT} && poetry run pytest --cov=app --cov-fail-under=70
 ```
 
 ### 4.3. Проверить code style
 
 ```bash
 # Python formatting check
-cd telegram-bot && python -m black --check app/ tests/
+cd ${PROJECT_ROOT} && python -m black --check app/ tests/
 
 # Import sorting
-cd telegram-bot && python -m isort --check-only app/ tests/
+cd ${PROJECT_ROOT} && python -m isort --check-only app/ tests/
 ```
 
 ---
@@ -407,7 +410,7 @@ else:
 | path-based-routing | Accepted | 100% | 100% |
 | k8s-provider-abstraction | Accepted | 100% | 100% |
 | storage-provider-selection | Accepted | 100% | 100% |
-| telegram-bot-saas-platform | Accepted | 90% | 100% |
+| ${PLATFORM_SLUG} | Accepted | 90% | 100% |
 | documentation-generation | Accepted | 100% | 100% |
 
 ### Non-Critical ADRs
@@ -441,7 +444,7 @@ else:
 
 ### Recommendations
 1. Increase test coverage to 70%+ by adding tests for payment flows
-2. Add NEW_FEATURE_API_KEY and NEW_FEATURE_ENABLED to telegram-bot/app/config.py
+2. Add NEW_FEATURE_API_KEY and NEW_FEATURE_ENABLED to ${PROJECT_ROOT}/src/config.py
 
 ## Blocking Issues
 None found.

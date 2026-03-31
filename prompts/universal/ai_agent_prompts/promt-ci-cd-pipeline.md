@@ -1,4 +1,7 @@
-# AI Agent Prompt: CI/CD Pipeline Management для 
+# AI Agent Prompt: CI/CD Pipeline Management (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 1.2
 **Date:** 2026-03-06
@@ -258,8 +261,8 @@ gh run view [run-id] --json jobs | jq '.jobs[] | {name, conclusion, duration: (.
   with:
     path: |
       ~/.cache/pypoetry
-      telegram-bot/.venv
-    key: ${{ runner.os }}-poetry-${{ hashFiles('telegram-bot/poetry.lock') }}
+      ${PROJECT_ROOT}/.venv
+    key: ${{ runner.os }}-poetry-${{ hashFiles('${PROJECT_ROOT}/poetry.lock') }}
     restore-keys: |
       ${{ runner.os }}-poetry-
 

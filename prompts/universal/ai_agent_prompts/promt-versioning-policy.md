@@ -152,7 +152,7 @@ version: '1.3'
 | Topic Slug | Связь с versioning policy |
 |---|---|
 | `documentation-generation` | Единые правила обновления docs и реестров |
-| `telegram-bot-saas-platform` | Бизнес-критичные изменения требуют явной трассировки |
+| `${PLATFORM_SLUG}` | Бизнес-критичные изменения требуют явной трассировки |
 | `k8s-provider-abstraction` | Инвариантные правила, влияющие на prompt constraints |
 
 ## Ресурсы

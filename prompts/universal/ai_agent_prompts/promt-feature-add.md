@@ -10,7 +10,10 @@ tags: [feature, adr, context7]
 dependencies: [promt-verification, promt-index-update, promt-consolidation]
 ---
 
-# AI Agent Prompt: Добавление нового функционала в проект
+# AI Agent Prompt: Добавление нового функционала (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 1.5
 **Date:** 2026-03-06
@@ -140,12 +143,12 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 ### О проекте
 
-**** — multi-tenant SaaS платформа, развёртывающая VS Code (code-server) в браузере через Telegram Bot с интеграцией YooKassa на Kubernetes.
+**${PROJECT_NAME}** — ${PROJECT_TYPE}, развёртывающая ${PRIMARY_SERVICE} в браузере через ${PRIMARY_INTERFACE} с интеграцией ${PAYMENT_PROVIDER} на ${K8S_PROVIDER}.
 
 **Стек:**
-- **Infrastructure:** Kubernetes (k3s/microk8s), Helm, Traefik, cert-manager
+- **Infrastructure:** Kubernetes (${K8S_PROVIDER}), Helm, Traefik, cert-manager
 - **Bot:** Python, aiogram 3.x / python-telegram-bot, FastAPI webhooks
-- **Payments:** YooKassa API (HMAC webhook validation, idempotency keys)
+- **Payments:** ${PAYMENT_PROVIDER} API (HMAC webhook validation, idempotency keys)
 - **Storage:** Longhorn (prod), local-path (dev)
 - **Database:** PostgreSQL (SQL baseline `scripts/utils/init-saas-database.sql`)
 - **GitOps:** ArgoCD
@@ -160,9 +163,9 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 | `path-based-routing` | Single domain, path-based routing | ⭐ |
 | `k8s-provider-abstraction` | `$KUBECTL_CMD`, never hardcode | ⭐ |
 | `storage-provider-selection` | Longhorn (prod), local-path (dev) | ⭐ |
-| `telegram-bot-saas-platform` | pydantic-settings, env vars, PLAN_SPECS | ⭐ |
+| `${PLATFORM_SLUG}` | pydantic-settings, env vars, PLAN_SPECS | ⭐ |
 | `documentation-generation` | Reference docs AUTO-GENERATED only | ⭐ |
-| `unified-auth-architecture` | JWT + Telegram auth |  |
+| `unified-auth-architecture` | JWT + ${PRIMARY_INTERFACE} auth |  |
 | `e2e-testing-new-features` | E2E тестирование новых функций |  |
 | `helm-chart-structure-optimization` | Оптимизация Helm chart |  |
 | `gitops-validation` | ArgoCD + GitOps |  |
@@ -190,8 +193,8 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 
 | Тип функционала | Запрос к Context7 |
 |---|---|
-| Telegram Bot команды | `aiogram 3.22 router middleware flags dependency injection error handling` |
-| YooKassa платежи | `yookassa python sdk payment create webhook idempotency` |
+| ${PRIMARY_INTERFACE} Bot команды | `aiogram 3.22 router middleware flags dependency injection error handling` |
+| ${PAYMENT_PROVIDER} платежи | `${PAYMENT_PROVIDER_lower} python sdk payment create webhook idempotency` |
 | GitHub OAuth | `fastapi oauth2 github authlib httpx social login` |
 | Web UI управления | `fastapi jinja2 templates admin dashboard htmx` |
 | K8s provisioning | `kubernetes python client namespace pvc deployment create` |
@@ -220,7 +223,7 @@ dependencies: [promt-verification, promt-index-update, promt-consolidation]
 | **Nextcloud Helm** | `docs/official_document/nextcloud_helm/` | Chart values, ingress интеграция |
 | **OpenEBS** | `docs/official_document/openebs/` | Enterprise storage альтернатива |
 | **Sysbox** | `docs/official_document/sysbox/` | Docker-in-K8s паттерны |
-| **YooKassa** | `docs/official_document/yookassa/` | ⭐ API endpoints, webhook events, статусы платежей |
+| **${PAYMENT_PROVIDER}** | `docs/official_document/${PAYMENT_PROVIDER_lower}/` | ⭐ API endpoints, webhook events, статусы платежей |
 
 **Команды для чтения официальной документации:**
 ```bash
@@ -242,7 +245,7 @@ grep -r "payment_id\|idempotencyKey" docs/official_document/yookassa/
 
 ```bash
 # Просмотреть текущую структуру проекта
-tree -L 2 telegram-bot/app/ 2>/dev/null || find telegram-bot/app -maxdepth 2 -type f | sort
+tree -L 2 ${PROJECT_ROOT}/src/ 2>/dev/null || find ${PROJECT_ROOT}/src -maxdepth 2 -type f | sort
 ls templates/ | head -20
 ls makefiles/
 ```
@@ -251,12 +254,12 @@ ls makefiles/
 
 ```bash
 # Поиск по ключевым словам задачи
-grep -r "[ключевые слова задачи]" telegram-bot/app/ --include="*.py" -l
+grep -r "[ключевые слова задачи]" ${PROJECT_ROOT}/src/ --include="*.py" -l
 grep -r "[ключевые слова]" templates/ --include="*.yaml" -l
 
 # Просмотр конфигурации
-cat telegram-bot/app/config.py
-cat telegram-bot/requirements.txt
+cat ${PROJECT_ROOT}/src/config.py
+cat ${PROJECT_ROOT}/requirements.txt
 ```
 
 ### 1.3. Изучить смежные ADR
@@ -285,7 +288,7 @@ grep -l "[ключевые слова задачи]" docs/explanation/adr/*.md 2
 
 2. Затрагивает ли изменение один из 5 критических ADR-топиков?
    (path-based-routing, k8s-provider-abstraction, storage-provider-selection,
-    telegram-bot-saas-platform, documentation-generation)
+    ${PLATFORM_SLUG}, documentation-generation)
    → НЕТ: перейди к вопросу 3
    → ДА:  → ОБЯЗАТЕЛЬНО обновить соответствующий ADR
 
@@ -423,8 +426,8 @@ Related ADR: docs/explanation/adr/ADR-NNN-{slug}.md
 
 ```bash
 # Сверить API с официальной документацией (READ-ONLY)
-# Пример для YooKassa:
-cat docs/official_document/yookassa/README.md | grep -A5 "payment"
+# Пример для ${PAYMENT_PROVIDER}:
+cat docs/official_document/${PAYMENT_PROVIDER_lower}/README.md | grep -A5 "payment"
 
 # Пример для code-server:
 find docs/official_document/code-server -name "*.md" | xargs grep -l "config"
@@ -437,11 +440,11 @@ grep -r "StorageClass\|PersistentVolume" docs/official_document/k3s/
 
 ```bash
 # 1. Проверить отсутствие hardcoded kubectl
-grep -r "k3s kubectl\|microk8s kubectl" scripts/ makefiles/ telegram-bot/
+grep -r "k3s kubectl\|microk8s kubectl" scripts/ makefiles/ ${PROJECT_ROOT}/
 # → Должно быть пусто. Использовать: $KUBECTL_CMD
 
 # 2. Проверить pydantic-settings для Python
-grep "pydantic_settings\|BaseSettings" telegram-bot/app/config.py
+grep "pydantic_settings\|BaseSettings" ${PROJECT_ROOT}/src/config.py
 # → Должно присутствовать
 
 # 3. Проверить path-based routing (no subdomains)
@@ -449,7 +452,7 @@ grep -E "host:.*\.(com|ru|io)" templates/ingress.yaml
 # → Все новые маршруты должны быть path-based
 
 # 4. Проверить отсутствие hardcoded secrets
-grep -rE "(password|secret|token)\s*=\s*['\"][^{]" telegram-bot/app/ --include="*.py"
+grep -rE "(password|secret|token)\s*=\s*['\"][^{]" ${PROJECT_ROOT}/src/ --include="*.py"
 # → Должно быть пусто
 ```
 
@@ -475,20 +478,20 @@ grep -rE "(password|secret|token)\s*=\s*['\"][^{]" telegram-bot/app/ --include="
 
 В зависимости от типа функционала:
 
-**Telegram Bot (новая команда/функция):**
+**${PRIMARY_INTERFACE} Bot (новая команда/функция):**
 ```bash
 # Файлы для изменения:
-# telegram-bot/app/bot/  — handlers
-# telegram-bot/app/config.py  — новые env vars через pydantic-settings
-# telegram-bot/requirements.txt  — новые зависимости (если нужны)
+# ${PROJECT_ROOT}/src/bot/  — handlers
+# ${PROJECT_ROOT}/src/config.py  — новые env vars через pydantic-settings
+# ${PROJECT_ROOT}/requirements.txt  — новые зависимости (если нужны)
 # scripts/utils/init-saas-database.sql  — если нужны новые таблицы (КАНОНИЧЕСКИЙ)
 ```
 
 **Новый способ оплаты:**
 ```bash
 # Файлы для изменения:
-# telegram-bot/app/payments/  — новый payment provider
-# telegram-bot/app/config.py  — credentials через env vars
+# ${PROJECT_ROOT}/src/payments/  — новый payment provider
+# ${PROJECT_ROOT}/src/config.py  — credentials через env vars
 # docs/explanation/adr/ADR-NNN-{slug}.md  — новый ADR (обязательно)
 # docs/official_document/{payment}/  — READ-ONLY, не изменять
 ```
@@ -496,7 +499,7 @@ grep -rE "(password|secret|token)\s*=\s*['\"][^{]" telegram-bot/app/ --include="
 **Web UI/UX:**
 ```bash
 # Файлы для создания/изменения:
-# telegram-bot/app/admin/  — FastAPI admin роуты
+# ${PROJECT_ROOT}/src/admin/  — FastAPI admin роуты
 # templates/ingress.yaml  — path-based route /admin
 # templates/  — новый Helm template если нужен
 # docs/explanation/adr/ADR-NNN-{slug}.md  — новый ADR
@@ -505,8 +508,8 @@ grep -rE "(password|secret|token)\s*=\s*['\"][^{]" telegram-bot/app/ --include="
 **Новый способ аутентификации:**
 ```bash
 # Файлы для изменения:
-# telegram-bot/app/auth/  — новый auth provider
-# telegram-bot/app/config.py  — OAuth credentials
+# ${PROJECT_ROOT}/src/auth/  — новый auth provider
+# ${PROJECT_ROOT}/src/config.py  — OAuth credentials
 # templates/ingress.yaml  — auth middleware
 # docs/explanation/adr/ADR-NNN-{slug}.md  — обновить ADR unified-auth
 ```
@@ -540,7 +543,7 @@ class Settings(BaseSettings):
 
 **Python — новый payment provider:**
 ```python
-# Intent: Integrate new payment provider following YooKassa pattern
+# Intent: Integrate new payment provider following ${PAYMENT_PROVIDER} pattern
 # Input: payment_data dict, idempotency_key str
 # Expected: Payment object with status and confirmation_url
 
@@ -548,8 +551,8 @@ from app.config import settings
 import hmac, hashlib
 
 class NewPaymentProvider:
-    """New payment provider following YooKassa patterns.
-    
+    """New payment provider following ${PAYMENT_PROVIDER} patterns.
+
     Context7 metadata:
     Intent: Implement payment provider abstraction
     Input: PaymentRequest with amount, currency, description
@@ -558,7 +561,7 @@ class NewPaymentProvider:
     """
     def __init__(self):
         self.api_key = settings.new_payment_api_key
-    
+
     async def create_payment(self, amount: float, description: str,
                              idempotency_key: str) -> dict:
         ...
@@ -593,7 +596,7 @@ $KUBECTL_CMD apply -f manifest.yaml  # НЕ kubectl create
 
 ```bash
 # Запустить существующие тесты
-cd telegram-bot
+cd ${PROJECT_ROOT}
 python -m pytest tests/ -v
 
 # Тесты для нового функционала должны быть в:
@@ -605,7 +608,7 @@ python -m pytest tests/ -v
 
 ```bash
 # Python lint
-cd telegram-bot && python -m flake8 app/ tests/
+cd ${PROJECT_ROOT} && python -m flake8 app/ tests/
 
 # Bash lint
 shellcheck scripts/**/*.sh
@@ -784,7 +787,7 @@ make docs-validate
 | **ADR индекс** | `docs/explanation/adr/index.md` | Список всех ADR |
 | **Правила проекта** | `.github/copilot-instructions.md` | ADR Topic Registry + принципы |
 | **Правила проекта и архитектурный контекст** | `docs/rules/project-rules.md` | Полный контекст и правила |
-| **Bot конфиг** | `telegram-bot/app/config.py` | Все env vars через pydantic-settings |
+| **Bot конфиг** | `${PROJECT_ROOT}/src/config.py` | Все env vars через pydantic-settings |
 | **K8s абстракция** | `scripts/helpers/k8s-exec.sh` | get_kubectl_cmd(), determine_k8s_provider() |
 | **DB схема** | `scripts/utils/init-saas-database.sql` | ⭐ Канонический источник схемы |
 | **Верификация структуры** | `scripts/verify-all-adr.sh` | Автоматическая проверка ADR |
@@ -811,6 +814,7 @@ make docs-validate
 ❌ Изменять docs/official_document/ → ✅ READ-ONLY, только читать
 ❌ Создавать PHASE_*.md         → ✅ Обновлять существующий ADR или how-to
 ❌ Alias Make targets           → ✅ Цели с собственными командами
+❌ {hardcoded-path}/           → ✅ ${PROJECT_ROOT}/src/
 ```
 
 ---

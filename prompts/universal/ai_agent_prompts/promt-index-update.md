@@ -184,7 +184,7 @@ done | sort -t'|' -k1 -n
 | path-based-routing | Accepted | 100% | 2026-03-18 |
 | k8s-provider-abstraction | Accepted | 100% | 2026-03-18 |
 | storage-provider-selection | Accepted | 100% | 2026-03-15 |
-| telegram-bot-saas-platform | Accepted | 90% | 2026-03-10 |
+| ${PLATFORM_SLUG} | Accepted | 90% | 2026-03-10 |
 | documentation-generation | Accepted | 100% | 2026-03-05 |
 ```
 
@@ -226,7 +226,7 @@ We use ADRs to document significant architectural decisions. See [docs/explanati
 - ✅ [ADR-001: Path-based routing](docs/explanation/adr/ADR-001-path-based-routing.md) - 100%
 - ✅ [ADR-002: K8s provider abstraction](docs/explanation/adr/ADR-002-k8s-provider-abstraction.md) - 100%
 - ✅ [ADR-003: Storage provider selection](docs/explanation/adr/ADR-003-storage-provider-selection.md) - 100%
-- 🟡 [ADR-004: Telegram bot SaaS platform](docs/explanation/adr/ADR-004-telegram-bot-saas-platform.md) - 90%
+- 🟡 [ADR-004: ${PLATFORM_SLUG}](docs/explanation/adr/ADR-004-${PLATFORM_SLUG}.md) - 90%
 - ✅ [ADR-005: Documentation generation](docs/explanation/adr/ADR-005-documentation-generation.md) - 100%
 
 See [docs/explanation/adr/index.md](docs/explanation/adr/index.md) for all ADRs.

@@ -1,4 +1,7 @@
-# AI Agent Prompt: Developer Onboarding для 
+# AI Agent Prompt: Developer Onboarding (Universal)
+
+> **NOTE:** This is a UNIVERSAL prompt that auto-adapts to any project structure.
+> All project-specific references use `${VARIABLE}` placeholders.
 
 **Version:** 1.2
 **Date:** 2026-03-06
@@ -121,15 +124,15 @@
 
 ### О проекте (для новичков)
 
-**** — multi-tenant SaaS платформа, которая:
-- Развёртывает VS Code (code-server) в браузере
-- Управляется через Telegram Bot
-- Принимает оплату через YooKassa
-- Работает на Kubernetes (k3s/microk8s)
+**${PROJECT_NAME}** — ${PROJECT_TYPE}, которая:
+- Развёртывает ${PRIMARY_SERVICE} в браузере
+- Управляется через ${PRIMARY_INTERFACE}
+- Принимает оплату через ${PAYMENT_PROVIDER}
+- Работает на Kubernetes (${K8S_PROVIDER})
 
 **Основной flow:**
 ```
-Telegram Bot → План подписки → YooKassa оплата → K8s provisioning → VS Code в браузере
+${PRIMARY_INTERFACE} → План подписки → ${PAYMENT_PROVIDER} оплата → ${K8S_PROVIDER} provisioning → ${PRIMARY_SERVICE} в браузере
 ```
 
 ### Структура проекта (overview)
@@ -142,8 +145,8 @@ Telegram Bot → План подписки → YooKassa оплата → K8s pro
 ├── config/              # Configuration
 │   ├── variables/       # Config hierarchy (global → env → domain)
 │   └── manifests/       # Additional K8s manifests
-├── telegram-bot/        # Python Telegram Bot
-│   └── app/             # Bot application code
+├── src/                 # Application code
+│   └── app/             # Application code
 ├── scripts/             # Bash scripts (deploy, test, helpers)
 ├── makefiles/           # Make modules
 ├── docs/                # Documentation (Diátaxis)
@@ -172,9 +175,9 @@ Telegram Bot → План подписки → YooKassa оплата → K8s pro
 
 | Роль | Ключевые директории | Ключевые ADR Topics |
 |---|---|---|
-| **Bot Developer** | `telegram-bot/app/` | `telegram-bot-saas-platform`, `unified-auth-architecture` |
+| **Bot Developer** | `${PROJECT_ROOT}/src/` | `${PLATFORM_SLUG}`, `unified-auth-architecture` |
 | **DevOps/Infra** | `templates/`, `scripts/`, `config/` | `k8s-provider-abstraction`, `storage-provider-selection`, `path-based-routing` |
-| **Payment Integration** | `telegram-bot/app/payments/` | `telegram-bot-saas-platform` (webhooks) |
+| **Payment Integration** | `${PROJECT_ROOT}/src/payments/` | `${PLATFORM_SLUG}` (webhooks) |
 | **Full-stack** | All | All critical ADRs |
 
 ---
@@ -205,7 +208,7 @@ make test
 
 **ADR в этом слое:**
 - `k8s-provider-abstraction` — **КРИТИЧНЫЙ**: никогда не hardcode kubectl
-- `k8s-provider-unification` — унификация k3s/microk8s
+- `k8s-provider-unification` — унификация ${K8S_PROVIDER}
 - `k3s-vs-microk8s` — почему поддерживаем оба
 
 **Что нужно знать:**
@@ -265,11 +268,11 @@ settings.JWT_EXPIRE_MINUTES  # int
 
 **Что нужно знать:**
 ```bash
-# Структура бота
-telegram-bot/app/
+# Структура приложения
+${PROJECT_ROOT}/src/
 ├── config.py       # pydantic Settings
-├── handlers/       # Telegram handlers
-├── payments/       # YooKassa integration
+├── handlers/       # ${PRIMARY_INTERFACE} handlers
+├── payments/       # ${PAYMENT_PROVIDER} integration
 ├── k8s/            # K8s provisioner
 └── models/         # SQLAlchemy models
 ```
@@ -289,7 +292,7 @@ telegram-bot/app/
 
 | Файл | Для чего | Роли |
 |---|---|---|
-| `telegram-bot/app/config.py` | Все env vars | Bot, Payment |
+| `${PROJECT_ROOT}/src/config.py` | Все env vars | Bot, Payment |
 | `scripts/helpers/k8s-exec.sh` | K8s abstraction | DevOps |
 | `templates/_helpers.tpl` | Helm helpers | DevOps |
 | `config/variables/global.yaml` | Базовые настройки | All |
@@ -341,25 +344,25 @@ make status
 ## Онбординг: Bot Developer
 
 ### День 1-2: Понимание контекста
-- [ ] Прочитать ADR `telegram-bot-saas-platform`
-- [ ] Изучить `telegram-bot/app/config.py` — все settings
+- [ ] Прочитать ADR `${PLATFORM_SLUG}`
+- [ ] Изучить `${PROJECT_ROOT}/src/config.py` — все settings
 - [ ] Запустить бота локально (если есть тестовый токен)
-- [ ] Посмотреть handlers в `telegram-bot/app/handlers/`
+- [ ] Посмотреть handlers в `${PROJECT_ROOT}/src/handlers/`
 
 ### День 3-4: Handlers и модели
-- [ ] Изучить `telegram-bot/app/models/` — SQLAlchemy models
+- [ ] Изучить `${PROJECT_ROOT}/src/models/` — SQLAlchemy models
 - [ ] Понять flow: user → subscription → payment
 - [ ] Прочитать ADR `unified-auth-architecture`
 - [ ] Написать простой handler (тренировка)
 
 ### День 5: Интеграции
-- [ ] Изучить `telegram-bot/app/payments/` — YooKassa
-- [ ] Изучить `telegram-bot/app/k8s/` — provisioner
-- [ ] Запустить тесты: `cd telegram-bot && poetry run pytest`
+- [ ] Изучить `${PROJECT_ROOT}/src/payments/` — ${PAYMENT_PROVIDER}
+- [ ] Изучить `${PROJECT_ROOT}/src/k8s/` — provisioner
+- [ ] Запустить тесты: `cd ${PROJECT_ROOT} && poetry run pytest`
 
 ### Ресурсы:
 - [aiogram 3.x docs](https://docs.aiogram.dev/)
-- `docs/official_document/yookassa/` — YooKassa API
+- `docs/official_document/${PAYMENT_PROVIDER_lower}/` — ${PAYMENT_PROVIDER} API
 ```
 
 ### 3.2. DevOps/Infrastructure (первая неделя)
@@ -398,11 +401,11 @@ make status
 - [ ] День 1-2: Прочитать все критические ADR (5 штук)
 - [ ] День 3: Setup локального окружения
 - [ ] День 4: Запустить `make quickstart`, понять flow
-- [ ] День 5: Изучить структуру telegram-bot/app/
+- [ ] День 5: Изучить структуру ${PROJECT_ROOT}/src/
 
 ### Неделя 2: Глубокое погружение
 - [ ] День 1: Изучить Helm templates
-- [ ] День 2: Изучить payments flow (YooKassa)
+- [ ] День 2: Изучить payments flow (${PAYMENT_PROVIDER})
 - [ ] День 3: Изучить K8s provisioning
 - [ ] День 4: Изучить CI/CD (GitHub Actions, ArgoCD)
 - [ ] День 5: Первая задача из backlog
@@ -421,11 +424,11 @@ A: Прочитай ADR `path-based-routing`. TL;DR: проще SSL, один wi
 A: Alembic удалён 2026-02-08. Используем baseline SQL (`scripts/utils/init-saas-database.sql`). Применение: `make init-saas-db`.
 
 **Q: Как добавить новую переменную окружения?**
-A: 
-1. Добавь в `telegram-bot/app/config.py` как поле Settings
+A:
+1. Добавь в `${PROJECT_ROOT}/src/config.py` как поле Settings
 2. Добавь в `.env.example`
 3. Добавь в Makefile exports (если нужно)
-4. Обнови `config/manifests/saas-telegram-bot.yaml`
+4. Обнови `config/manifests/${PROJECT_NAME_LOWER}.yaml`
 
 **Q: Как добавить новый Helm template?**
 A:

@@ -592,8 +592,8 @@ def track_workflow_progress(execution_result):
 - ADR-006-github-oauth-authentication.md
 
 ### Code Implemented
-- `telegram-bot/app/auth/github_oauth.py` (new file)
-- `telegram-bot/app/config.py` (updated with GitHub OAuth config)
+- `${PROJECT_ROOT}/src/auth/github_oauth.py` (new file)
+- `${PROJECT_ROOT}/src/config.py` (updated with GitHub OAuth config)
 
 ### Verification Results
 - ADR Compliance: 100%
@@ -658,8 +658,8 @@ def track_workflow_progress(execution_result):
     "results": {
       "adr_created": ["ADR-006-github-oauth-authentication.md"],
       "code_implemented": [
-        "telegram-bot/app/auth/github_oauth.py",
-        "telegram-bot/app/config.py"
+        "${PROJECT_ROOT}/src/auth/github_oauth.py",
+        "${PROJECT_ROOT}/src/config.py"
       ],
       "verification_results": {
         "adr_compliance": 100,
