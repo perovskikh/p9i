@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from src.application.router.cascade.base import BaseRouter, RouterConfig, RouterStrategy
+from src.application.router.cascade.base import BaseRouter, RouterConfig, RouterStrategy, RoutingMode
 from src.application.router.cascade.context import RoutingContext, RoutingResult, Confidence
 from src.application.router.cascade.registry import PromptEntry, PromptRegistry
 

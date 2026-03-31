@@ -396,7 +396,7 @@ class P9iRouter:
             matched_keyword="unknown",
             metadata={"original": request_lower}
         )
-        print(f"[DEBUG] classify() returning UNKNOWN fallback: {intent.type}")
+        logger.debug(f"classify() returning UNKNOWN fallback: {intent.type}")
         return intent
 
     def _check_packs(self, request_lower: str) -> Optional[dict]:
@@ -827,10 +827,13 @@ class AgentTaskProcessor(Processor):
             }
 
         try:
-            # Get initial PromptEntry for this request
+            # Get initial PromptEntry for this request - use orchestrator's registry
             prompt_entry = None
             if intent.agent_name:
-                prompt_entry = self.router.select_prompt_entry(intent.agent_name, request)
+                # Get prompt entry from orchestrator's registry
+                registry = getattr(self.orchestrator, 'registry', None)
+                if registry:
+                    prompt_entry = registry.find_by_name(intent.agent_name)
 
             # Route with PromptEntry propagation
             result = await self.orchestrator.route_with_entry(

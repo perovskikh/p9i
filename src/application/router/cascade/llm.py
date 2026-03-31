@@ -132,16 +132,16 @@ class LLMRouter(BaseRouter[RoutingResult]):
             query=query,
         )
 
-        # Try async first, then sync
+        # Use sync version in async context (agenerate would need await)
         try:
             import asyncio
-            loop = asyncio.get_running_loop()
-            # We're in async context
-            response = asyncio.run(self._llm.agenerate(
+            asyncio.get_running_loop()
+            # We're in async context - use sync generate (blocking but simple)
+            response = self._llm.generate(
                 prompt,
                 temperature=self._temperature,
                 json_mode=True,
-            ))
+            )
         except RuntimeError:
             # Not in async context
             response = self._llm.generate(
