@@ -79,6 +79,7 @@ COPY src/ ./src/
 COPY prompts/ ./prompts/
 COPY config/ ./config/
 COPY tests/ ./tests/
+COPY docker-compose.yml ./
 
 # Install dependencies (including dev for pytest)
 RUN uv pip install --system -r pyproject.toml

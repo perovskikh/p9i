@@ -610,8 +610,20 @@ class CommandProcessor(Processor):
         return intent.type == IntentType.COMMAND
 
     async def process(self, intent: Intent, request: str, context: dict) -> dict:
-        # EMERGENCY: Always return success to confirm this is called
-        return {"status": "success", "output": "CommandProcessor was called!", "processor": "CommandProcessor"}
+        command = intent.metadata.get("command", "") if intent.metadata else request
+
+        handlers = {
+            "/help": self._handle_help,
+            "/exit": self._handle_exit,
+            "/clear": self._handle_clear,
+            "/status": self._handle_status,
+        }
+
+        handler = handlers.get(command)
+        if handler:
+            return handler()
+
+        return {"status": "error", "error": f"Unknown command: {command}"}
 
     def _handle_help(self) -> dict:
         return {
@@ -1123,10 +1135,25 @@ class SystemProcessor(Processor):
                         pass
 
                 # Database detection
+                db_detected = False
                 for db_file in ["*sqlite*.py", "*postgres*", "*mysql*"]:
                     if list(path.glob(f"**/{db_file}")):
                         database = "Detected"
+                        db_detected = True
                         break
+                # Also check docker-compose.yml for database services
+                if not db_detected and (path / "docker-compose.yml").exists():
+                    content = (path / "docker-compose.yml").read_text()
+                    if "postgres" in content.lower():
+                        database = "PostgreSQL"
+                    elif "mysql" in content.lower():
+                        database = "MySQL"
+                    elif "mariadb" in content.lower():
+                        database = "MariaDB"
+                    elif "mongodb" in content.lower():
+                        database = "MongoDB"
+                    elif "redis" in content.lower() and "postgres" not in content.lower():
+                        database = "Redis"
 
             resolved = f"- Path resolved to: {path}" if path and path != Path(project_path) else None
             lines = [
@@ -1246,6 +1273,27 @@ class SystemProcessor(Processor):
                             framework = "Vue.js"
                     except:
                         pass
+
+                # Database detection
+                db_detected = False
+                for db_file in ["*sqlite*.py", "*postgres*", "*mysql*"]:
+                    if list(path.glob(f"**/{db_file}")):
+                        database = "Detected"
+                        db_detected = True
+                        break
+                # Also check docker-compose.yml for database services
+                if not db_detected and (path / "docker-compose.yml").exists():
+                    content = (path / "docker-compose.yml").read_text()
+                    if "postgres" in content.lower():
+                        database = "PostgreSQL"
+                    elif "mysql" in content.lower():
+                        database = "MySQL"
+                    elif "mariadb" in content.lower():
+                        database = "MariaDB"
+                    elif "mongodb" in content.lower():
+                        database = "MongoDB"
+                    elif "redis" in content.lower() and "postgres" not in content.lower():
+                        database = "Redis"
 
             resolved = f"- Path resolved to: {path}" if path and path != Path(project_path) else None
             lines = [

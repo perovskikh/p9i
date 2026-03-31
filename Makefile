@@ -117,8 +117,8 @@ status: k3s-status ## Check status (K3s)
 # =============================================================================
 .PHONY: build
 build:
-	@echo "$(YELLOW)Building p9i Docker image...$(NC)"
-	docker build \
+	@echo "$(YELLOW)Building p9i Docker image (no cache)...$(NC)"
+	docker build --no-cache \
 		-f docker/Dockerfile \
 		-t $(IMAGE_NAME):latest \
 		-t $(FULL_IMAGE) \
@@ -253,7 +253,7 @@ k3s-delete:
 
 .PHONY: k3s-logs
 k3s-logs:
-	sudo k3s kubectl logs -n $(NAMESPACE) -l app=mcp-server -f --tail=100
+	sudo k3s kubectl logs -n $(NAMESPACE) -l app=p9i-p9i -f --tail=100
 
 .PHONY: k3s-restart
 k3s-restart:
