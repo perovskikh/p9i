@@ -337,12 +337,15 @@ class AgentRouter:
                     return self._orchestrate_full_cycle(request_lower)
 
         # Check in priority order for other keywords (fast path)
+        import re
         for agent_name in self.AGENT_PRIORITY:
             if agent_name == "full_cycle":
                 continue
             keywords = AGENT_KEYWORDS.get(agent_name, [])
             for keyword in keywords:
-                if keyword in request_lower:
+                # Use word boundary matching to avoid substring matches
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, request_lower):
                     needed.append(agent_name)
                     break
 
