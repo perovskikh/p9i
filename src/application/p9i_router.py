@@ -156,8 +156,6 @@ class P9iRouter:
             "test": (IntentType.AGENT_TASK, "reviewer"),
             "standard": (IntentType.AGENT_TASK, "reviewer"),
             "standards": (IntentType.AGENT_TASK, "reviewer"),
-            "refactor": (IntentType.AGENT_TASK, "reviewer"),
-            "рефакторинг": (IntentType.AGENT_TASK, "reviewer"),
 
             # === DESIGNER ===
             "ui": (IntentType.AGENT_TASK, "designer"),
