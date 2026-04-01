@@ -252,17 +252,17 @@ class P9iRouter:
             "тест": (IntentType.AGENT_TASK, "reviewer"),
             "test": (IntentType.AGENT_TASK, "reviewer"),
 
-            # === REFACTORING ===
-            "упрости код": (IntentType.AGENT_TASK, "architect"),
-            "улучшить код": (IntentType.AGENT_TASK, "architect"),
-            "рефакторинг": (IntentType.AGENT_TASK, "architect"),
-            "модернизируй": (IntentType.AGENT_TASK, "architect"),
-            "оптимизируй": (IntentType.AGENT_TASK, "architect"),
-            "перепиши": (IntentType.AGENT_TASK, "architect"),
-            "упрости": (IntentType.AGENT_TASK, "architect"),
-            "улучшить": (IntentType.AGENT_TASK, "architect"),
-            "улучши": (IntentType.AGENT_TASK, "architect"),
-            "refactor": (IntentType.AGENT_TASK, "architect"),
+            # === REFACTORING === (routes to developer for bash execution)
+            "упрости код": (IntentType.AGENT_TASK, "developer"),
+            "улучшить код": (IntentType.AGENT_TASK, "developer"),
+            "рефакторинг": (IntentType.AGENT_TASK, "developer"),
+            "модернизируй": (IntentType.AGENT_TASK, "developer"),
+            "оптимизируй": (IntentType.AGENT_TASK, "developer"),
+            "перепиши": (IntentType.AGENT_TASK, "developer"),
+            "упрости": (IntentType.AGENT_TASK, "developer"),
+            "улучшить": (IntentType.AGENT_TASK, "developer"),
+            "улучши": (IntentType.AGENT_TASK, "developer"),
+            "refactor": (IntentType.AGENT_TASK, "developer"),
 
             # === VERSIONING ===
             "версион": IntentType.NL_QUERY,
