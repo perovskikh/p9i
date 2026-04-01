@@ -27,7 +27,8 @@ class PromptTier(str, Enum):
     CORE = "core"                # Tier 0: Baseline prompts, immutable
     UNIVERSAL = "universal"        # Tier 1: Universal prompts, overridable
     MPV_STAGE = "mpv_stage"       # Tier 2: MPV pipeline stages, high priority
-    PROJECTS = "projects"          # Tier 3: Project-specific prompts, highest priority
+    AGENTS = "agents"             # Tier 3: Agent-specific prompts (architect, developer, etc.)
+    PROJECTS = "projects"          # Tier 4: Project-specific prompts, highest priority
 
 
 class Prompt(BaseModel):
@@ -146,7 +147,11 @@ class PromptStorageV2:
         self.core_dir = self.prompts_dir / "core"
         self.universal_dir = self.prompts_dir / "universal" / "ai_agent_prompts"
         self.mpv_stages_dir = self.prompts_dir / "universal" / "mpv_stages"
+        self.agents_dir = self.prompts_dir / "agents"
         self.projects_dir = self.prompts_dir / "projects"
+
+        # Agent subdirectories
+        self.agent_subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration"]
 
         # Create directories if they don't exist
         self.core_dir.mkdir(parents=True, exist_ok=True)
@@ -178,6 +183,14 @@ class PromptStorageV2:
             return self.core_dir / f"{name}.md"
         elif tier == PromptTier.MPV_STAGE:
             return self.mpv_stages_dir / f"{name}.md"
+        elif tier == PromptTier.AGENTS:
+            # Search in agents subdirectories (architect, developer, etc.)
+            for agent_subdir in self.agent_subdirs:
+                path = self.agents_dir / agent_subdir / f"{name}.md"
+                if path.exists():
+                    return path
+            # Fallback to universal if not found in agents
+            return self.universal_dir / f"{name}.md"
         elif tier == PromptTier.PROJECTS:
             # Projects directory can have subdirectories by project_id
             return self.projects_dir / f"{name}.md"
@@ -224,7 +237,14 @@ class PromptStorageV2:
             logger.debug(f"Prompt '{name}' found in universal tier")
             return PromptTier.UNIVERSAL
 
-        # Priority 4: Core (lowest, immutable)
+        # Priority 4: Agents (architect, developer, reviewer, etc.)
+        for agent_subdir in self.agent_subdirs:
+            agent_path = self.agents_dir / agent_subdir / f"{name}.md"
+            if agent_path.exists():
+                logger.debug(f"Prompt '{name}' found in agents/{agent_subdir} tier")
+                return PromptTier.AGENTS
+
+        # Priority 5: Core (lowest, immutable)
         core_path = self.core_dir / f"{name}.md"
         if core_path.exists():
             logger.debug(f"Prompt '{name}' found in core tier")

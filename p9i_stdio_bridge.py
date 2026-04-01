@@ -31,7 +31,7 @@ def urlopen_with_ssl(request, timeout=None):
     if request.full_url.startswith("https://"):
         ctx = create_ssl_context()
         return urllib.request.urlopen(request, timeout=timeout, context=ctx)
-    return urlopen_with_ssl(request, timeout=timeout)
+    return urllib.request.urlopen(request, timeout=timeout)
 
 
 def stream_response(response, session_store):

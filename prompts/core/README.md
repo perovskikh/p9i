@@ -1,5 +1,9 @@
 # Core Prompts — Baseline System
 
+**Version:** 1.0
+**Date:** 2026-03-31
+**Purpose:** Baseline prompts for AI Prompt System v2.0.0 — immutable foundation for all AI agent operations.
+
 ## Overview
 
 This directory contains the **baseline prompts** for the AI Prompt System v2.0.0. These are the fundamental system prompts that provide the foundation for all AI agent operations.

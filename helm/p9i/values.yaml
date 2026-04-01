@@ -19,7 +19,7 @@ hpa:
 image:
   repository: localhost:5000/p9i
   tag: k8s
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 service:
   type: ClusterIP

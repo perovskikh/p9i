@@ -716,14 +716,20 @@ def load_prompt(prompt_name: str) -> dict:
             }
 
     # Try in subdirectories (including pack subdirectories like pinescript-v6/prompts/)
-    subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration", "ai_agent_prompts", "universal"]
+    # Also search in agents/*/ subdirectories for architect, developer, etc.
+    subdirs = [
+        "agents/architect", "agents/developer", "agents/reviewer",
+        "agents/designer", "agents/devops", "agents/migration",
+        "architect", "developer", "reviewer", "designer", "devops", "migration",
+        "ai_agent_prompts", "universal"
+    ]
     for subdir in subdirs:
         prompt_file = PROMPTS_DIR / subdir / f"{prompt_name}.md"
         if prompt_file.exists():
             content = prompt_file.read_text()
             return {
                 "name": prompt_name,
-                "file": str(subdir / prompt_file.name),
+                "file": str(prompt_file.relative_to(PROMPTS_DIR)),
                 "content": content
             }
 
@@ -1012,7 +1018,14 @@ async def run_prompt(prompt_name: str, input_data: dict, stream: bool = False, j
         is_valid, auth_data = validate_auth(jwt_token=jwt_token)
         if not is_valid:
             return {"status": "error", "error": "Authentication required"}
-        prompt = load_prompt(prompt_name)
+
+        # Load prompt with error handling
+        try:
+            prompt = load_prompt(prompt_name)
+        except FileNotFoundError as e:
+            logger.error(f"Prompt not found: {prompt_name}")
+            return {"status": "error", "error": f"Prompt not found: {prompt_name}"}
+
         logger.info(f"Running prompt: {prompt_name}, stream={stream}")
 
         # UI/UX Context Injection for designer prompts
@@ -2748,11 +2761,21 @@ def execute_bash(command: str, cwd: str = "/app") -> dict:
     """
     import subprocess
     import os
+    import shlex
 
     try:
+        # SECURITY FIX: Use shell=False with shlex.split to prevent command injection
+        # If command contains shell operators (|, &, $, etc.), return error
+        if any(op in command for op in ['|', '&', '$', '`', ';', '\n', '\r', '&&', '||']):
+            return {
+                "status": "error",
+                "command": command,
+                "error": "Shell operators not allowed for security reasons"
+            }
+        args = shlex.split(command)
         result = subprocess.run(
-            command,
-            shell=True,
+            args,
+            shell=False,
             cwd=cwd,
             capture_output=True,
             text=True,

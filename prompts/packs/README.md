@@ -1,5 +1,9 @@
 # Pack Loader for AI Prompt System
 
+**Version:** 1.0
+**Date:** 2026-03-31
+**Purpose:** Plugin pack management for AI Prompt System.
+
 The PackLoader manages plugin packs in the AI Prompt System.
 
 ## Structure

@@ -1,8 +1,10 @@
 # ADR-012: Pre-commit Hook Installation Requirement
 
-**Status**: Accepted
-**Date**: 2026-03-30
-**Deciders**: p9i team
+## Статус решения
+**Accepted** | 2026-03-30
+
+## Прогресс реализации
+✅ Реализован
 
 ## Context
 

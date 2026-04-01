@@ -1,7 +1,10 @@
 # ADR-011: Pack Architecture Standard
 
-## Status
+## Статус решения
 **Proposed** | 2026-03-24
+
+## Прогресс реализации
+🔄 В разработке
 
 ## Context
 

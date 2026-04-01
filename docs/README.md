@@ -1,5 +1,9 @@
 # p9i Documentation
 
+**Version:** 1.0
+**Date:** 2026-03-31
+**Purpose:** AI Prompt System MCP Server — Universal prompt management from idea to production.
+
 > AI Prompt System MCP Server — Universal prompt management from idea to production.
 
 ## Quick Links

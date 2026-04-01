@@ -1,5 +1,9 @@
 # p9i — AI Prompt System
 
+**Version:** 1.0
+**Date:** 2026-03-31
+**Purpose:** MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.
+
 > **p9i** (p=prompt, 9=#, i=index) — MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)

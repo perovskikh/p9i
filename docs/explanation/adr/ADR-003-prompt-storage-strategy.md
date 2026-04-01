@@ -1,7 +1,10 @@
 # ADR-003: Prompt Storage Strategy - Files + Lazy Loading
 
-## Status
+## Статус решения
 **Accepted** | 2026-03-20
+
+## Прогресс реализации
+✅ Реализован в ADR-002
 
 ## Context
 

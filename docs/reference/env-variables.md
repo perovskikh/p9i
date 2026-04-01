@@ -1,5 +1,8 @@
 # Environment Variables Reference
 
+<!-- AUTO-GENERATED - DO NOT EDIT MANUALLY -->
+<!-- This file is auto-generated. Manual edits will be overwritten. -->
+
 Complete reference for all environment variables in p9i.
 
 ## Usage

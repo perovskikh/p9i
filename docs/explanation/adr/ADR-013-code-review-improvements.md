@@ -1,8 +1,10 @@
 # ADR-013: Code Quality Improvements from Security Review
 
-**Status**: Proposed
-**Date**: 2026-03-30
-**Deciders**: p9i team
+## Статус решения
+**Proposed** | 2026-03-30
+
+## Прогресс реализации
+📋 На рассмотрении
 
 ## Context
 

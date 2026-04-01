@@ -222,7 +222,7 @@ class LLMClient:
     }
 
     # Error codes that trigger failover
-    FAILOVER_ON_CODES = {401, 403, 429, 500, 502, 503, 504}
+    FAILOVER_ON_CODES = {401, 403, 429, 500, 502, 503, 504, 529}
 
     def __init__(
         self,

@@ -1,7 +1,10 @@
 # ADR-001: System Genesis & Repository Standards
 
-## Status
+## Статус решения
 **Deprecated** (superseded by ADR-002) | 2026-03-13
+
+## Прогресс реализации
+⚠️ Устарел - заменён ADR-002
 
 ## Context
 

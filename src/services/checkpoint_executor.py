@@ -224,6 +224,8 @@ class CheckpointExecutor:
                 failed_commands = [r for r in bash_results if not r["success"]]
                 if failed_commands:
                     logger.warning(f"Bash command failures: {len(failed_commands)}")
+                    # Include failure info in state for response
+                    state.validation_errors.extend([f"Bash failed: {r['command']}" for r in failed_commands])
 
             if write_to_disk and planned_files:
                 # Phase 4: Write files
@@ -242,6 +244,17 @@ class CheckpointExecutor:
                 self.checkpoint_manager.save(execution_id, state)
                 self.checkpoint_manager.complete(execution_id)
 
+                # Check for any bash failures - if bash failed, the overall status should reflect error
+                if failed_commands:
+                    return {
+                        "status": "error",
+                        "error": f"Bash commands failed: {len(failed_commands)}",
+                        "content": generated_content,
+                        "files": write_result,
+                        "bash_results": state.bash_results,
+                        "execution_id": execution_id,
+                    }
+
                 return {
                     "status": "success",
                     "content": generated_content,
@@ -254,6 +267,17 @@ class CheckpointExecutor:
                 state.phase = "complete"
                 self.checkpoint_manager.save(execution_id, state)
                 self.checkpoint_manager.complete(execution_id)
+
+                # Check for any bash failures
+                if failed_commands:
+                    return {
+                        "status": "error",
+                        "error": f"Bash commands failed: {len(failed_commands)}",
+                        "content": generated_content,
+                        "files": {"written": [], "failed": []},
+                        "bash_results": state.bash_results,
+                        "execution_id": execution_id,
+                    }
 
                 return {
                     "status": "success",

@@ -1,7 +1,10 @@
 # ADR-002: Tiered Prompt Architecture & MPV Integration
 
-## Status
+## Статус решения
 **Implemented** | 2026-03-19
+
+## Прогресс реализации
+✅ Полностью реализован (Phase 1-5 завершены)
 
 ## Context
 

@@ -1,5 +1,9 @@
 # AI Agent Prompts — p9i
 
+**Version:** 1.0
+**Date:** 2026-03-31
+**Purpose:** p9i MCP Server prompt registry and guide.
+
 > p9i MCP Server prompt registry and guide.
 
 ## Overview

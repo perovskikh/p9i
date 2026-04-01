@@ -46,6 +46,7 @@ AGENTS = {
         memory_key="full_cycle",
         description="Complete development cycle: idea → implementation → tests → fixes → docs",
         category=PromptCategory.CODE,
+        use_checkpoint=True,
     ),
     "architect": Agent(
         name="Architect",
@@ -74,10 +75,10 @@ AGENTS = {
     "reviewer": Agent(
         name="Reviewer",
         prompts=[
+            "promt-readme-validator",  # Documentation validation - most specific
             "promt-llm-review",
             "promt-security-audit",
             "promt-quality-test",
-            "promt-readme-validator"
         ],
         memory_key="reviews",
         description="Code review, security, quality checks",
@@ -164,7 +165,7 @@ PROMPT_KEYWORDS = {
     "promt-ci-cd-pipeline": ["ci", "cd", "pipeline", "деплой"],
     "promt-onboarding": ["онбординг", "onboard", "адаптация"],
     # Documentation
-    "promt-readme-validator": ["readme", "валидация readme", "проверь документацию", "главная страница", "diataxis", "readme validator", "проверь readme"],
+    "promt-readme-validator": ["readme", "валидация readme", "проверь документацию", "главная страница", "diataxis", "readme validator", "проверь readme", "приведи", "к стандарту", "документацию к стандарту", "приведи к стандарту"],
     "promt-readme-sync": ["синхронизируй readme", "обнови readme", "sync readme"]
 }
 
@@ -335,14 +336,13 @@ class AgentRouter:
         needed = []
 
         # Check for full cycle commands first (реализуй, внедри, сделай, e2e)
-        if "full_cycle" in AGENT_KEYWORDS:
-            import re
-            for keyword in AGENT_KEYWORDS["full_cycle"]:
-                # Use word boundary matching to avoid substring matches
-                pattern = r'\b' + re.escape(keyword) + r'\b'
-                if re.search(pattern, request_lower):
-                    # Full cycle detected - determine orchestration based on context
-                    return self._orchestrate_full_cycle(request_lower)
+        import re
+        for keyword in AGENT_KEYWORDS.get("full_cycle", []):
+            # Use word boundary matching to avoid substring matches
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, request_lower):
+                # Full cycle detected - determine orchestration based on context
+                return self._orchestrate_full_cycle(request_lower)
 
         # Check in priority order for other keywords (fast path)
         import re
@@ -459,7 +459,18 @@ class AgentRouter:
 
         request_lower = request.lower()
 
-        # Try semantic matching via PromptRegistry first
+        # Keyword matching with PROMPT_KEYWORDS FIRST (highest priority)
+        # This ensures explicit user keywords are respected over semantic similarity
+        import re
+        for prompt_name in agent.prompts:
+            keywords = PROMPT_KEYWORDS.get(prompt_name, [])
+            for keyword in keywords:
+                # Use word boundary matching - keyword must be standalone word, not substring
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, request_lower):
+                    return prompt_name
+
+        # Try semantic matching via PromptRegistry second
         # Access self.registry to trigger lazy initialization if needed
         if self._registry is not None:
             # Get agent's category for filtering
@@ -485,16 +496,6 @@ class AgentRouter:
                 entry = self._registry.get_by_name(prompt_name)
                 if entry and entry.matches_keyword(request_lower):
                     return prompt_name
-
-        # Fallback to keyword matching (legacy) - use word boundaries
-        import re
-        for prompt in agent.prompts:
-            keywords = PROMPT_KEYWORDS.get(prompt, [])
-            for keyword in keywords:
-                # Use word boundary matching - keyword must be standalone word, not substring
-                pattern = r'\b' + re.escape(keyword) + r'\b'
-                if re.search(pattern, request_lower):
-                    return prompt
 
         # Default to first prompt
         return agent.prompts[0]
