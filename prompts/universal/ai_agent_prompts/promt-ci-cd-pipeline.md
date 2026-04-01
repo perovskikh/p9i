@@ -49,7 +49,7 @@
 - Диагностика failing workflows (GitHub Actions)
 - Оптимизация времени CI (параллелизация, кэширование)
 - Добавление новых проверок (security scan, ADR compliance)
-- Настройка CD (K3s, Helm)
+- Настройка CD (K8s, Helm)
 - Интеграция тестов в pipeline
 
 **Ожидаемый результат:**
@@ -66,7 +66,7 @@
 
 **Обязательные инварианты для p9i:**
 - Использовать topic slug для идентификации ADR
-- Deployment через K3s (`k8s/` manifests) и Helm (`helm/p9i/`)
+- Deployment через K8s (`k8s/` manifests) и Helm (`helm/p9i/`)
 - CI/CD в `.github/workflows/` и `scripts/`
 - Верификация через `scripts/verify-all-adr.sh` и `scripts/verify-adr-checklist.sh`
 
@@ -74,7 +74,7 @@
 
 ## Назначение
 
-Этот промпт стандартизирует изменения CI/CD pipeline для p9i с учётом K3s/Helm deployment и ADR-практик.
+Этот промпт стандартизирует изменения CI/CD pipeline для p9i с учётом K8s/Helm deployment и ADR-практик.
 
 ## Входы
 
@@ -92,7 +92,7 @@
 
 - Использовать `scripts/verify-adr-checklist.sh` для проверки прогресса ADR
 - Использовать `scripts/verify-all-adr.sh` при затрагивании архитектурных правил
-- Deployment только через K3s/Helm в `k8s/` и `helm/p9i/`
+- Deployment только через K8s/Helm в `k8s/` и `helm/p9i/`
 - Соблюдать существующие ADR в `docs/explanation/adr/`
 
 ## Workflow шаги
@@ -124,7 +124,7 @@ GitHub Actions (CI)
 ├── .github/workflows/
 │   └── *.yml           # CI workflows
 
-K3s Deployment (CD)
+K8s Deployment (CD)
 ├── k8s/                # Kubernetes manifests
 │   ├── 00-namespace.yaml
 │   ├── 01-nginx-config.yaml
@@ -146,7 +146,7 @@ K3s Deployment (CD)
 | Method | Command | When |
 |---|---|---|
 | `make dev` | docker compose | Local development |
-| `make deploy` | helm upgrade + kubectl | K3s production |
+| `make deploy` | helm upgrade + kubectl | K8s production |
 | Docker | `docker build && docker push` | Image publishing |
 
 ### ADR-related CI Checks
@@ -156,8 +156,8 @@ K3s Deployment (CD)
 | `lint` | PR, push | shellcheck, yamllint, helm lint |
 | `test` | PR, push | pytest, unit tests |
 | `build` | PR, push | Docker build + push to registry |
-| `deploy-staging` | merge to main | helm upgrade in K3s |
-| `deploy-prod` | tag/release | helm upgrade in K3s |
+| `deploy-staging` | merge to main | helm upgrade in K8s |
+| `deploy-prod` | tag/release | helm upgrade in K8s |
 
 ### ADR-related CI Checks
 
@@ -178,7 +178,7 @@ K3s Deployment (CD)
 | **Diagnose** | CI/CD failing, нужен fix | Шаг 1-2 |
 | **Optimize** | Ускорить pipeline | Шаг 3 |
 | **Extend** | Добавить новые проверки | Шаг 4 |
-| **Configure** | Настроить K3s/Helm | Шаг 5 |
+| **Configure** | Настроить K8s/Helm | Шаг 5 |
 
 ---
 
@@ -226,7 +226,7 @@ helm template . -f config/values-dev.yaml --debug
 
 ```
 Запрос к Context7:
-- Технология: GitHub Actions / K3s / Helm
+- Технология: GitHub Actions / K8s / Helm
 - Задача: [диагностика / оптимизация / новая проверка]
 - Что получить: best practices, common issues, examples
 ```
@@ -237,7 +237,7 @@ helm template . -f config/values-dev.yaml --debug
 |---|---|
 | Flaky tests | `github actions retry step flaky test continue-on-error` |
 | Caching | `github actions cache npm poetry pip docker layer` |
-| K3s deploy | `kubernetes helm upgrade kubectl rollout status` |
+| K8s deploy | `kubernetes helm upgrade kubectl rollout status` |
 | Parallel jobs | `github actions matrix strategy parallel jobs` |
 | Security scan | `github actions trivy snyk security scan container` |
 
@@ -391,7 +391,7 @@ jobs:
 
 ---
 
-## Шаг 5: K3s / Helm Configuration
+## Шаг 5: K8s / Helm Configuration
 
 ### 5.1. Helm Chart Structure
 
@@ -415,7 +415,7 @@ make dev
 docker build -t localhost:5000/p9i:k8s .
 docker push localhost:5000/p9i:k8s
 
-# Deploy to K3s
+# Deploy to K8s
 make deploy
 
 # Or directly with Helm
@@ -455,8 +455,8 @@ helm upgrade --install p9i ./helm/p9i -n p9i --dry-run --debug
 | Environment | Trigger | Method |
 |---|---|---|
 | Local | Development | `make dev` (docker compose) |
-| Staging | Merge to main | `make deploy` (Helm + K3s) |
-| Production | Release tag | `make deploy` (Helm + K3s) |
+| Staging | Merge to main | `make deploy` (Helm + K8s) |
+| Production | Release tag | `make deploy` (Helm + K8s) |
 ```
 
 ### 6.2. Troubleshooting Guide
@@ -472,7 +472,7 @@ A: Check shell/env differences. Run `make lint` in CI-like environment.
 **Q: Tests timeout**
 A: Check for network dependencies. Increase timeout or mock external calls.
 
-**Q: K3s/Helm deployment stuck**
+**Q: K8s/Helm deployment stuck**
 A: Check `kubectl get pods -n p9i` and `kubectl describe deployment p9i-p9i -n p9i`. Common: image pull issues, resource quota.
 ```
 
@@ -502,7 +502,7 @@ A: Check `kubectl get pods -n p9i` and `kubectl describe deployment p9i-p9i -n p
 | `scripts/test.sh` | Test runner |
 | `scripts/verify-all-adr.sh` | ADR verification |
 | `helm/p9i/` | Helm chart for deployment |
-| `k8s/` | K3s manifests |
+| `k8s/` | K8s manifests |
 
 ---
 

@@ -27,7 +27,7 @@ p9i/
 │   ├── universal/        # 40+ agent prompts
 │   └── packs/           # Plugin packs (k8s, ci-cd, uiux)
 ├── helm/p9i/            # K8s/Helm deployment
-├── k8s/                 # K3s manifests
+├── k8s/                 # K8s manifests
 └── scripts/             # Automation scripts
 ```
 
@@ -39,7 +39,7 @@ make dev                  # docker compose up
 
 # Build & Deploy
 docker build -t p9i .
-make deploy              # helm upgrade in K3s
+make deploy              # helm upgrade in K8s
 
 # Testing
 pytest                   # All tests
@@ -54,7 +54,7 @@ pytest tests/test_storage.py  # Specific tests
 | LLM Providers | MiniMax-M2.7, GLM-4.7, DeepSeek |
 | Database | PostgreSQL |
 | Cache | Redis |
-| Deployment | K3s + Helm |
+| Deployment | K8s + Helm |
 | Transport | streamable-http, stdio |
 
 ## Key Files
