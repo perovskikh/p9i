@@ -211,9 +211,21 @@ class PromptExecutor:
         }
 
         result = prompt_content
+
+        # First, substitute variables from input_data (handles {task}, {context}, {memory})
+        for key, value in input_data.items():
+            if value and isinstance(value, str):
+                # Handle both ${VARIABLE} and {VARIABLE} formats
+                result = result.replace(f"${{{key}}}", str(value))
+                result = result.replace(f"{{{key}}}", str(value))
+
+        # Then handle project-specific variables
         for var, value in substitutions.items():
             if value and value != "unknown" and value != ".":
                 result = result.replace(var, str(value))
+                # Also handle {VARIABLE} without $
+                no_dollar = var.replace("${", "{").replace("}", "}")
+                result = result.replace(no_dollar, str(value))
 
         return result
 

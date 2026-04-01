@@ -858,7 +858,8 @@ class AgentTaskProcessor(Processor):
                 request,
                 prompt_entry=prompt_entry,
                 intent_agent=intent.agent_name,
-                context=context)
+                context=context,
+                use_checkpoint=context.get("use_checkpoint") if context else None)
 
             return {
                 "status": result.get("status", "success"),

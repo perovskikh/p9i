@@ -388,6 +388,7 @@ class CheckpointExecutor:
         - ```python filename.py
           ...
           ```
+        - ```python\nfilename.py\n...```
         - File: path/to/file.py
           ```python
           ...
@@ -397,16 +398,25 @@ class CheckpointExecutor:
 
         files = {}
 
-        # Pattern 1: Code block with filename
-        code_block_pattern = r"```(\w+)\s+([^\n]+)\n(.*?)```"
+        # Pattern 1: Code block with filename - flexible spacing
+        # Matches: ```python filename.ext ...``` or ```python\nfilename.ext\n...```
+        code_block_pattern = r"```(\w+)\s*\n?(?:([^\n]+?)\s*\n)?(.*?)```"
         for match in re.finditer(code_block_pattern, content, re.DOTALL):
-            filename = match.group(2).strip()
+            lang = match.group(1)
+            filename = match.group(2).strip() if match.group(2) else ""
             file_content = match.group(3).strip()
-            if filename and file_content:
-                files[filename] = file_content
+            if file_content:
+                # If no filename but content looks like a path, try to extract
+                if not filename:
+                    first_line = file_content.split("\n")[0].strip()
+                    if first_line and ("/" in first_line or first_line.endswith(".py") or first_line.endswith(".js") or first_line.endswith(".ts")):
+                        filename = first_line
+                        file_content = "\n".join(file_content.split("\n")[1:])
+                if filename and file_content:
+                    files[filename] = file_content
 
-        # Pattern 2: File: path/to/file
-        file_path_pattern = r"File:\s*(.+?)\n```(\w+)?\n(.*?)```"
+        # Pattern 2: File: path/to/file (case insensitive, supports Russian)
+        file_path_pattern = r"(?:File|Файл):\s*(.+?)(?:\n|$)```(\w+)?\n?(.*?)```"
         for match in re.finditer(file_path_pattern, content, re.DOTALL):
             filename = match.group(1).strip()
             file_content = match.group(3).strip()

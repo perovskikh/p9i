@@ -323,7 +323,8 @@ class AgentOrchestrator:
         request: str,
         prompt_entry: Any = None,
         intent_agent: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        use_checkpoint: bool = None
     ) -> Dict[str, Any]:
         """
         Route request with PromptEntry propagation.
@@ -335,6 +336,7 @@ class AgentOrchestrator:
             request: User request
             prompt_entry: Optional initial PromptEntry to propagate
             intent_agent: Optional agent from P9iRouter to skip detection
+            use_checkpoint: Optional checkpoint flag for file writing
 
         Returns:
             Dict with status, agents_used, results, output, errors
@@ -353,6 +355,7 @@ class AgentOrchestrator:
                 agent_name,
                 request,
                 context=context,
+                use_checkpoint=use_checkpoint,
                 prompt_entry=current_entry
             )
             logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")
