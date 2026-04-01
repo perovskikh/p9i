@@ -14,12 +14,24 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+# Patterns for parsing bash commands from LLM output
+BASH_BLOCK_PATTERN = re.compile(
+    r"```(?:bash|sh|shell)\s*\n(.*?)```",
+    re.DOTALL | re.IGNORECASE
+)
+BASH_INLINE_PATTERN = re.compile(
+    r"^\s*(?:\$\s*|>)\s+(.+)$",
+    re.MULTILINE
+)
 
 # Checkpoint storage directory
 CHECKPOINT_DIR = Path(__file__).parent.parent.parent / "memory" / "checkpoints"
@@ -28,10 +40,12 @@ CHECKPOINT_DIR = Path(__file__).parent.parent.parent / "memory" / "checkpoints"
 @dataclass
 class ExecutionState:
     """State captured at each checkpoint."""
-    phase: str  # "generating", "validating", "writing", "complete"
+    phase: str  # "generating", "validating", "parsing", "executing_bash", "writing", "complete"
     request: str
     generated_content: str = ""
     planned_files: dict[str, str] = field(default_factory=dict)
+    planned_bash_commands: list[str] = field(default_factory=list)
+    bash_results: list[dict] = field(default_factory=list)
     written_files: set[str] = field(default_factory=set)
     validation_errors: list[str] = field(default_factory=list)
     timestamp: float = field(default_factory=time.time)
@@ -193,6 +207,24 @@ class CheckpointExecutor:
             planned_files = self._parse_files_from_output(generated_content)
             state.planned_files = planned_files
 
+            # Also parse bash commands from output
+            bash_commands = self._parse_bash_commands_from_output(generated_content)
+            state.planned_bash_commands = bash_commands
+
+            if bash_commands:
+                # Phase 3.5: Execute bash commands
+                logger.info(f"[CHECKPOINT] {execution_id}: Executing {len(bash_commands)} bash commands...")
+                state.phase = "executing_bash"
+                self.checkpoint_manager.save(execution_id, state)
+
+                bash_results = await self._execute_bash_commands(bash_commands)
+                state.bash_results = bash_results
+
+                # Check if any commands failed
+                failed_commands = [r for r in bash_results if not r["success"]]
+                if failed_commands:
+                    logger.warning(f"Bash command failures: {len(failed_commands)}")
+
             if write_to_disk and planned_files:
                 # Phase 4: Write files
                 logger.info(f"[CHECKPOINT] {execution_id}: Writing {len(planned_files)} files...")
@@ -214,10 +246,11 @@ class CheckpointExecutor:
                     "status": "success",
                     "content": generated_content,
                     "files": write_result,
+                    "bash_results": state.bash_results,
                     "execution_id": execution_id,
                 }
             else:
-                # No files to write - just return content
+                # No files to write - just return content (but still execute bash)
                 state.phase = "complete"
                 self.checkpoint_manager.save(execution_id, state)
                 self.checkpoint_manager.complete(execution_id)
@@ -226,6 +259,7 @@ class CheckpointExecutor:
                     "status": "success",
                     "content": generated_content,
                     "files": {"written": [], "failed": []},
+                    "bash_results": state.bash_results,
                     "execution_id": execution_id,
                 }
 
@@ -266,6 +300,85 @@ class CheckpointExecutor:
             errors.append("Low code density (possible template)")
 
         return {"valid": len(errors) == 0, "errors": errors}
+
+    def _parse_bash_commands_from_output(self, content: str) -> list[str]:
+        """
+        Parse bash commands from LLM output.
+
+        Expected formats:
+        - ```bash
+          command1
+          command2
+          ```
+        - $ command1
+        - > command1
+        """
+        commands = []
+
+        # Extract from fenced code blocks
+        for match in BASH_BLOCK_PATTERN.finditer(content):
+            block = match.group(1).strip()
+            for line in block.split("\n"):
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    commands.append(line)
+
+        # Extract inline commands
+        for match in BASH_INLINE_PATTERN.finditer(content):
+            cmd = match.group(1).strip()
+            if cmd and not cmd.startswith("#"):
+                commands.append(cmd)
+
+        return commands
+
+    async def _execute_bash_commands(self, commands: list[str]) -> list[dict]:
+        """
+        Execute bash commands and return results.
+
+        Returns:
+            [{"command": str, "returncode": int, "stdout": str, "stderr": str, "success": bool}, ...]
+        """
+        results = []
+        for cmd in commands:
+            try:
+                proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=300
+                )
+                result = {
+                    "command": cmd,
+                    "returncode": proc.returncode,
+                    "stdout": stdout.decode() if stdout else "",
+                    "stderr": stderr.decode() if stderr else "",
+                    "success": proc.returncode == 0,
+                }
+            except asyncio.TimeoutExpired:
+                result = {
+                    "command": cmd,
+                    "returncode": -1,
+                    "stdout": "",
+                    "stderr": "Command timed out after 300 seconds",
+                    "success": False,
+                    "error": "timeout",
+                }
+            except Exception as e:
+                result = {
+                    "command": cmd,
+                    "returncode": -1,
+                    "stdout": "",
+                    "stderr": str(e),
+                    "success": False,
+                    "error": type(e).__name__,
+                }
+            results.append(result)
+            logger.info(f"Bash executed: {cmd} -> {result['returncode']}")
+
+        return results
 
     def _parse_files_from_output(self, content: str) -> dict[str, str]:
         """
