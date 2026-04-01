@@ -127,7 +127,7 @@ AGENT_KEYWORDS = {
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
     # Full cycle keywords - активируют полный цикл с арбитражом
     "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
-    "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование", "рефакторинг", "refactor"],
+    "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование"],
     "reviewer": ["проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix", "ревью", "аудит", "тест", "review", "check", "audit", "test", "standard", "standards"],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
