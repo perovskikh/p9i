@@ -9,7 +9,7 @@
 | [AI Agent Prompts](ai-agent-prompts/README.md) | Prompt registry, agents, routing |
 | [ADR Index](explanation/adr/ADR_INDEX.md) | Architecture Decision Records |
 | [MPV Pipeline](how-to/MPV.md) | 7-stage development pipeline |
-| [MCP Config](../MCP-CONFIG.md) | MCP server configuration |
+| [MCP Config](MCP-CONFIG.md) | MCP server configuration |
 | [Env Variables](reference/env-variables.md) | Environment variables reference |
 
 ## Architecture
@@ -66,8 +66,7 @@ docs/
 ├── ai-agent-prompts/   # Prompt registry, agents, routing
 ├── explanation/         # ADR and architecture docs
 ├── how-to/             # Guides (MPV, bottlenecks)
-├── reference/          # API reference
-└── reports/            # Implementation reports
+└── reference/          # API reference
 ```
 
 ---
