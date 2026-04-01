@@ -1,5 +1,16 @@
 # ADR-014: LLM-based Prompt Selection with Embeddings
 
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Number** | ADR-014 |
+| **Status** | Proposed |
+| **Date** | 2026-04-01 |
+| **Author** | p9i team |
+| **Supersedes** | — |
+| **Reviewed by** | — |
+
 ## Статус решения
 **Proposed** | 2026-04-01
 
@@ -263,11 +274,51 @@ SEARCH_CACHE_TTL=300
 
 ---
 
+## Success Criteria
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| **Semantic search accuracy** | >80% relevance | User feedback survey |
+| **Search latency p95** | <200ms | APM dashboard |
+| **Cache hit rate** | >30% | Redis metrics |
+| **Coverage** | 100% prompts indexed | Vector store count |
+| **Embedding cost** | <$0.001 per query | Cost tracking |
+
+**Verification:** Monthly review via analytics dashboard
+
+---
+
+## Reconsidered Alternatives
+
+### 1. Keyword-based routing (existing P9iRouter)
+
+| Aspect | Verdict |
+|--------|---------|
+| **Why rejected** | No semantic understanding, breaks on typos/synonyms |
+| **Trade-off** | Fast & free, but limited accuracy |
+
+### 2. Pure LLM-based routing (every query → LLM classifier)
+
+| Aspect | Verdict |
+|--------|---------|
+| **Why rejected** | High latency (+2-3s), high cost per request |
+| **Trade-off** | Most accurate, but business infeasible at scale |
+
+### 3. BM25 / TF-IDF keyword search
+
+| Aspect | Verdict |
+|--------|---------|
+| **Why rejected** | No semantic understanding, same limitations as keyword routing |
+| **Trade-off** | Simple implementation, but poor for natural language |
+
+**Final choice rationale:** Hybrid approach (embeddings + optional LLM fallback) balances speed, cost, and accuracy. Embeddings provide fast semantic matching while caching keeps costs low.
+
+---
+
 ## Related Documents
 
 - [ADR-007: Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md)
 - [ADR-013: Code Quality Improvements](ADR-013-code-review-improvements.md)
-- [Research: LLM-based Prompt Selection](./research/llm-prompt-selection-research.md)
 
 ---
 
@@ -276,11 +327,13 @@ SEARCH_CACHE_TTL=300
 | Version | Date | Status |
 |---------|------|--------|
 | 1.0 | 2026-04-01 | Proposed |
+| 1.1 | 2026-04-01 | Updated: Added Success Criteria, Reconsidered Alternatives |
 
 ---
 
-**ADR Version:** 1.0
+**ADR Version:** 1.1
 **Created:** 2026-04-01
+**Last Updated:** 2026-04-01
 **Status:** Proposed
 **Review Date:** 2026-04-08
 **Deciders:** p9i team

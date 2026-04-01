@@ -10,7 +10,7 @@
 | ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** ✅ | 2026-03-22 | Figma API, design-to-code, tokens | ADR-005 |
 | ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Implemented** ✅ | 2026-03-24 | 7 agents, Siri voice, browser, dedup guard | ADR-004 |
 | ADR-012 | [Pre-commit Hook Installation Requirement](ADR-012-pre-commit-installation.md) | **Implemented** ✅ | 2026-03-30 | pre-commit installation, ADR validation | ADR-001 |
-| ADR-014 | [LLM-based Prompt Selection with Embeddings](ADR-014-llm-prompt-selection.md) | **Proposed** 📋 | 2026-04-01 | OpenRouter + Qdrant + Redis | ADR-007 |
+| ADR-014 | [LLM-based Prompt Selection with Embeddings](ADR-014-llm-prompt-selection.md) | **Proposed** 📋 | 2026-04-01 | OpenRouter + Qdrant + Redis | ADR-007, ADR-013 |
 
 ## Legend
 
