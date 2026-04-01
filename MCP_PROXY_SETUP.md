@@ -6,7 +6,7 @@ This guide explains how to set up the MCP proxy to connect Claude Code to the re
 
 ### Option A: HTTP-to-STDIO Proxy (Recommended for Claude Code)
 
-Uses `mcp_proxy_simple.py` to bridge Claude Code (stdio) to MCP server (HTTP).
+Uses `p9i_stdio_bridge.py` to bridge Claude Code (stdio) to MCP server (HTTP).
 
 **Pros:**
 - Simple setup
@@ -40,7 +40,7 @@ Create or update `.mcp.json` in your project root:
 {
   "p9i": {
     "command": "python3",
-    "args": ["/path/to/p9i/mcp_proxy_simple.py"],
+    "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
     "env": {
       "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
       "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
@@ -132,7 +132,7 @@ export P9I_API_KEY=sk-p9i-codeshift-mcp.coderweb.ru
 Then run the proxy manually:
 
 ```bash
-python3 mcp_proxy_simple.py
+python3 p9i_stdio_bridge.py
 ```
 
 ## Troubleshooting
@@ -145,7 +145,7 @@ python3 mcp_proxy_simple.py
 ### MCP server not detected
 
 - Ensure `.mcp.json` is in the project root
-- Check that the path to `mcp_proxy_simple.py` is correct
+- Check that the path to `p9i_stdio_bridge.py` is correct
 - Verify Python is in your PATH
 
 ### Connection refused
@@ -161,7 +161,7 @@ Should return JSON-RPC error (normal) but not connection refused.
 
 ```
 Option A (Proxy):
-Claude Code (stdio) --> mcp_proxy_simple.py --> HTTP --> mcp.coderweb.ru/mcp
+Claude Code (stdio) --> p9i_stdio_bridge.py --> HTTP --> mcp.coderweb.ru/mcp
 
 Option B (Direct):
 Claude Code --> HTTP --> mcp.coderweb.ru/mcp (with session management)
@@ -169,6 +169,6 @@ Claude Code --> HTTP --> mcp.coderweb.ru/mcp (with session management)
 
 ## Files
 
-- `mcp_proxy_simple.py` - Simple curl-based proxy (Option A)
+- `p9i_stdio_bridge.py` - Simple curl-based proxy (Option A)
 - `mcp_proxy.py` - Alternative version with more features
 - `src/services/mcp_session_manager.py` - Session management (Option B)

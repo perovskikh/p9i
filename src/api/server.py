@@ -2985,7 +2985,7 @@ async def create_mcp_session(client_info: dict = None) -> dict:
     """
     Create a new MCP session for direct HTTP connections.
 
-    This enables direct connections without using the proxy (mcp_proxy_simple.py).
+    This enables direct connections without using the proxy (p9i_stdio_bridge.py).
     Sessions are stored in Redis and persist across server restarts.
 
     Args:

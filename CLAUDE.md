@@ -261,7 +261,7 @@ The p9i project already has `.mcp.json` configured at `/home/worker/p9i/.mcp.jso
   "mcpServers": {
     "p9i": {
       "command": "python3",
-      "args": ["/home/worker/p9i/mcp_proxy_simple.py"],
+      "args": ["/home/worker/p9i/p9i_stdio_bridge.py"],
       "env": {
         "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
         "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
