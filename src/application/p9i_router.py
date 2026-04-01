@@ -254,7 +254,6 @@ class P9iRouter:
 
             # === TESTING ===
             "напиши тест": (IntentType.AGENT_TASK, "reviewer"),
-            "проверь": (IntentType.AGENT_TASK, "reviewer"),
             "quality": (IntentType.AGENT_TASK, "reviewer"),
             "тест": (IntentType.AGENT_TASK, "reviewer"),
             "test": (IntentType.AGENT_TASK, "reviewer"),

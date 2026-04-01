@@ -46,11 +46,11 @@
 ADR-расхождения, и обеспечить, что фикс не нарушит архитектурные решения.
 
 **Примеры задач, которые решает этот промпт:**
-- Исправление ошибок в ${PRIMARY_INTERFACE} (webhook, команды, платежи)
+- Исправление ошибок в MCP (webhook, команды, платежи)
 - Фикс багов в Helm templates (deployment, ingress, middlewares)
 - Исправление проблем с K8s provisioning (namespaces, PVC, RBAC)
 - Фикс ошибок в CI/CD pipeline (scripts, GitHub Actions)
-- Исправление багов в интеграциях (${PAYMENT_PROVIDER}, Nextcloud, Redis)
+- Исправление багов в интеграциях (Payment, Nextcloud, Redis)
 
 **Ожидаемый результат:**
 - Баг исправлен без нарушения ADR-решений
@@ -183,8 +183,8 @@ ADR-расхождения, и обеспечить, что фикс не нар
 
 | Тип бага | Запрос к Context7 |
 |---|---|
-| ${FRAMEWORK} handler не срабатывает | `${PRIMARY_INTERFACE} router filter order middleware priority registration` |
-| ${PAYMENT_PROVIDER} webhook 403 | `yookassa webhook hmac signature validation ip whitelist` |
+| FastAPI handler не срабатывает | `MCP router filter order middleware priority registration` |
+| Payment webhook 403 | `yookassa webhook hmac signature validation ip whitelist` |
 | PVC pending | `kubernetes pvc pending storageclass longhorn provisioner events` |
 | Ingress 502 | `traefik ingress backend service endpoint health routing` |
 

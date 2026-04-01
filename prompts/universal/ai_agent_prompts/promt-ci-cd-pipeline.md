@@ -49,7 +49,7 @@
 - Диагностика failing workflows (GitHub Actions)
 - Оптимизация времени CI (параллелизация, кэширование)
 - Добавление новых проверок (security scan, ADR compliance)
-- Настройка CD (ArgoCD, GitOps)
+- Настройка CD (K3s, Helm)
 - Интеграция тестов в pipeline
 
 **Ожидаемый результат:**
@@ -62,19 +62,19 @@
 
 ## Контракт синхронизации системы
 
-Этот промпт управляется из единой точки: `docs/ai-agent-prompts/meta-promptness/meta-promt-adr-system-generator.md`.
+Этот промпт управляется из единой точки: `docs/ai-agent-prompts/`.
 
-Обязательные инварианты:
+**Обязательные инварианты для p9i:**
 - Использовать topic slug для идентификации ADR
-- GitOps через ArgoCD (`gitops/codeshift-application.yaml`)
-- CI скрипты в `scripts/ci/` и `.github/workflows/`
-- Соблюдать ADR `gitops-validation-production-deployment-monitoring`
+- Deployment через K3s (`k8s/` manifests) и Helm (`helm/p9i/`)
+- CI/CD в `.github/workflows/` и `scripts/`
+- Верификация через `scripts/verify-all-adr.sh` и `scripts/verify-adr-checklist.sh`
 
 ---
 
 ## Назначение
 
-Этот промпт стандартизирует изменения CI/CD pipeline с учётом архитектурных ограничений  и GitOps-практик.
+Этот промпт стандартизирует изменения CI/CD pipeline для p9i с учётом K3s/Helm deployment и ADR-практик.
 
 ## Входы
 
@@ -90,12 +90,10 @@
 
 ## Ограничения / инварианты
 
-- Следовать ограничениям I-1..I-9 и Constraints C1–C10 из meta-prompt
-- Сохранять topic slug-first при ссылках на ADR
-- Учитывать dual-status и проверять прогресс по `verify-adr-checklist.sh` для ADR-связанных изменений
-- Использовать `verify-all-adr.sh` при затрагивании архитектурных правил
-- Context7 gate обязателен для выбора CI/CD практик и security controls
-- Соблюдать Anti-Legacy и update in-place
+- Использовать `scripts/verify-adr-checklist.sh` для проверки прогресса ADR
+- Использовать `scripts/verify-all-adr.sh` при затрагивании архитектурных правил
+- Deployment только через K3s/Helm в `k8s/` и `helm/p9i/`
+- Соблюдать существующие ADR в `docs/explanation/adr/`
 
 ## Workflow шаги
 
@@ -119,52 +117,55 @@
 
 ## Project Context
 
-### CI/CD Architecture
+### CI/CD Architecture (p9i)
 
 ```
 GitHub Actions (CI)
 ├── .github/workflows/
-│   ├── ci.yml          # Main CI pipeline
-│   ├── docs.yml        # Documentation build
-│   └── release.yml     # Release automation
-│
-├── scripts/ci/         # CI-specific scripts
-│   └── *.sh
-│
-└── scripts/            # Shared scripts
-    ├── test.sh
-    ├── ci-install-chart-on-k3s.sh
-    └── verify-all-adr.sh
+│   └── *.yml           # CI workflows
 
-ArgoCD (CD)
-├── gitops/
-│   ├── codeshift-application.yaml
-│   ├── monitoring-application.yaml
-│   └── overlays/
-│       ├── dev/
-│       ├── staging/
-│       └── prod/
+K3s Deployment (CD)
+├── k8s/                # Kubernetes manifests
+│   ├── 00-namespace.yaml
+│   ├── 01-nginx-config.yaml
+│   └── 02-db-redis.yaml
+│
+├── helm/p9i/           # Helm chart
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│
+└── scripts/            # Automation scripts
+    ├── verify-all-adr.sh
+    ├── verify-adr-checklist.sh
+    └── helpers/
 ```
 
-### Текущие CI Jobs
+### p9i Deployment Methods
+
+| Method | Command | When |
+|---|---|---|
+| `make dev` | docker compose | Local development |
+| `make deploy` | helm upgrade + kubectl | K3s production |
+| Docker | `docker build && docker push` | Image publishing |
+
+### ADR-related CI Checks
 
 | Job | Trigger | Что делает |
 |---|---|---|
 | `lint` | PR, push | shellcheck, yamllint, helm lint |
 | `test` | PR, push | pytest, unit tests |
-| `build` | PR, push | Docker build (optional) |
-| `deploy-preview` | PR | Ephemeral environment |
-| `deploy-staging` | merge to main | ArgoCD sync staging |
-| `deploy-prod` | tag/release | ArgoCD sync prod |
+| `build` | PR, push | Docker build + push to registry |
+| `deploy-staging` | merge to main | helm upgrade in K3s |
+| `deploy-prod` | tag/release | helm upgrade in K3s |
 
 ### ADR-related CI Checks
 
 | ADR Topic | CI Check |
 |---|---|
-| `bash-formatting-standard` | shellcheck, shfmt |
-| `documentation-generation` | mkdocs build |
-| `e2e-testing-new-features` | E2E test suite |
-| `gitops-validation` | ArgoCD dry-run |
+| `bash-formatting-standard` | shellcheck, ruff |
+| `prompt-quality` | promt-verification |
+| `k8s-deployment` | helm lint, kubectl dry-run |
 
 ---
 
@@ -177,7 +178,7 @@ ArgoCD (CD)
 | **Diagnose** | CI/CD failing, нужен fix | Шаг 1-2 |
 | **Optimize** | Ускорить pipeline | Шаг 3 |
 | **Extend** | Добавить новые проверки | Шаг 4 |
-| **Configure** | Настроить CD/GitOps | Шаг 5 |
+| **Configure** | Настроить K3s/Helm | Шаг 5 |
 
 ---
 
@@ -225,7 +226,7 @@ helm template . -f config/values-dev.yaml --debug
 
 ```
 Запрос к Context7:
-- Технология: GitHub Actions / ArgoCD
+- Технология: GitHub Actions / K3s / Helm
 - Задача: [диагностика / оптимизация / новая проверка]
 - Что получить: best practices, common issues, examples
 ```
@@ -236,7 +237,7 @@ helm template . -f config/values-dev.yaml --debug
 |---|---|
 | Flaky tests | `github actions retry step flaky test continue-on-error` |
 | Caching | `github actions cache npm poetry pip docker layer` |
-| ArgoCD sync | `argocd application sync hook wave prune` |
+| K3s deploy | `kubernetes helm upgrade kubectl rollout status` |
 | Parallel jobs | `github actions matrix strategy parallel jobs` |
 | Security scan | `github actions trivy snyk security scan container` |
 
@@ -390,62 +391,45 @@ jobs:
 
 ---
 
-## Шаг 5: ArgoCD / GitOps Configuration
+## Шаг 5: K3s / Helm Configuration
 
-### 5.1. Application YAML
+### 5.1. Helm Chart Structure
 
-```yaml
-# gitops/codeshift-application.yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: codeshift
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/org/codeshift.git
-    targetRevision: HEAD
-    path: .
-    helm:
-      valueFiles:
-        - config/values-prod.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: codeshift
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+```
+helm/p9i/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    └── ingress.yaml
 ```
 
-### 5.2. Sync Waves (порядок deployment)
+### 5.2. Deployment Commands
 
-```yaml
-# In Helm templates, add annotations:
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"  # First: secrets, configmaps
-    # sync-wave: "1" — Second: PVCs, storage
-    # sync-wave: "2" — Third: deployments
-    # sync-wave: "3" — Fourth: services, ingress
+```bash
+# Local development
+make dev
+
+# Build and push image
+docker build -t localhost:5000/p9i:k8s .
+docker push localhost:5000/p9i:k8s
+
+# Deploy to K3s
+make deploy
+
+# Or directly with Helm
+helm upgrade --install p9i ./helm/p9i -n p9i --create-namespace
 ```
 
-### 5.3. Health Checks
+### 5.3. Helm Lint & Dry-Run
 
-```yaml
-# Custom health check for specific resources
-spec:
-  source:
-    plugin:
-      name: argocd-vault-plugin  # if using secrets plugin
-  ignoreDifferences:
-    - group: ""
-      kind: Secret
-      jsonPointers:
-        - /data
+```bash
+# Validate Helm chart
+helm lint ./helm/p9i
+
+# Dry-run before deployment
+helm upgrade --install p9i ./helm/p9i -n p9i --dry-run --debug
 ```
 
 ---
@@ -468,11 +452,11 @@ spec:
 
 ### Continuous Deployment
 
-| Environment | Trigger | ArgoCD App |
+| Environment | Trigger | Method |
 |---|---|---|
-| Preview | PR opened | auto-generated |
-| Staging | Merge to main | codeshift-staging |
-| Production | Release tag | codeshift-prod |
+| Local | Development | `make dev` (docker compose) |
+| Staging | Merge to main | `make deploy` (Helm + K3s) |
+| Production | Release tag | `make deploy` (Helm + K3s) |
 ```
 
 ### 6.2. Troubleshooting Guide
@@ -488,8 +472,8 @@ A: Check shell/env differences. Run `make lint` in CI-like environment.
 **Q: Tests timeout**
 A: Check for network dependencies. Increase timeout or mock external calls.
 
-**Q: ArgoCD sync stuck**
-A: Check `argocd app get codeshift` for details. Common: resource quota, PVC issues.
+**Q: K3s/Helm deployment stuck**
+A: Check `kubectl get pods -n p9i` and `kubectl describe deployment p9i-p9i -n p9i`. Common: image pull issues, resource quota.
 ```
 
 ---
@@ -517,8 +501,8 @@ A: Check `argocd app get codeshift` for details. Common: resource quota, PVC iss
 | `scripts/ci/` | CI-specific scripts |
 | `scripts/test.sh` | Test runner |
 | `scripts/verify-all-adr.sh` | ADR verification |
-| `gitops/codeshift-application.yaml` | ArgoCD app definition |
-| `gitops/overlays/` | Environment-specific configs |
+| `helm/p9i/` | Helm chart for deployment |
+| `k8s/` | K3s manifests |
 
 ---
 
