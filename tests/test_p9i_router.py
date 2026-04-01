@@ -268,31 +268,27 @@ class TestRouteFlow:
         """Test routing unknown request."""
         result = await router.route("xyz123", {})
         assert result["status"] == "error"
-        assert "Could not route" in result["error"]
+        assert "Unknown command" in result["error"]
 
 
 class TestBackwardCompatibility:
-    """Test backward compatibility with old ai_prompts and p9i_nl."""
+    """Test backward compatibility with old ai_prompts and p9i_nl.
 
+    Note: ai_prompts and p9i_nl were removed in favor of unified p9i() function.
+    These tests are kept as skip to document the removal.
+    """
+
+    @pytest.mark.skip(reason="ai_prompts function was removed - use p9i() instead")
     @pytest.mark.asyncio
-    async def test_ai_prompts_redirect(self, router):
+    async def test_ai_prompts_redirect(self):
         """Test ai_prompts redirects to p9i."""
-        # This tests the DEPRECATED function
-        # Should route through p9i() instead
-        from src.api.server import ai_prompts
-        result = await ai_prompts("создай функцию", {}, None)
-        # Should have DEPRECATED warning in logs
-        assert "status" in result
+        pass
 
+    @pytest.mark.skip(reason="p9i_nl function was removed - use p9i() instead")
     @pytest.mark.asyncio
-    async def test_p9i_nl_redirect(self, router):
+    async def test_p9i_nl_redirect(self):
         """Test p9i_nl redirects to p9i."""
-        # This tests the DEPRECATED function
-        # Should route through p9i() instead
-        from src.api.server import p9i_nl
-        result = await p9i_nl("создай функцию", None)
-        # Should have DEPRECATED warning in logs
-        assert "status" in result
+        pass
 
 
 class TestKeywordCoverage:
@@ -365,6 +361,26 @@ class TestEdgeCases:
         intent = router.classify("реализуй систему")
         if intent.type == IntentType.AGENT_TASK:
             assert intent.agent_name == "full_cycle"  # Not "developer"!
+
+    def test_context_aware_architect_routing(self, router):
+        """Test context-aware routing: 'проверь + architecture keywords' → architect (not reviewer)."""
+        # "проверь архитектуру" should route to architect
+        intent = router.classify("проверь архитектуру")
+        assert intent.type == IntentType.AGENT_TASK
+        assert intent.agent_name == "architect", "проверь архитектуру should route to architect"
+
+    def test_context_aware_architect_routing_design(self, router):
+        """Test context-aware routing: 'проверь + design keywords' → architect."""
+        intent = router.classify("проверь дизайн")
+        assert intent.type == IntentType.AGENT_TASK
+        assert intent.agent_name == "architect", "проверь дизайн should route to architect"
+
+    def test_basic_reviewer_routing(self, router):
+        """Test basic reviewer routing without architect context."""
+        # "проверь код" should route to reviewer
+        intent = router.classify("проверь код")
+        assert intent.type == IntentType.AGENT_TASK
+        assert intent.agent_name == "reviewer", "проверь код should route to reviewer"
 
 
 if __name__ == "__main__":
