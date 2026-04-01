@@ -11,6 +11,7 @@
 | ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Implemented** ✅ | 2026-03-24 | 7 agents, Siri voice, browser, dedup guard | ADR-004 |
 | ADR-012 | [Pre-commit Hook Installation Requirement](ADR-012-pre-commit-installation.md) | **Implemented** ✅ | 2026-03-30 | pre-commit installation, ADR validation | ADR-001 |
 | ADR-014 | [LLM-based Prompt Selection with Embeddings](ADR-014-llm-prompt-selection.md) | **Proposed** 📋 | 2026-04-01 | OpenRouter + Qdrant + Redis | ADR-007, ADR-013 |
+| ADR-015 | [Code Explorer Agent](ADR-015-code-explorer-agent.md) | **Proposed** 📋 | 2026-04-01 | Deep code analysis, execution tracing, dependency graphs | ADR-007, ADR-014 |
 
 ## Legend
 
@@ -29,6 +30,6 @@
 ---
 
 **Last Updated:** 2026-04-01
-**Total ADRs:** 9
-**Implemented:** 7 | **Proposed:** 1 | **Deprecated:** 1
-**Next ADR:** ADR-008 (planned)
+**Total ADRs:** 10
+**Implemented:** 7 | **Proposed:** 2 | **Deprecated:** 1
+**Next ADR:** ADR-016 (planned)
