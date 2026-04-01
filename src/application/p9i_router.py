@@ -408,24 +408,41 @@ class P9iRouter:
         import re
 
         # === CONTEXT-AWARE OVERRIDES ===
-        # When "проверь" OR "анализ" appears WITH architecture/system/design keywords,
-        # route to architect instead of reviewer (code review)
+        # When "исправь", "проверь" OR "анализ" appears WITH architecture/system/design keywords,
+        # route to architect instead of reviewer (code fix/improvement)
         architect_context_keywords = [
             "архитектур", "систем", "дизайн", "design", "architect",
             "структур", "компонент", "модул", "архитектура", "architecture",
-            "промт", "агент", "маршрут"
+            "промт", "агент", "маршрут", "route", "routing"
         ]
 
         # Check if request has architect/system context keywords
         has_architect_context = any(kw in request_lower for kw in architect_context_keywords)
 
-        # "проверь + architect context" OR "анализ + architect context" → architect
+        # "исправь + architect context" OR "проверь + architect context" OR "анализ + architect context" → architect
         has_proverь = re.search(r'\bпроверь\b', request_lower)
         has_analysis = re.search(r'\bанализ\b', request_lower)
+        has_isправь = re.search(r'\bисправь\b', request_lower)
 
-        if has_architect_context and (has_proverь or has_analysis):
+        if has_architect_context and (has_proverь or has_analysis or has_isправь):
             return "architect"
         # === END CONTEXT-AWARE OVERRIDES ===
+
+        # === DEVOPs CONTEXT OVERRIDE ===
+        # When "создай" OR "добавь" appears WITH infrastructure keywords (docker, k8s, pipeline, ci, cd),
+        # route to devops instead of developer
+        devops_context_keywords = [
+            "docker", "dockerfile", "kubernetes", "k8s", "helm", "ci/cd", "ci-cd",
+            "pipeline", "deploy", "deployment", "container", "ingress", "service"
+        ]
+        has_devops_context = any(kw in request_lower for kw in devops_context_keywords)
+
+        has_create = re.search(r'\bсоздай\b', request_lower)
+        has_add = re.search(r'\bдобавь\b', request_lower)
+
+        if has_devops_context and (has_create or has_add):
+            return "devops"
+        # === END DEVOPs CONTEXT OVERRIDE ===
 
         # Priority order (longest first!) для избежания конфликтов
         for keyword, mapping in sorted(
