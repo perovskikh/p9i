@@ -205,8 +205,9 @@ class AgentOrchestrator:
                 exec_status = result.get("status", "error")
                 exec_output = result.get("content", "")
 
-                # Add file info to metadata
+                # Add file and bash info to metadata
                 files_result = result.get("files", {})
+                bash_results = result.get("bash_results", [])
                 metadata = {
                     "prompt": prompt_name,
                     "prompt_entry": prompt_entry,
@@ -214,12 +215,27 @@ class AgentOrchestrator:
                     "execution_id": result.get("execution_id"),
                     "files_written": files_result.get("written", []),
                     "files_failed": files_result.get("failed", {}),
+                    "bash_results": bash_results,
                 }
+
+                # Append bash results to output so user can see them
+                if bash_results:
+                    bash_output = "\n\n## Bash Results:\n"
+                    for br in bash_results:
+                        bash_output += f"```\n$ {br['command']}\nExit: {br['returncode']}\n"
+                        if br.get("stdout"):
+                            bash_output += f"stdout: {br['stdout'][:500]}"
+                        if br.get("stderr"):
+                            bash_output += f"stderr: {br['stderr'][:500]}"
+                        bash_output += "```\n"
+                    exec_output += bash_output
 
                 if files_result.get("written"):
                     logger.info(f"Checkpoint executor wrote {len(files_result['written'])} files")
                 if files_result.get("failed"):
                     logger.error(f"Checkpoint executor failed to write: {files_result['failed']}")
+                if bash_results:
+                    logger.info(f"Checkpoint executor ran {len(bash_results)} bash commands")
 
                 # Save to memory
                 self.save_agent_context(agent_name, {
