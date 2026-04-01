@@ -137,6 +137,7 @@ build:
 		-f docker/Dockerfile \
 		-t $(IMAGE_NAME):latest \
 		-t $(FULL_IMAGE) \
+		$(foreach key,MINIMAX_API_KEY ZAI_API_KEY OPENROUTER_API_KEY DEEPSEEK_API_KEY ANTHROPIC_API_KEY P9I_API_KEY JWT_SECRET JWT_ENABLED DOMAIN,$(if $(strip $($(key))),--build-arg $(key)="$($(key))")) \
 		.
 	@echo "$(GREEN)Built: $(IMAGE_NAME):latest$(NC)"
 
