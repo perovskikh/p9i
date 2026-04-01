@@ -184,7 +184,6 @@ class AgentRouter:
         """Initialize AgentRouter with PromptRegistry."""
         self._registry: Optional[PromptRegistry] = None
         self._hybrid_router: Optional[Any] = None  # HybridPromptRouter, lazy init
-        self._initialized = False
 
     @property
     def registry(self) -> PromptRegistry:
@@ -214,8 +213,6 @@ class AgentRouter:
             if not search_dir.exists():
                 continue
             self._scan_directory(search_dir)
-
-        self._initialized = True
 
     def _scan_directory(self, directory: Path) -> None:
         """Recursively scan directory for prompt files."""
