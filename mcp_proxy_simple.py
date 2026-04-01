@@ -11,10 +11,27 @@ Claude Code will communicate with this script via stdin/stdout JSON-RPC.
 import os
 import sys
 import json
+import ssl
 import urllib.request
 import urllib.error
 import threading
 import time
+
+
+def create_ssl_context():
+    """Create SSL context that bypasses certificate verification for HTTPS proxy."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def urlopen_with_ssl(request, timeout=None):
+    """Make HTTP request with SSL bypass for HTTPS URLs."""
+    if request.full_url.startswith("https://"):
+        ctx = create_ssl_context()
+        return urllib.request.urlopen(request, timeout=timeout, context=ctx)
+    return urlopen_with_ssl(request, timeout=timeout)
 
 
 def stream_response(response, session_store):
@@ -125,7 +142,7 @@ def main():
                     init_request = urllib.request.Request(url, data=init_data, headers=req_headers, method="POST")
                     timeout = int(os.getenv("MCP_PROXY_TIMEOUT", "300"))
                     print(f"[PROXY] Calling initialize at {url}...", file=sys.stderr, flush=True)
-                    init_response = urllib.request.urlopen(init_request, timeout=timeout)
+                    init_response = urlopen_with_ssl(init_request, timeout=timeout)
 
                     # Get session from headers FIRST
                     new_session = init_response.getheader("Mcp-Session-Id")
@@ -170,7 +187,7 @@ def main():
                 print(f"[PROXY] Timeout: {timeout}s", file=sys.stderr, flush=True)
 
                 start_time = time.time()
-                response = urllib.request.urlopen(request, timeout=timeout)
+                response = urlopen_with_ssl(request, timeout=timeout)
                 elapsed = time.time() - start_time
                 print(f"[PROXY] Response received in {elapsed:.1f}s", file=sys.stderr, flush=True)
 
