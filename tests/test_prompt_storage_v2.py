@@ -41,10 +41,11 @@ class TestPromptTier:
 
     def test_tier_enum_members(self):
         """Test that PromptTier has correct members."""
-        assert len(PromptTier) == 4
+        assert len(PromptTier) == 5
         assert hasattr(PromptTier, 'CORE')
         assert hasattr(PromptTier, 'UNIVERSAL')
         assert hasattr(PromptTier, 'MPV_STAGE')
+        assert hasattr(PromptTier, 'AGENTS')
         assert hasattr(PromptTier, 'PROJECTS')
 
 

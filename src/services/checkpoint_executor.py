@@ -211,8 +211,21 @@ class CheckpointExecutor:
             bash_commands = self._parse_bash_commands_from_output(generated_content)
             state.planned_bash_commands = bash_commands
 
+            if write_to_disk and planned_files:
+                # Phase 4: Write files FIRST
+                logger.info(f"[CHECKPOINT] {execution_id}: Writing {len(planned_files)} files...")
+                state.phase = "writing"
+                self.checkpoint_manager.save(execution_id, state)
+
+                write_result = await self._write_files(planned_files)
+                state.written_files = write_result["written"]
+
+                if write_result["failed"]:
+                    self._metrics["write_failures"] += 1
+                    logger.error(f"Write failures: {write_result['failed']}")
+
+            # Phase 3.5: Execute bash commands AFTER files are written
             if bash_commands:
-                # Phase 3.5: Execute bash commands
                 logger.info(f"[CHECKPOINT] {execution_id}: Executing {len(bash_commands)} bash commands...")
                 state.phase = "executing_bash"
                 self.checkpoint_manager.save(execution_id, state)
@@ -228,24 +241,12 @@ class CheckpointExecutor:
                     state.validation_errors.extend([f"Bash failed: {r['command']}" for r in failed_commands])
 
             if write_to_disk and planned_files:
-                # Phase 4: Write files
-                logger.info(f"[CHECKPOINT] {execution_id}: Writing {len(planned_files)} files...")
-                state.phase = "writing"
-                self.checkpoint_manager.save(execution_id, state)
-
-                write_result = await self._write_files(planned_files)
-                state.written_files = write_result["written"]
-
-                if write_result["failed"]:
-                    self._metrics["write_failures"] += 1
-                    logger.error(f"Write failures: {write_result['failed']}")
-
                 state.phase = "complete"
                 self.checkpoint_manager.save(execution_id, state)
                 self.checkpoint_manager.complete(execution_id)
 
                 # Check for any bash failures - if bash failed, the overall status should reflect error
-                if failed_commands:
+                if bash_commands and failed_commands:
                     return {
                         "status": "error",
                         "error": f"Bash commands failed: {len(failed_commands)}",

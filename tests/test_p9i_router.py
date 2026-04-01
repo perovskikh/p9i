@@ -88,10 +88,23 @@ class TestIntentClassification:
 
     def test_devops_task_classification(self, router):
         """Test devops task classification."""
+        # "деплой в kubernetes" now correctly routes to PACK (k8s-pack)
+        # because kubernetes keyword matches the k8s-pack, not devops agent
         intent = router.classify("деплой в kubernetes")
-        assert intent.type == IntentType.AGENT_TASK
-        assert intent.confidence == 0.90
-        assert intent.agent_name == "devops"
+        assert intent.type == IntentType.PACK
+        assert intent.confidence == 0.95
+        assert intent.prompt_name == "promt-k8s-deploy-rollout.md"
+
+        # "ci cd pipeline" routes to ci-cd-pack
+        intent2 = router.classify("настрой ci cd pipeline")
+        assert intent2.type == IntentType.PACK
+        assert intent2.prompt_name == "promt-ci-github-actions.md"
+
+        # Pure devops tasks without k8s/ci/cd keywords still route to devops agent
+        # "docker" is only in devops agent, not in any pack
+        intent3 = router.classify("собери docker образ")
+        assert intent3.type == IntentType.AGENT_TASK
+        assert intent3.agent_name == "devops"
 
     def test_nl_query_classification(self, router):
         """Test NL query classification."""
