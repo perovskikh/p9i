@@ -78,7 +78,7 @@ docker run --rm -i \
 
 ## p9i Agent (WebSocket Client)
 
-The `src/agents/agent.py` module provides a minimal WebSocket agent:
+The `src/agents/ws_client.py` module provides a minimal WebSocket agent:
 
 - **WSSClient** - WebSocket клиент с reconnect + exponential backoff
 - **ShellService** - Remote shell command execution
@@ -98,7 +98,7 @@ The system follows Clean Architecture with MCP server pattern:
 ```
 src/
 ├── agents/                   # p9i Agent (WebSocket client + shell)
-│   └── agent.py              # WSSClient, ShellService, Agent
+│   └── ws_client.py           # WSSClient, ShellService, Agent
 ├── api/server.py              # FastMCP server (20+ tools)
 ├── api/webui.py               # Web Dashboard (Streamlit)
 ├── application/               # Use cases, Agent routing, DTOs
@@ -263,7 +263,7 @@ The p9i project already has `.mcp.json` configured at `/home/worker/p9i/.mcp.jso
       "command": "python3",
       "args": ["/home/worker/p9i/p9i_stdio_bridge.py"],
       "env": {
-        "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
+        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
         "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
       }
     }
@@ -294,15 +294,16 @@ The p9i project already has `.mcp.json` configured at `/home/worker/p9i/.mcp.jso
 
 ## Key Classes
 
-- `FastMCP` (src/api/server.py) - Main MCP server instance with 18 tools
+- `FastMCP` (src/api/server.py) - Main MCP server instance with 20+ tools
 - `PromptExecutor` (src/services/executor.py) - Executes prompts through LLM with chain support
+- `CheckpointExecutor` (src/services/checkpoint_executor.py) - Checkpoint-based execution with bash support
 - `LLMClient` (src/services/llm_client.py) - Multi-provider LLM client with streaming
 - `MemoryService` (src/services/memory.py) - Manages project-specific context storage
 - `PromptStorageV2` (src/storage/prompts_v2.py) - Tiered prompt loading with baseline verification
 - `JWTAuthService` (src/middleware/jwt_auth.py) - JWT token generation and validation
 - `DistributedRateLimiter` (src/services/redis_rate_limiter.py) - Redis-based rate limiting
-- `OrchestratorService` (src/services/orchestrator.py) - Multi-agent orchestration
-- `AgentRouter` (src/application/agent_router.py) - Intent detection and agent selection
+- `AgentOrchestrator` (src/services/orchestrator.py) - Multi-agent orchestration
+- `P9iRouter` (src/application/p9i_router.py) - Intent detection and unified routing
 
 ## Multi-Project Access
 
@@ -321,7 +322,7 @@ p9i supports connecting multiple external projects to a single p9i instance. Thi
      "mcpServers": {
        "p9i": {
          "type": "http",
-         "url": "http://coderweb.ru:8000",
+         "url": "https://coderweb.ru:8000",
          "headers": { "X-API-Key": "sk-p9i-codeshift-coderweb.ru" }
        }
      }
@@ -334,7 +335,7 @@ p9i supports connecting multiple external projects to a single p9i instance. Thi
      "mcpServers": {
        "p9i": {
          "type": "http",
-         "url": "http://coderweb.ru:8000",
+         "url": "https://coderweb.ru:8000",
          "headers": { "Authorization": "Bearer YOUR_JWT_TOKEN" }
        }
      }
