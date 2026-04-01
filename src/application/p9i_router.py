@@ -140,6 +140,8 @@ class P9iRouter:
 
             # === REVIEWER ===
             "проверь": (IntentType.AGENT_TASK, "reviewer"),
+            # Combined keywords for actions that should go to developer (bash execution)
+            "проведи рефакторинг": (IntentType.AGENT_TASK, "developer"),
             "проведи": (IntentType.AGENT_TASK, "reviewer"),
             "исправь": (IntentType.AGENT_TASK, "reviewer"),
             "приведи": (IntentType.AGENT_TASK, "reviewer"),
