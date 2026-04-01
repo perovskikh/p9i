@@ -3236,7 +3236,7 @@ def _run_mcp_http_thread():
         from starlette.middleware.cors import CORSMiddleware
         from fastmcp.server.http import SseServerTransport
 
-        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost:8501"]
+        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost"]
         if os.getenv("CORS_ORIGINS"):
             allowed_origins.extend(os.getenv("CORS_ORIGINS").split(","))
 
@@ -3263,7 +3263,7 @@ def _run_mcp_http_thread():
         from starlette.middleware import Middleware
         from starlette.middleware.cors import CORSMiddleware
 
-        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost:8501"]
+        allowed_origins = [f"http://{DOMAIN}", f"https://{DOMAIN}", "http://localhost", "http://localhost"]
         if os.getenv("CORS_ORIGINS"):
             allowed_origins.extend(os.getenv("CORS_ORIGINS").split(","))
 

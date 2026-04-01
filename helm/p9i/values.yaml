@@ -55,7 +55,7 @@ resources:
 env:
   SERVER_HOST: 0.0.0.0
   P9I_API_KEY: sk-p9i-codeshift-mcp.coderweb.ru
-  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru,http://localhost:8501,http://localhost:8000
+  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru,http://localhost:8000
   DATABASE_URL: postgresql+asyncpg://postgres:postgres@p9i-postgresql:5432/ai_prompts
   POSTGRES_HOST: p9i-postgresql
   POSTGRES_PORT: 5432

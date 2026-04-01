@@ -64,7 +64,7 @@ services:
       # Server configuration
       - SERVER_HOST=0.0.0.0
       - P9I_API_KEY=sk-p9i-codeshift-${DOMAIN:-mcp.coderweb.ru}
-      - ALLOWED_ORIGINS=https://${DOMAIN:-mcp.coderweb.ru},https://coderweb.ru,http://localhost:8501,http://localhost:8000
+      - ALLOWED_ORIGINS=https://${DOMAIN:-mcp.coderweb.ru},https://coderweb.ru,http://localhost:8000
       # PostgreSQL
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ai_prompts
       - POSTGRES_HOST=db
@@ -105,32 +105,6 @@ services:
       - 8.8.4.4
     extra_hosts:
       - "api.context7.com:76.76.21.21"
-
-  # Web UI
-  web-ui:
-    image: python:3.11-slim
-    user: root
-    networks:
-      - p9i-net
-    working_dir: /app
-    env_file:
-      - .env
-    command: >
-      sh -c "pip install streamlit python-dotenv httpx pydantic pyyaml redis asyncpg sqlalchemy hiredis anthropic fastmcp fastapi uvicorn -q &&
-             python -m streamlit run web/app.py --server.port=8501 --server.address=0.0.0.0"
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./web:/app/web
-      - ./.env:/app/.env:ro
-      - ./src:/app/src:ro
-      - ./prompts:/app/prompts:ro
-      - ./memory:/app/memory:ro
-    environment:
-      - PYTHONPATH=/app
-    depends_on:
-      - mcp-server
-    restart: unless-stopped
 
   # PostgreSQL
   db:

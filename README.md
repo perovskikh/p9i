@@ -1,10 +1,6 @@
 # p9i — AI Prompt System
 
-**Version:** 1.0
-**Date:** 2026-03-31
-**Purpose:** MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.
-
-> **p9i** (p=prompt, 9=#, i=index) — MCP-сервис для управления AI-промтами с полным циклом: от идеи до production-реализации.
+> **p9i** (p=prompt, 9=#, i=index) — MCP-сервер для управления AI-промтами через полный жизненный цикл: от идеи до production-реализации. 18+ MCP инструментов для выполнения, связывания и версионирования промтов.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.1+-green.svg)](https://github.com/jlowin/fastmcp)
@@ -21,7 +17,7 @@ p9i — это MCP (Model Context Protocol) сервер для управлен
 - [Возможности](#возможности)
 - [Быстрый старт](#быстрый-старт)
 - [Установка](#установка)
-- [Development Setup](#development-setup)
+- [Настройка разработки](#настройка-разработки)
 - [Использование](#использование)
 - [Конфигурация](#конфигурация)
 - [MCP Инструменты](#mcp-инструменты)
@@ -97,7 +93,7 @@ make k3s-restart     # перезапустить pod
 make scale REPLICAS=3  # масштабировать
 ```
 
-## Development Setup
+## Настройка разработки
 
 ### Pre-commit Hooks
 
@@ -240,6 +236,7 @@ P9I_API_KEY=sk-p9i-your-key
 ```
 p9i/
 ├── src/
+│   ├── agents/               # p9i Agent (WebSocket client + shell)
 │   ├── api/                  # FastMCP сервер
 │   ├── application/          # Use cases, Agent routing
 │   ├── domain/               # Entities, Business rules
@@ -258,7 +255,7 @@ p9i/
 
 | Agent | Назначение | Keywords |
 |-------|-----------|----------|
-| `full_cycle` | Полный цикл | реализуй, сделай, e2e |
+| `p9i` | **Unified router** | Все запросы |
 | `architect` | Архитектура | архитектура, спроектируй |
 | `developer` | Код | создай, добавь, напиши |
 | `reviewer` | Ревью | проверь, приведи |
@@ -270,9 +267,8 @@ p9i/
 
 | Endpoint | Описание |
 |----------|----------|
-| `http://localhost:30080/mcp` | K3s NodePort |
-| `http://mcp.coderweb.ru/mcp` | Traefik ingress |
-| `http://localhost:8501` | Web UI (Streamlit) |
+| `http://localhost:8000/mcp` | Local MCP |
+| `http://mcp.coderweb.ru/mcp` | External MCP (HTTP) |
 
 ## Деплой
 
@@ -310,23 +306,6 @@ pytest tests/test_storage.py
 # С покрытием
 pytest --cov=src
 ```
-
-## ADR Phases
-
-| Phase | Status | Описание |
-|-------|--------|----------|
-| 1 | ✅ | Tiered directories, baseline lock |
-| 2 | ✅ | PromptStorageV2, cascade priority |
-| 3 | ✅ | 7 MPV stage prompts |
-| 4 | ✅ | Plugin Packs (k8s, ci-cd) |
-| 5 | ✅ | JWT Auth, RBAC, HTTPS Proxy |
-| 6 | ✅ | Context7 MCP Integration |
-| 7 | ✅ | Pipeline (interview, decompose) |
-| 8 | ✅ | UI/UX Generation |
-| 9 | ✅ | Multi-Agent Orchestrator (7 agents) |
-| 10 | ✅ | Clean Architecture |
-| 11 | ✅ | Pre-commit hooks installation |
-| **Total** | **11 ADRs** | See [docs/explanation/adr/](docs/explanation/adr/) |
 
 ## Лицензия
 

@@ -184,14 +184,16 @@ class P9iRouter:
             "компонент": (IntentType.AGENT_TASK, "designer"),
 
             # === DEVOPS ===
+            # Note: k8s, kubernetes, ci-cd, pipeline pack -> use PACK intent instead
+            # Only docker, deploy (without k8s context) go to devops agent
+            "docker": (IntentType.AGENT_TASK, "devops"),
+            "dockerfile": (IntentType.AGENT_TASK, "devops"),
+            "container": (IntentType.AGENT_TASK, "devops"),
             "ci": (IntentType.AGENT_TASK, "devops"),
             "cd": (IntentType.AGENT_TASK, "devops"),
+            "pipeline": (IntentType.AGENT_TASK, "devops"),
             "deploy": (IntentType.AGENT_TASK, "devops"),
             "деплой": (IntentType.AGENT_TASK, "devops"),
-            "docker": (IntentType.AGENT_TASK, "devops"),
-            "kubernetes": (IntentType.AGENT_TASK, "devops"),
-            "k8s": (IntentType.AGENT_TASK, "devops"),
-            "pipeline": (IntentType.AGENT_TASK, "devops"),
 
             # === MIGRATION ===
             "миграция": (IntentType.AGENT_TASK, "migration"),
@@ -337,18 +339,7 @@ class P9iRouter:
                 metadata={"command": request_lower}
             )
 
-        # 3. Проверка agent tasks FIRST (before packs to prevent conflicts)
-        agent_match = self._check_agents(request_lower)
-        if agent_match:
-            return Intent(
-                type=IntentType.AGENT_TASK,
-                confidence=0.90,
-                agent_name=agent_match,
-                matched_keyword=request_lower,
-                metadata={"agent": agent_match}
-            )
-
-        # 4. Проверка pack triggers
+        # 3. Проверка pack triggers FIRST (explicit pack names take precedence)
         pack_match = self._check_packs(request_lower)
         if pack_match:
             return Intent(
@@ -357,6 +348,17 @@ class P9iRouter:
                 prompt_name=pack_match.get("prompt_file"),
                 matched_keyword=pack_match.get("matched_keyword"),
                 metadata=pack_match
+            )
+
+        # 4. Проверка agent tasks (generic agent keywords)
+        agent_match = self._check_agents(request_lower)
+        if agent_match:
+            return Intent(
+                type=IntentType.AGENT_TASK,
+                confidence=0.90,
+                agent_name=agent_match,
+                matched_keyword=request_lower,
+                metadata={"agent": agent_match}
             )
 
         # 5. Check NL queries

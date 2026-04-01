@@ -11,7 +11,8 @@
     "promt-k8s-helm-upgrade.md"
   ],
   "triggers": {
-    "деплой, deploy, rollout": "promt-k8s-deploy-rollout.md",
+    "k8s, kubernetes, кубернетес": "promt-k8s-deploy-rollout.md",
+    "деплой, deploy, rollout, выкати": "promt-k8s-deploy-rollout.md",
     "debug, crashloop, pod": "promt-k8s-pod-debug.md",
     "helm, upgrade, rollback": "promt-k8s-helm-upgrade.md"
   },
