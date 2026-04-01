@@ -127,18 +127,14 @@ This is achieved by checking for architecture-related keywords alongside action 
 
 ```bash
 # Claude Code MCP integration
-# Add to ~/.claude/settings.json:
+# The p9i project already has .mcp.json configured:
+cat /home/worker/p9i/.mcp.json
+
+# To enable in Claude Code:
+# 1. Navigate to the p9i project directory when starting Claude Code
+# 2. Or add "p9i" to enabledMcpjsonServers in ~/.claude/settings.json:
 {
-  "mcpServers": {
-    "p9i": {
-      "command": "python3",
-      "args": ["/home/worker/p9i/mcp_proxy_simple.py"],
-      "env": {
-        "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
-        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
-      }
-    }
-  }
+  "enabledMcpjsonServers": ["p9i"]
 }
 ```
 

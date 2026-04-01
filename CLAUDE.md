@@ -254,22 +254,29 @@ The system supports:
 
 ## Integration with Claude Code
 
-To use with Claude Code, add to `~/.claude/settings.json`:
+The p9i project already has `.mcp.json` configured at `/home/worker/p9i/.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "p9i": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-v", "$PWD/.env:/app/.env",
-        "-v", "$PWD:/project",
-        "-v", "$PWD/memory:/app/memory",
-        "perovskikh/p9i"
-      ]
+      "command": "python3",
+      "args": ["/home/worker/p9i/mcp_proxy_simple.py"],
+      "env": {
+        "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+      }
     }
   }
+}
+```
+
+**To enable in Claude Code:**
+- Navigate to the p9i project directory when starting Claude Code, OR
+- Add to `~/.claude/settings.json` using `enabledMcpjsonServers`:
+```json
+{
+  "enabledMcpjsonServers": ["/home/worker/p9i/.mcp.json"]
 }
 ```
 
