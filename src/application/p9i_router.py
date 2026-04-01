@@ -118,6 +118,8 @@ class P9iRouter:
             "adr": (IntentType.AGENT_TASK, "architect"),
             "design": (IntentType.AGENT_TASK, "architect"),
             "architect": (IntentType.AGENT_TASK, "architect"),
+            "architectural": (IntentType.AGENT_TASK, "architect"),
+            "architecture": (IntentType.AGENT_TASK, "architect"),
             "проектирование": (IntentType.AGENT_TASK, "architect"),
 
             # === DEVELOPER ===
@@ -151,6 +153,7 @@ class P9iRouter:
             "fix": (IntentType.AGENT_TASK, "reviewer"),
             "ревью": (IntentType.AGENT_TASK, "reviewer"),
             "аудит": (IntentType.AGENT_TASK, "reviewer"),
+            "анализ": (IntentType.AGENT_TASK, "reviewer"),
             "тест": (IntentType.AGENT_TASK, "reviewer"),
             "review": (IntentType.AGENT_TASK, "reviewer"),
             "check": (IntentType.AGENT_TASK, "reviewer"),
