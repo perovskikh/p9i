@@ -133,7 +133,7 @@ done
 | Topic Slug | Краткое описание | Критический |
 |---|---|---|
 | `path-based-routing` | Single domain, path-based routing вместо subdomains | ⭐ |
-| `k8s-provider-abstraction` | `$KUBECTL_CMD`, никогда не хардкодить ${K8S_PROVIDER} kubectl | ⭐ |
+| `k8s-provider-abstraction` | `$KUBECTL_CMD`, никогда не хардкодить K8s kubectl | ⭐ |
 | `storage-provider-selection` | Longhorn (prod), local-path (dev) — storage providers | ⭐ |
 | `telegram-bot-saas-platform` | pydantic-settings, env vars, PLAN_SPECS конфигурация | ⭐ |
 | `documentation-generation` | Reference docs ТОЛЬКО AUTO-GENERATED | ⭐ |
@@ -155,7 +155,7 @@ done
 
 | # | Инвариант | Источник | Статус |
 |---|------------|----------|--------|
-| **I-1** | Никогда не хардкодить ${K8S_PROVIDER} kubectl — использовать `$KUBECTL_CMD` | ADR-002 | ✅ Active |
+| **I-1** | Никогда не хардкодить K8s kubectl — использовать `$KUBECTL_CMD` | ADR-002 | ✅ Active |
 | **I-2** | Все новые маршруты — path-based, не subdomains | ADR-001 | ✅ Active |
 | **I-3** | Конфигурация через pydantic-settings и env vars | ADR-004 | ✅ Active |
 | **I-4** | Reference docs ТОЛЬКО AUTO-GENERATED (через make docs-update) | ADR-005 | ✅ Active |

@@ -242,7 +242,7 @@
 |-----------|-----------|----------|-------------------|------|
 | API endpoints | Database schema | YES | Week 2 | Medium |
 | Frontend | API endpoints | YES | Week 4 | Medium |
-| Payment integration | ${PAYMENT_PROVIDER} account | YES | Week 1 | High |
+| Payment integration | N/A account | YES | Week 1 | High |
 | ... | ... | ... | ... | ... |
 
 ---

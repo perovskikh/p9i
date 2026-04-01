@@ -125,7 +125,7 @@
 
 ### О проекте (Prompt QA домен)
 
-**${PROJECT_NAME}** — ${PROJECT_TYPE} (${PRIMARY_INTERFACE} Bot → ${PAYMENT_PROVIDER} → ${K8S_PROVIDER} → ${PRIMARY_SERVICE}).
+**${PROJECT_NAME}** — ${PROJECT_TYPE} (MCP Bot → N/A → K8s → ${PRIMARY_SERVICE}).
 Prompt QA здесь нужен, чтобы operational-промпты давали предсказуемые и проверяемые результаты,
 а не только проходили структурные guard-проверки.
 

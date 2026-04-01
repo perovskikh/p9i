@@ -262,8 +262,8 @@ gh run view [run-id] --json jobs | jq '.jobs[] | {name, conclusion, duration: (.
   with:
     path: |
       ~/.cache/pypoetry
-      ${PROJECT_ROOT}/.venv
-    key: ${{ runner.os }}-poetry-${{ hashFiles('${PROJECT_ROOT}/poetry.lock') }}
+      .venv
+    key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
     restore-keys: |
       ${{ runner.os }}-poetry-
 
