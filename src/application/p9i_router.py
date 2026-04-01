@@ -464,7 +464,9 @@ class P9iRouter:
         nl_patterns = [
             r'^покажи',           # show
             r'^список',           # list
-            r'^что\s+(умеешь|можешь)',  # what can
+            r'^что\s+(умеешь|можешь)',  # what can (with space)
+            r'^что\s+уме',       # what can (any form, with space)
+            r'^что\s+мож',       # what can (any form, with space)
             r'^как\s+(работает|использовать)',  # how
             r'^help$',            # help (exact)
             r'^what\s+can',      # what can
@@ -918,7 +920,7 @@ class NLQueryProcessor(Processor):
             return await self._handle_list_prompts()
 
         # What can you do
-        if "что умеет" in req_lower or "what can" in req_lower or "capabilities" in req_lower:
+        if any(x in req_lower for x in ["что уме", "что можеш", "what can", "capabilities"]):
             return self._handle_capabilities()
 
         # Version
