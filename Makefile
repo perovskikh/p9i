@@ -132,6 +132,15 @@ status: k3s-status ## Check status (K3s)
 # =============================================================================
 .PHONY: build
 build:
+	@echo "$(YELLOW)Checking for uncommitted changes...$(NC)"
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "$(YELLOW)WARNING: You have uncommitted changes. Building with uncommitted changes.$(NC)"; \
+		echo "$(YELLOW)Run 'git status' to see changes.$(NC)"; \
+		if [ "$$BUILD_STRICT" = "1" ]; then \
+			echo "$(RED)Refusing to build with uncommitted changes (BUILD_STRICT=1).$(NC)"; \
+			exit 1; \
+		fi; \
+	fi
 	@echo "$(YELLOW)Building p9i Docker image (no cache)...$(NC)"
 	docker build --no-cache \
 		-f docker/Dockerfile \
