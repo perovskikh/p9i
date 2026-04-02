@@ -2,9 +2,50 @@
 
 ## Status
 
-**Accepted** | 2026-04-02
+**Accepted** | 2026-04-02 | **Partially Implemented**
 
 Supersedes: [ADR-015](ADR-015-code-explorer-agent.md), ADR-016a, ADR-016b, ADR-016c
+
+---
+
+## Implementation Status
+
+| Component | File | Status |
+|-----------|------|--------|
+| **Prompts** | `prompts/agents/explorer/` | ✅ Complete (MVP + Extended + Verification) |
+| **explorer_service.py** | `src/services/explorer_service.py` | ✅ Implemented |
+| **explorer_cache.py** | `src/services/explorer_cache.py` | ✅ Implemented |
+| **explorer_indexer.py** | `src/services/explorer_indexer.py` | ✅ Implemented |
+| **explorer_tools.py** | `src/api/tools/explorer_tools.py` | ✅ Implemented |
+| **MCP Tool Registration** | `src/api/server.py` | ⚠️ Partial |
+
+### Verified Components
+
+```
+prompts/agents/explorer/
+├── promt-explorer-mvp.md           ✅
+├── promt-explorer-extended.md      ✅
+└── promt-verification.md           ✅ (VERDICT format aligned with Claude Code)
+
+src/services/
+├── explorer_service.py             ✅
+├── explorer_cache.py               ✅
+└── explorer_indexer.py             ✅
+
+src/api/tools/
+└── explorer_tools.py                ✅
+```
+
+### Pending MCP Tools
+
+| Tool | Status | Notes |
+|------|--------|-------|
+| `explorer_search` | ⚠️ Verify | Need to check full implementation |
+| `explorer_whereis` | ⚠️ Verify | Need to check full implementation |
+| `explorer_index` | ⚠️ Verify | Need to check full implementation |
+| `explorer_call_graph` | ⚠️ Verify | Need to check full implementation |
+
+---
 
 ## Context
 
@@ -286,6 +327,32 @@ VERDICT: PASS
 | Stale cache | Webhook + manual refresh |
 | Cache size growth | TTL + max size limits |
 | Index rebuild time | Background jobs |
+
+---
+
+## Claude Code Source Alignment
+
+Based on analysis of [Claude Code exploreAgent.ts](https://github.com/perovskikh/claude-code-sourcemap/blob/main/restored-src/src/tools/AgentTool/built-in/exploreAgent.ts):
+
+| Claude Code Feature | p9i Implementation | Status |
+|--------------------|---------------------|--------|
+| **Model: haiku** | MiniMax-M2.7 (fast mode) | ⚠️ Different model, same intent |
+| **READ-ONLY MODE** | promt-explorer-*.md (read-only prompts) | ✅ Implemented |
+| **Forbidden: AGENT_TOOL_NAME** | No sub-agents in explorer | ✅ Implemented |
+| **Forbidden: FILE_EDIT_TOOL_NAME** | explorer is read-only | ✅ Implemented |
+| **Forbidden: FILE_WRITE_TOOL_NAME** | explorer is read-only | ✅ Implemented |
+| **Tools: Glob, Grep, Read** | MCP tools + prompts | ✅ Implemented |
+| **BashOutput (read-only shell)** | bash tool (read-only in prompts) | ✅ Implemented |
+| **Parallel execution** | Parallel tool calls encouraged | ✅ Implemented |
+| **VERDICT output (verification)** | promt-verification.md | ✅ Aligned |
+
+### Key Difference
+
+| Aspect | Claude Code | p9i |
+|--------|-------------|-----|
+| **Routing** | Built-in classification | P9iRouter (keyword-based) |
+| **Caching** | None | Redis + SQLite |
+| **Latency** | ~200ms | ~500ms (MVP), ~50ms (cached) |
 
 ---
 

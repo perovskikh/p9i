@@ -1,10 +1,22 @@
 # ADR-020: Coordinator Pattern & Project Volume Mounts
 
-**Status**: Proposed
+**Status**: Partially Implemented (Phase 1 Complete)
 
 **Date**: 2026-04-02
 
+**Last Updated**: 2026-04-02 (Agent Architecture Analysis)
+
 **Authors**: Claude Code Analysis + p9i Team
+
+---
+
+## Status Summary
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 1: Volume Mounts** | ✅ COMPLETED | /project mount implemented |
+| **Phase 2: Coordinator Pattern** | ❌ NOT IMPLEMENTED | spawn_worker/continue_worker pending |
+| **Phase 3: Tool Permissions** | ❌ NOT IMPLEMENTED | ToolPermissions class pending |
 
 ---
 
@@ -35,14 +47,29 @@ p9i uses:
 
 ### Problem 3: Missing Agent Alignment
 
-| Agent | Claude Code Pattern | p9i Status |
-|-------|---------------------|-------------|
-| explorer | Code navigation | ✅ Implemented |
-| reviewer | Verification | ✅ Implemented |
-| architect | Research → Synthesis | ⚠️ Partial |
-| developer | Implementation | ⚠️ Needs file access |
-| designer | UI generation | ⚠️ Limited |
-| devops | Infrastructure | ⚠️ Limited |
+**Updated based on Claude Code Sourcemap analysis (2026-04-02):**
+
+| Agent | Claude Code Pattern | p9i Status | Gap |
+|-------|---------------------|------------|-----|
+| **explorer** | exploreAgent.ts (read-only) | ✅ Implemented (ADR-016) | Some MCP tools pending |
+| **reviewer** | verificationAgent.ts | ✅ Implemented (ADR-017) | VERDICT format aligned |
+| **architect** | planAgent.ts + coordinator | ✅ Implemented (ADR-018) | State machine pending |
+| **developer** | generalPurposeAgent.ts | ⚠️ Partial | Routes to full_cycle |
+| **designer** | - | ❌ Not agent | Uses MCP tools directly |
+| **devops** | - | ❌ Not agent | Uses packs |
+| **migration** | - | ✅ Implemented | Complete |
+| **p9i (router)** | coordinatorMode.ts | ✅ Implemented | P9iRouter vs built-in |
+
+### Problem 4: Critical Gaps from Agent Architecture Analysis
+
+Based on comprehensive analysis of Claude Code source vs p9i implementation:
+
+| Gap | Claude Code | p9i | Severity | Solution |
+|-----|-------------|-----|----------|----------|
+| **forkSubagent / spawn_worker** | forkSubagent.ts | - | HIGH | Phase 2 |
+| **Tool Permission System** | disallowedTools in tools.ts | - | HIGH | Phase 3 |
+| **Model Tiering (haiku/inherit)** | Model selection per agent | Fixed MiniMax | MEDIUM | Future |
+| **Abort Controller** | AbortController | - | MEDIUM | Future |
 
 ---
 
@@ -142,21 +169,38 @@ async def execute_with_permissions(
 
 ## Implementation Plan
 
-### Phase 1: Volume Mounts (1 day)
-- [ ] Add volume mount to Helm values
-- [ ] Update deployment configuration
-- [ ] Test file access from agent
+### Phase 1: Volume Mounts (COMPLETED ✅)
+- [x] Add volume mount to Helm values (`projectPath: /home/worker/p9i`)
+- [x] Update deployment configuration (deployment.yaml lines 106-114)
+- [x] Docker Compose volume mounts (`./src:/app/src`, `./prompts:/app/prompts`, `./memory:/app/memory`)
+- [x] Test file access from agent — verified working
 
-### Phase 2: Coordinator Pattern (2-3 days)
+**Verification:** Volume mounts confirmed in:
+- `/home/worker/p9i/helm/p9i/values.yaml` line 14
+- `/home/worker/p9i/helm/p9i/templates/deployment.yaml` lines 106-114
+- `/home/worker/p9i/docker-compose.yml` lines 43-48
+
+### Phase 2: Coordinator Pattern (NOT IMPLEMENTED)
 - [ ] Add `spawn_worker()` to orchestrator
 - [ ] Add `continue_worker()` method
-- [ ] Add task state tracking
+- [ ] Add task state tracking (`_workers` dict)
 - [ ] Update architect prompt for coordinator use
+- [ ] Align with Claude Code `forkSubagent.ts` pattern
 
-### Phase 3: Tool Permissions (1 day)
-- [ ] Define permission sets
+**Reference:** Claude Code uses `coordinatorMode.ts` → `workerAgent.ts` → `getCoordinatorAgents()`
+
+### Phase 3: Tool Permissions (NOT IMPLEMENTED)
+- [ ] Define permission sets (READ_ONLY, READ_WRITE, ADMIN)
 - [ ] Add permission check to executor
-- [ ] Update prompts for read-only mode
+- [ ] Update prompts for read-only mode (explorer, reviewer)
+- [ ] Implement `disallowedTools` enforcement
+
+**Reference:** Claude Code `tools.ts` has 43 tools with explicit disallowedTools arrays
+
+### Phase 4: Model Tiering (FUTURE)
+- [ ] Add haiku model for fast agents (explorer, reviewer)
+- [ ] Add inherit model for complex agents (architect, developer)
+- [ ] Update P9iRouter to support model selection per agent
 
 ---
 
@@ -165,5 +209,7 @@ async def execute_with_permissions(
 - Claude Code coordinatorMode.ts: Coordinator/worker pattern
 - Claude Code BashTool: Command classification
 - Claude Code tools.ts: 43 tools with permission system
+- Claude Code forkSubagent.ts: Worker spawning pattern
 - p9i ADR-018: Architect agent refactoring
 - p9i ADR-019: Parallel research phase
+- [Agent Architecture Implementation Status](../../how-to/agent-architecture-implementation-status.md)

@@ -2,7 +2,7 @@
 
 **Date**: 2026-04-02
 **Status**: Proposed
-**Supersedes**: ADR-013, ADR-014
+**Supersedes**: ADR-013
 
 ## Context
 

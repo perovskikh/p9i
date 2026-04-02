@@ -1,0 +1,77 @@
+# Qdrant Vector Database - Local Deployment via Helm
+# Docs: https://github.com/qdrant/qdrant-helm
+#
+# Install:
+#   helm repo add qdrant https://qdrant.github.io/qdrant-helm
+#   helm repo update
+#   helm upgrade -i qdrant qdrant/qdrant -n p9i -f k8s/qdrant/values.yaml
+#
+# NO API KEY NEEDED for local deployment!
+
+replicaCount: 1
+
+image:
+  repository: docker.io/qdrant/qdrant
+  tag: v1.7.4
+  pullPolicy: IfNotPresent
+
+# Persistence for vector storage
+persistence:
+  enabled: true
+  accessModes: ["ReadWriteOnce"]
+  size: 10Gi
+  storageClassName: local-path  # Use 'local-path' for K3s, or your storage class
+  annotations: {}
+  additionalLabels: {}
+
+# Resource limits
+resources:
+  limits:
+    cpu: "1"
+    memory: 2Gi
+  requests:
+    cpu: "250m"
+    memory: 512Mi
+
+# Service configuration
+service:
+  type: ClusterIP  # Internal only, accessed via p9i pod
+  ports:
+    - name: http
+      port: 6333
+      targetPort: 6333
+      checksEnabled: true
+    - name: grpc
+      port: 6334
+      targetPort: 6334
+      checksEnabled: false
+
+# Qdrant internal config
+config:
+  cluster:
+    enabled: true  # Enable clustering for future HA
+
+# Disable ingress (internal only)
+ingress:
+  enabled: false
+
+# Health checks
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 3
+
+livenessProbe:
+  enabled: false  # Disabled for single replica
+
+# Security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+
+# Pod disruption budget (for future HA)
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
