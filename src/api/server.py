@@ -719,7 +719,7 @@ def load_prompt(prompt_name: str) -> dict:
     # Also search in agents/*/ subdirectories for architect, developer, etc.
     subdirs = [
         "agents/architect", "agents/developer", "agents/reviewer",
-        "agents/designer", "agents/devops", "agents/migration",
+        "agents/designer", "agents/devops", "agents/migration", "agents/explorer",
         "architect", "developer", "reviewer", "designer", "devops", "migration",
         "ai_agent_prompts", "universal"
     ]
@@ -3142,6 +3142,14 @@ async def startup_event():
             global api_keys
             api_keys = APIKeyManager(redis_client=rate_limiter.redis)
             logger.info("Distributed rate limiting enabled (Redis-based)")
+
+            # Initialize Explorer cache with Redis
+            try:
+                from src.services.explorer_cache import init_explorer_cache
+                await init_explorer_cache(rate_limiter.redis)
+                logger.info("Explorer cache initialized (Redis-based)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Explorer cache: {e}")
         else:
             logger.info("Rate limiting: enabled (in-memory fallback)")
     except Exception as e:

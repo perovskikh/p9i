@@ -89,10 +89,11 @@ AGENTS = {
         name="Explorer",
         prompts=[
             "promt-explorer-mvp",
+            "promt-explorer-extended",
             "promt-verification",
         ],
         memory_key="explorer",
-        description="Deep code analysis, tracing, dependencies, architecture mapping",
+        description="Deep code analysis, tracing, dependencies, architecture mapping, call graphs",
         category=PromptCategory.ANALYSIS,
         use_checkpoint=False,
     ),
@@ -137,16 +138,22 @@ AGENTS = {
 # More specific patterns FIRST
 AGENT_KEYWORDS = {
     "explorer": [
-        # Russian
+        # Russian - MVP
         "как работает", "как работают", "структура", "связи", "зависимости",
         "вызовы", "вызов", "модуль", "файлы", "найди все", "найди где",
         "трассируй", "покажи структуру", "архитектура кода",
         "что делает", "где находится", "найди файл", "навигац",
         "верифицируй", "верификация",
-        # English
+        # English - MVP
         "explore", "trace", "dependencies", "structure", "связи",
         "find all", "where is", "how does", "call chain", "entry point",
         "architectur", "module", "files", "verify", "verification",
+        # Russian - Extended
+        "глубокий поиск", "проиндексируй", "переиндексируй",
+        "построить граф", "анализ связей", "что зависит от", "затронет",
+        "impact analysis", "call graph", "dependency graph",
+        # English - Extended
+        "reindex", "refresh index", "deep search", "analyze module",
     ],
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
     # Full cycle keywords - активируют полный цикл с арбитражом
@@ -170,7 +177,8 @@ AGENT_KEYWORDS = {
 # Prompt keywords for selection
 PROMPT_KEYWORDS = {
     # Explorer prompts
-    "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure"],
+    "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure", "найди где", "где находится", "найди все", "трассируй", "покажи структуру", "архитектура кода", "что делает", "найди файл", "навигац"],
+    "promt-explorer-extended": ["глубокий поиск", "проиндексируй", "переиндексируй", "reindex", "refresh index", "deep search", "analyze module", "построить граф", "call graph", "dependency graph", "анализ связей", "что зависит от", "затронет", "impact analysis"],
     "promt-verification": ["verify", "верифицируй", "проверь реализацию", "verification"],
     # Migration prompts
     "promt-migration-planner": ["миграц", "миграция", "migrat", "план миграции", "migrate plan", "monolith", "microservices", "переход с", "на микросервисы"],

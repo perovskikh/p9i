@@ -152,6 +152,21 @@ class P9iRouter:
             "верификация": (IntentType.AGENT_TASK, "explorer"),
             "verify": (IntentType.AGENT_TASK, "explorer"),
             "verification": (IntentType.AGENT_TASK, "explorer"),
+            # === EXPLORER EXTENDED ===
+            "глубокий поиск": (IntentType.AGENT_TASK, "explorer"),
+            "проиндексируй": (IntentType.AGENT_TASK, "explorer"),
+            "переиндексируй": (IntentType.AGENT_TASK, "explorer"),
+            "reindex": (IntentType.AGENT_TASK, "explorer"),
+            "refresh index": (IntentType.AGENT_TASK, "explorer"),
+            "deep search": (IntentType.AGENT_TASK, "explorer"),
+            "analyze module": (IntentType.AGENT_TASK, "explorer"),
+            "построить граф": (IntentType.AGENT_TASK, "explorer"),
+            "call graph": (IntentType.AGENT_TASK, "explorer"),
+            "dependency graph": (IntentType.AGENT_TASK, "explorer"),
+            "анализ связей": (IntentType.AGENT_TASK, "explorer"),
+            "что зависит от": (IntentType.AGENT_TASK, "explorer"),
+            "затронет": (IntentType.AGENT_TASK, "explorer"),
+            "impact analysis": (IntentType.AGENT_TASK, "explorer"),
 
             # === DEVELOPER ===
             "создай": (IntentType.AGENT_TASK, "developer"),
