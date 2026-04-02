@@ -58,11 +58,11 @@ reviewer/
 
 ```python
 class ReviewerTools:
+    async def reviewer_diff(scope: str = "unstaged", file_path: Optional[str] = None)
+        # Get git diff for review scope
+
     async def reviewer_search(query: str, file_pattern: str = "*.py")
         # Search code patterns (vulnerabilities, anti-patterns)
-
-    async def reviewer_diff(scope: str = "unstaged")
-        # Get git diff for review scope
 
     async def reviewer_security(file_path: str)
         # Security scan for specific file
@@ -72,11 +72,17 @@ class ReviewerTools:
 
     async def reviewer_metrics(file_path: str)
         # Code metrics: cyclomatic complexity, LOC, coupling
+
+    async def reviewer_verify(test_command: str, expected: str, adversarial: bool = False)
+        # Adversarial testing with VERDICT output (PASS/FAIL/PARTIAL)
+
+    async def reviewer_reuse_analysis(symbol_name: str)
+        # Find existing utilities via explorer_search
 ```
 
 ### Claude Code Patterns to Implement
 
-#### 1. simplify.ts Pattern (3-Phase Parallel Review)
+#### 1. simplify.ts Pattern (3-Phase SEQUENTIAL Review)
 
 ```
 Phase 1: Get git diff

@@ -76,7 +76,7 @@ AGENTS = {
         name="Reviewer",
         prompts=[
             "promt-reviewer-mvp",       # Fast git diff review (haiku, 3 tools)
-            "promt-reviewer-enhanced",  # 3-phase parallel review (reuse, quality, efficiency)
+            "promt-reviewer-enhanced",  # 3-phase SEQUENTIAL review (reuse → quality → efficiency)
             "promt-reviewer-security",  # Security audit (in progress)
             "promt-verification",       # Adversarial testing (VERDICT)
         ],

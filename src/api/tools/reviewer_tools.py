@@ -518,7 +518,7 @@ class ReviewerTools:
             return result_data
 
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": str(e), "success": False}
 
     async def reviewer_verify(
         self,

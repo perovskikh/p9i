@@ -1,0 +1,11 @@
+pip install -r requirements.txt
+
+# (Опционально) Запуск PostgreSQL и Redis через Docker для тестирования
+docker run -d -p 5432:5432 -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=mydb postgres:15-alpine
+docker run -d -p 6379:6379 redis:7-alpine
+
+# Запуск приложения
+uvicorn app.main:app --reload
+
+# Запуск тестов
+pytest tests/
