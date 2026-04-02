@@ -85,6 +85,17 @@ AGENTS = {
         category=PromptCategory.QA,
         use_checkpoint=False,
     ),
+    "explorer": Agent(
+        name="Explorer",
+        prompts=[
+            "promt-explorer-mvp",
+            "promt-verification",
+        ],
+        memory_key="explorer",
+        description="Deep code analysis, tracing, dependencies, architecture mapping",
+        category=PromptCategory.ANALYSIS,
+        use_checkpoint=False,
+    ),
     "designer": Agent(
         name="Designer",
         prompts=[
@@ -125,6 +136,18 @@ AGENTS = {
 # Keywords for agent detection (in priority order)
 # More specific patterns FIRST
 AGENT_KEYWORDS = {
+    "explorer": [
+        # Russian
+        "как работает", "как работают", "структура", "связи", "зависимости",
+        "вызовы", "вызов", "модуль", "файлы", "найди все", "найди где",
+        "трассируй", "покажи структуру", "архитектура кода",
+        "что делает", "где находится", "найди файл", "навигац",
+        "верифицируй", "верификация",
+        # English
+        "explore", "trace", "dependencies", "structure", "связи",
+        "find all", "where is", "how does", "call chain", "entry point",
+        "architectur", "module", "files", "verify", "verification",
+    ],
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
     # Full cycle keywords - активируют полный цикл с арбитражом
     "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
@@ -146,6 +169,10 @@ AGENT_KEYWORDS = {
 
 # Prompt keywords for selection
 PROMPT_KEYWORDS = {
+    # Explorer prompts
+    "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure"],
+    "promt-verification": ["verify", "верифицируй", "проверь реализацию", "verification"],
+    # Migration prompts
     "promt-migration-planner": ["миграц", "миграция", "migrat", "план миграции", "migrate plan", "monolith", "microservices", "переход с", "на микросервисы"],
     "promt-migration-implementation": ["выполни миграцию", "запусти миграцию", "execute migration"],
     "promt-migration-review": ["проверь миграцию", "верифицируй миграцию", "verify migration"],
@@ -179,7 +206,7 @@ class AgentRouter:
     """
 
     # Priority order - more specific agents first
-    AGENT_PRIORITY = ["migration", "full_cycle", "architect", "reviewer", "developer", "designer", "devops"]
+    AGENT_PRIORITY = ["migration", "full_cycle", "architect", "explorer", "reviewer", "developer", "designer", "devops"]
 
     def __init__(self):
         """Initialize AgentRouter with PromptRegistry."""

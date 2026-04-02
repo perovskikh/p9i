@@ -37,7 +37,7 @@ def load_prompt(prompt_name: str) -> str:
     ]
 
     # Subdirectories to check
-    subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration"]
+    subdirs = ["architect", "developer", "reviewer", "designer", "devops", "migration", "explorer"]
 
     # First try with exact name as provided
     for search_dir in search_dirs:
