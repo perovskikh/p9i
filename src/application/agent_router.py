@@ -75,13 +75,13 @@ AGENTS = {
     "reviewer": Agent(
         name="Reviewer",
         prompts=[
-            "promt-readme-validator",  # Documentation validation - most specific
-            "promt-llm-review",
-            "promt-security-audit",
-            "promt-quality-test",
+            "promt-reviewer-mvp",       # Fast git diff review (haiku, 3 tools)
+            "promt-reviewer-enhanced",  # 3-phase parallel review (reuse, quality, efficiency)
+            "promt-reviewer-security",  # Security audit (in progress)
+            "promt-verification",       # Adversarial testing (VERDICT)
         ],
         memory_key="reviews",
-        description="Code review, security, quality checks",
+        description="Code review, security, quality checks, adversarial testing",
         category=PromptCategory.QA,
         use_checkpoint=False,
     ),
@@ -90,7 +90,6 @@ AGENTS = {
         prompts=[
             "promt-explorer-mvp",
             "promt-explorer-extended",
-            "promt-verification",
         ],
         memory_key="explorer",
         description="Deep code analysis, tracing, dependencies, architecture mapping, call graphs",
@@ -165,7 +164,20 @@ AGENT_KEYWORDS = {
     # Full cycle keywords - активируют полный цикл с арбитражом
     "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
     "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование"],
-    "reviewer": ["проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix", "ревью", "аудит", "тест", "review", "check", "audit", "test", "standard", "standards"],
+    "reviewer": [
+        # Claude Code simplify.ts patterns
+        "simplify", "simplify code", "code review", "review changes",
+        # Verification patterns
+        "verify", "верифицируй", "verification", "adversarial", "тестирование",
+        # Quality patterns
+        "quality", "efficiency", "efficiency review", "performance",
+        # Reuse patterns
+        "reuse", "refactor", "рефакторинг", "улучши код",
+        # Existing Russian patterns
+        "проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix",
+        "ревью", "аудит", "тест", "review", "check", "audit", "test",
+        "standard", "standards",
+    ],
     "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
     "designer": [
         # English
@@ -185,7 +197,11 @@ PROMPT_KEYWORDS = {
     # Explorer prompts
     "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure", "найди где", "где находится", "найди все", "трассируй", "покажи структуру", "архитектура кода", "что делает", "найди файл", "навигац", "изучи", "анализ", "анализируй"],
     "promt-explorer-extended": ["глубокий поиск", "проиндексируй", "переиндексируй", "reindex", "refresh index", "deep search", "analyze module", "построить граф", "call graph", "dependency graph", "анализ связей", "что зависит от", "затронет", "impact analysis", "проанализируй", "консолидируй", "consolidate"],
-    "promt-verification": ["verify", "верифицируй", "проверь реализацию", "verification"],
+    # Reviewer prompts (Claude Code patterns)
+    "promt-reviewer-mvp": ["quick review", "fast review", "ревью", "проверь код", "check code", "git diff", "simplify", "code cleanup"],
+    "promt-reviewer-enhanced": ["full review", "deep review", "3-phase", "parallel review", "reuse", "quality", "efficiency", "рефакторинг"],
+    "promt-reviewer-security": ["security", "security review", "уязвимост", "sql injection", "xss", "auth bypass", "безопасност"],
+    "promt-verification": ["verify", "верифицируй", "проверь реализацию", "verification", "adversarial", "тест", "прогон"],
     # Migration prompts
     "promt-migration-planner": ["миграц", "миграция", "migrat", "план миграции", "migrate plan", "monolith", "microservices", "переход с", "на микросервисы"],
     "promt-migration-implementation": ["выполни миграцию", "запусти миграцию", "execute migration"],
