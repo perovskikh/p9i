@@ -10,6 +10,9 @@ microk8s:
 
 replicaCount: 1
 
+# Project path for volume mount (agents access project files here)
+projectPath: /home/worker/p9i
+
 hpa:
   enabled: true
   maxReplicas: 10

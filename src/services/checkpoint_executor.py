@@ -225,6 +225,7 @@ class CheckpointExecutor:
                     logger.error(f"Write failures: {write_result['failed']}")
 
             # Phase 3.5: Execute bash commands AFTER files are written
+            failed_commands = []  # Initialize to avoid reference errors
             if bash_commands:
                 logger.info(f"[CHECKPOINT] {execution_id}: Executing {len(bash_commands)} bash commands...")
                 state.phase = "executing_bash"
@@ -319,9 +320,13 @@ class CheckpointExecutor:
                 errors.append(f"Contains placeholder: {placeholder}")
 
         # Check for code-like content (if it looks like code)
+        # Only validate code density if output has many code-like lines
+        # For text/markdown outputs (architect reports), this check is too strict
         lines = content.split("\n")
         code_lines = sum(1 for line in lines if "{" in line or "def " in line or "class " in line or "import " in line)
-        if code_lines > 5 and code_lines / len(lines) < 0.1:
+        # Only fail if: lots of code lines AND very low density (looks like template)
+        # For markdown/text reports, low code line density is normal
+        if code_lines > 10 and code_lines / len(lines) < 0.05:
             errors.append("Low code density (possible template)")
 
         return {"valid": len(errors) == 0, "errors": errors}
@@ -405,6 +410,28 @@ class CheckpointExecutor:
 
         return results
 
+    def _is_comment_line(self, line: str) -> bool:
+        """Check if line is a code comment (not a file path)."""
+        stripped = line.strip()
+        # Skip comment-only lines: // comment, /* comment */, <!-- comment -->
+        if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("<!--"):
+            return True
+        return False
+
+    def _is_valid_filename(self, filename: str) -> bool:
+        """Check if filename is a valid file path (not a comment)."""
+        if not filename:
+            return False
+        stripped = filename.strip()
+        # Reject comment-style paths: // path, /* path
+        if stripped.startswith("//") or stripped.startswith("/*"):
+            return False
+        # Must have valid file extension
+        valid_exts = (".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".yaml", ".yml", ".json", ".txt", ".sh", ".bash", ".go", ".rs", ".java", ".cpp", ".c", ".h", ".hpp", ".css", ".html", ".vue", ".svelte")
+        if not any(stripped.endswith(ext) for ext in valid_exts):
+            return False
+        return True
+
     def _parse_files_from_output(self, content: str) -> dict[str, str]:
         """
         Parse file paths and content from LLM output.
@@ -434,10 +461,13 @@ class CheckpointExecutor:
                 # If no filename but content looks like a path, try to extract
                 if not filename:
                     first_line = file_content.split("\n")[0].strip()
-                    if first_line and ("/" in first_line or first_line.endswith(".py") or first_line.endswith(".js") or first_line.endswith(".ts")):
-                        filename = first_line
-                        file_content = "\n".join(file_content.split("\n")[1:])
-                if filename and file_content:
+                    # Skip comment lines - // or /* at start means it's not a path
+                    if first_line and not self._is_comment_line(first_line):
+                        if "/" in first_line or first_line.endswith((".py", ".js", ".ts", ".tsx")):
+                            filename = first_line
+                            file_content = "\n".join(file_content.split("\n")[1:])
+                # Validate filename is not a comment
+                if filename and self._is_valid_filename(filename):
                     files[filename] = file_content
 
         # Pattern 2: File: path/to/file (case insensitive, supports Russian)
@@ -445,7 +475,7 @@ class CheckpointExecutor:
         for match in re.finditer(file_path_pattern, content, re.DOTALL):
             filename = match.group(1).strip()
             file_content = match.group(3).strip()
-            if filename and file_content:
+            if filename and file_content and self._is_valid_filename(filename):
                 files[filename] = file_content
 
         return files

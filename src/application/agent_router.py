@@ -51,6 +51,7 @@ AGENTS = {
     "architect": Agent(
         name="Architect",
         prompts=[
+            "promt-architect-parallel-research",  # NEW: 3-phase parallel research
             "promt-project-adaptation",
             "promt-adr-implementation-planner",
             "create_adr"
@@ -58,7 +59,7 @@ AGENTS = {
         memory_key="architecture",
         description="System design, ADRs, architecture decisions",
         category=PromptCategory.ANALYSIS,
-        use_checkpoint=False,
+        use_checkpoint=True,  # CHANGED: enable file output for ADR creation
     ),
     "developer": Agent(
         name="Developer",
@@ -197,6 +198,8 @@ PROMPT_KEYWORDS = {
     # Explorer prompts
     "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure", "найди где", "где находится", "найди все", "трассируй", "покажи структуру", "архитектура кода", "что делает", "найди файл", "навигац", "изучи", "анализ", "анализируй"],
     "promt-explorer-extended": ["глубокий поиск", "проиндексируй", "переиндексируй", "reindex", "refresh index", "deep search", "analyze module", "построить граф", "call graph", "dependency graph", "анализ связей", "что зависит от", "затронет", "impact analysis", "проанализируй", "консолидируй", "consolidate"],
+    # Architect prompts
+    "promt-architect-parallel-research": ["parallel", "3-phase", "research phase", "параллельн"],
     # Reviewer prompts (Claude Code patterns)
     "promt-reviewer-mvp": ["quick review", "fast review", "ревью", "проверь код", "check code", "git diff", "simplify", "code cleanup"],
     "promt-reviewer-enhanced": ["full review", "deep review", "3-phase", "parallel review", "reuse", "quality", "efficiency", "рефакторинг"],

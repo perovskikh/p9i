@@ -266,7 +266,22 @@ k3s-status-nodes: ## Show K3s nodes status
 k3s-deploy: build-push
 	@echo "$(YELLOW)Deploying to K3s via Helm...$(NC)"
 	$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
-	helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace -f $(HELM_CHART)/values.yaml --wait --timeout 5m
+	@# Load API keys from .env if it exists
+	@if [ -f .env ]; then \
+		export $$(cat .env | grep -E '^(MINIMAX_API_KEY|ZAI_API_KEY|OPENROUTER_API_KEY|DEEPSEEK_API_KEY|ANTHROPIC_API_KEY)=' | xargs) 2>/dev/null; \
+		helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace \
+			-f $(HELM_CHART)/values.yaml \
+			--set env.MINIMAX_API_KEY=$$MINIMAX_API_KEY \
+			--set env.ZAI_API_KEY=$$ZAI_API_KEY \
+			--set env.OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
+			--set env.DEEPSEEK_API_KEY=$$DEEPSEEK_API_KEY \
+			--set env.ANTHROPIC_API_KEY=$$ANTHROPIC_API_KEY \
+			--wait --timeout 5m; \
+	else \
+		helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace \
+			-f $(HELM_CHART)/values.yaml \
+			--wait --timeout 5m; \
+	fi
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
 
 .PHONY: k3s-delete

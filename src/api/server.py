@@ -2834,6 +2834,71 @@ async def list_agents(
         return {"status": "error", "error": str(e)}
 
 
+# ==========================================
+# ARCHITECT AGENT MCP TOOLS (ADR-018)
+# ==========================================
+
+@mcp.tool()
+async def architect_parallel_research(
+    target: str,
+    project_path: str = ".",
+    jwt_token: str = None
+) -> dict:
+    """
+    Execute parallel research phase for architect agent.
+
+    Launches 3 explorer agents in parallel:
+    1. Tech Stack Analysis
+    2. Code Patterns & Structure
+    3. Best Practices & Quality
+
+    Then synthesizes findings into architectural recommendations.
+
+    Args:
+        target: Target module/path to analyze (e.g., "src/services", "src/api")
+        project_path: Path to the project
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Parallel research results with architectural blueprint
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+
+        # Prepare context
+        context = {
+            "project_path": project_path,
+            "target": target,
+            "mode": "parallel_research"
+        }
+
+        # Execute architect agent with parallel research prompt
+        result = await orchestrator.execute_agent(
+            agent_name="architect",
+            request=f"parallel research {target}",
+            context=context,
+            use_checkpoint=True,
+            prompt_entry=None  # Will use PROMPT_KEYWORDS matching
+        )
+
+        return {
+            "status": result.status,
+            "agent": result.agent,
+            "output": result.output,
+            "error": result.error,
+            "metadata": result.metadata
+        }
+    except Exception as e:
+        logger.error(f"Architect parallel research error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 @mcp.tool()
 def read_project_files(
     project_path: str,
@@ -3126,6 +3191,7 @@ def get_available_mcp_tools() -> dict:
         # Agent Orchestrator tools (ADR-007)
         {"name": "p9i", "description": "Unified router - Natural language interface with intelligent agent orchestration"},
         {"name": "architect_design", "description": "Architect agent - system design"},
+        {"name": "architect_parallel_research", "description": "Architect parallel research - 3-phase analysis (tech stack, patterns, best practices)"},
         {"name": "developer_code", "description": "Developer agent - code generation"},
         {"name": "reviewer_check", "description": "Reviewer agent - code review"},
         {"name": "list_agents", "description": "List all available agents"},
@@ -3183,7 +3249,7 @@ def get_available_mcp_tools() -> dict:
             },
             "agents": {
                 "description": "Multi-Agent Orchestrator (ADR-007) - Natural Language interface",
-                "tools": ["p9i_nl", "p9i", "architect_design", "developer_code", "reviewer_check", "list_agents"],
+                "tools": ["p9i_nl", "p9i", "architect_design", "architect_parallel_research", "developer_code", "reviewer_check", "list_agents"],
                 "example": "p9i_nl('Спроектируй и создай систему авторизации')"
             },
             "session_management": {

@@ -290,6 +290,57 @@ class AgentOrchestrator:
                 error=str(e)
             )
 
+    async def execute_parallel_agents(
+        self,
+        agent_requests: list[tuple[str, str]],  # [(agent_name, request), ...]
+        context: Optional[Dict[str, Any]] = None,
+    ) -> list[Dict[str, Any]]:
+        """
+        Execute multiple agents in parallel.
+
+        Claude Code pattern: spawn multiple workers simultaneously,
+        collect results, then synthesize.
+
+        Args:
+            agent_requests: List of (agent_name, request) tuples
+            context: Optional shared context
+
+        Returns:
+            List of result dicts (one per agent)
+        """
+        import asyncio
+
+        async def execute_one(agent_name: str, request: str) -> Dict[str, Any]:
+            result = await self.execute_agent(agent_name, request, context=context)
+            return {
+                "agent": result.agent,
+                "status": result.status,
+                "output": result.output,
+                "error": result.error,
+                "metadata": result.metadata
+            }
+
+        # Execute all agents in parallel
+        tasks = [execute_one(agent, request) for agent, request in agent_requests]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Convert exceptions to error results
+        processed_results = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                agent_name = agent_requests[i][0]
+                processed_results.append({
+                    "agent": agent_name,
+                    "status": "error",
+                    "output": "",
+                    "error": str(result),
+                    "metadata": None
+                })
+            else:
+                processed_results.append(result)
+
+        return processed_results
+
     async def route(self, request: str) -> Dict[str, Any]:
         """
         Main routing method - Natural Language interface.
