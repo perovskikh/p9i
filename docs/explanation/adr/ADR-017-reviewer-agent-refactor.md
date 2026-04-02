@@ -191,19 +191,17 @@ Rules:
 
 ## Implementation Status
 
-### ✅ Implemented (Phase 1-7)
+### ✅ Implemented (Phase 1-8+)
 1. `promt-reviewer-mvp.md` — haiku, 3 tools, git diff focused
 2. `promt-reviewer-enhanced.md` — 3-phase **sequential** review (Reuse → Quality → Efficiency)
 3. `promt-reviewer-security.md` — dedicated security audit (80% threshold, all categories)
 4. `promt-verification.md` — adversarial testing, VERDICT output
 5. `reviewer_tools.py` — utility class (diff, search, security, quality, metrics, verify)
-6. **In-memory cache layer** — implemented `_cache_get/set` with TTL per operation type
+6. **In-memory cache layer** — implemented `_cache_get/set` with TTL per operation type (DEPRECATED)
 7. Routing updates in `agent_router.py` — new keywords + security prompt
-
-### 🔜 TODO (Phase 8+)
-1. **MCP Tool Registration** — `reviewer_tools.py` methods need wrapper functions with `@mcp.tool()` in `server.py` to be actual callable MCP tools (currently utility class only)
-2. **Redis cache layer** — replace in-memory cache with Redis (like explorer agent) for multi-instance support
-3. **Интеграция с `explorer_tools`** — reuse analysis should call `explorer_search` internally (referenced in prompt but not wired)
+8. **MCP Tool Registration** — `@mcp.tool()` wrappers in `server.py` for all reviewer methods
+9. **Redis cache layer** — `reviewer_cache.py` with `ReviewerCacheManager`, operation-specific TTLs (diff: 5min, search/security/quality/metrics: 1hr)
+10. **Интеграция с `explorer_tools`** — `reviewer_reuse_analysis()` calls `explorer_search` for reuse analysis
 
 ### ❌ Rejected / Deferred
 1. **Параллельные sub-agents** — не поддерживается в read-only режиме p9i (correctly documented as sequential)

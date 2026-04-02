@@ -18,60 +18,14 @@ import subprocess
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.services.reviewer_cache import get_reviewer_cache_manager, ReviewerCacheManager
+
 logger = logging.getLogger(__name__)
 
 
 def _hash_query(query: str) -> str:
     """Create short hash of query for cache key."""
     return hashlib.md5(query.encode()).hexdigest()[:16]
-
-
-# === Cache Layer ===
-# In-memory cache with TTL for reviewer tools
-# TTLs defined per operation type
-
-CACHE_TTL = {
-    "diff": 300,      # 5 minutes - git diff changes frequently
-    "search": 3600,   # 1 hour - vulnerability patterns don't change often
-    "security": 3600, # 1 hour - security scan results stable
-    "quality": 3600,  # 1 hour - quality metrics stable
-    "metrics": 3600,  # 1 hour - complexity metrics stable
-}
-
-# Global cache: {cache_key: {"data": ..., "expires_at": ...}}
-_review_cache: Dict[str, Dict[str, Any]] = {}
-
-
-def _cache_get(key: str) -> Optional[Any]:
-    """Get value from cache if not expired."""
-    if key in _review_cache:
-        entry = _review_cache[key]
-        if entry["expires_at"] > time.time():
-            logger.debug(f"Cache HIT: {key}")
-            return entry["data"]
-        else:
-            # Expired
-            del _review_cache[key]
-            logger.debug(f"Cache EXPIRED: {key}")
-    return None
-
-
-def _cache_set(key: str, data: Any, ttl: int) -> None:
-    """Set value in cache with TTL."""
-    _review_cache[key] = {
-        "data": data,
-        "expires_at": time.time() + ttl,
-    }
-    logger.debug(f"Cache SET: {key} (TTL: {ttl}s)")
-
-
-def _cache_clear_project(project_path: str) -> int:
-    """Clear all cache entries for a project."""
-    prefix = f"{project_path}:"
-    keys_to_delete = [k for k in _review_cache if k.startswith(prefix)]
-    for k in keys_to_delete:
-        del _review_cache[k]
-    return len(keys_to_delete)
 
 
 # Common vulnerability patterns for security scanning
@@ -136,6 +90,15 @@ class ReviewerTools:
 
     def __init__(self, project_path: str = "."):
         self.project_path = project_path
+        self._cache: Optional[ReviewerCacheManager] = None
+
+    async def _ensure_cache(self) -> None:
+        """Ensure Redis cache is initialized."""
+        if self._cache is None:
+            self._cache = get_reviewer_cache_manager()
+            if self._cache.redis is None:
+                # Cache not initialized with Redis yet, will be set during server startup
+                pass
 
     async def reviewer_diff(
         self,
@@ -157,15 +120,18 @@ class ReviewerTools:
             - scope: The scope used
             - cached: Whether result was from cache
         """
+        await self._ensure_cache()
+
         # Build cache key
         cache_key = f"{self.project_path}:diff:{scope}:{file_path or ''}"
-        cache_key = _hash_query(cache_key)
+        query_hash = _hash_query(cache_key)
 
-        # Check cache (diff changes frequently, short TTL)
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            cached["cached"] = True
-            return cached
+        # Check Redis cache (diff changes frequently, short TTL)
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_diff_result(self.project_path, query_hash)
+            if cached is not None:
+                cached["cached"] = True
+                return cached
 
         try:
             if scope == "unstaged":
@@ -215,8 +181,9 @@ class ReviewerTools:
                 "success": True,
             }
 
-            # Cache result
-            _cache_set(cache_key, result_data, CACHE_TTL["diff"])
+            # Cache result in Redis
+            if self._cache and self._cache.redis:
+                await self._cache.set_diff_result(self.project_path, query_hash, result_data)
 
             result_data["cached"] = False
             return result_data
@@ -245,15 +212,22 @@ class ReviewerTools:
             - count: Number of findings
             - cached: Whether result was from cache
         """
+        await self._ensure_cache()
+
         # Build cache key
         cache_key = f"{self.project_path}:search:{query}:{file_pattern}"
-        cache_key = _hash_query(cache_key)
+        query_hash = _hash_query(cache_key)
 
-        # Check cache
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            cached["cached"] = True
-            return cached
+        # Check Redis cache
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_search_result(self.project_path, query_hash)
+            if cached is not None:
+                return {
+                    "results": cached,
+                    "cached": True,
+                    "count": len(cached),
+                    "query": query,
+                }
 
         import glob
 
@@ -306,8 +280,10 @@ class ReviewerTools:
             "files_searched": len(search_files),
         }
 
-        # Cache result
-        _cache_set(cache_key, result_data, CACHE_TTL["search"])
+        # Cache result in Redis
+        if self._cache and self._cache.redis:
+            await self._cache.set_search_result(self.project_path, query_hash, results)
+
         result_data["cached"] = False
 
         return result_data
@@ -329,15 +305,14 @@ class ReviewerTools:
             - recommendations: List of fixes
             - cached: Whether result was from cache
         """
-        # Build cache key
-        cache_key = f"{self.project_path}:security:{file_path}"
-        cache_key = _hash_query(cache_key)
+        await self._ensure_cache()
 
-        # Check cache
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            cached["cached"] = True
-            return cached
+        # Check Redis cache
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_security_result(self.project_path, file_path)
+            if cached is not None:
+                cached["cached"] = True
+                return cached
 
         issues = []
 
@@ -388,8 +363,10 @@ class ReviewerTools:
             "recommendations": [i["recommendation"] for i in issues],
         }
 
-        # Cache result
-        _cache_set(cache_key, result_data, CACHE_TTL["security"])
+        # Cache result in Redis
+        if self._cache and self._cache.redis:
+            await self._cache.set_security_result(self.project_path, file_path, result_data)
+
         result_data["cached"] = False
 
         return result_data
@@ -410,15 +387,14 @@ class ReviewerTools:
             - metrics: Quality metrics (complexity, duplication, etc.)
             - cached: Whether result was from cache
         """
-        # Build cache key
-        cache_key = f"{self.project_path}:quality:{file_path}"
-        cache_key = _hash_query(cache_key)
+        await self._ensure_cache()
 
-        # Check cache
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            cached["cached"] = True
-            return cached
+        # Check Redis cache
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_quality_result(self.project_path, file_path)
+            if cached is not None:
+                cached["cached"] = True
+                return cached
 
         issues = []
 
@@ -471,8 +447,10 @@ class ReviewerTools:
             "metrics": metrics,
         }
 
-        # Cache result
-        _cache_set(cache_key, result_data, CACHE_TTL["quality"])
+        # Cache result in Redis
+        if self._cache and self._cache.redis:
+            await self._cache.set_quality_result(self.project_path, file_path, result_data)
+
         result_data["cached"] = False
 
         return result_data
@@ -494,15 +472,14 @@ class ReviewerTools:
             - cohesion: Module cohesion estimate
             - cached: Whether result was from cache
         """
-        # Build cache key
-        cache_key = f"{self.project_path}:metrics:{file_path}"
-        cache_key = _hash_query(cache_key)
+        await self._ensure_cache()
 
-        # Check cache
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            cached["cached"] = True
-            return cached
+        # Check Redis cache
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_metrics_result(self.project_path, file_path)
+            if cached is not None:
+                cached["cached"] = True
+                return cached
 
         try:
             with open(f"{self.project_path}/{file_path}", "r", encoding="utf-8") as f:
@@ -532,8 +509,10 @@ class ReviewerTools:
                 "grade": self._complexity_grade(complexity),
             }
 
-            # Cache result
-            _cache_set(cache_key, result_data, CACHE_TTL["metrics"])
+            # Cache result in Redis
+            if self._cache and self._cache.redis:
+                await self._cache.set_metrics_result(self.project_path, file_path, result_data)
+
             result_data["cached"] = False
 
             return result_data
@@ -608,6 +587,85 @@ class ReviewerTools:
                 "verdict": "FAIL",
                 "adversarial": adversarial,
                 "error": str(e),
+            }
+
+    async def reviewer_reuse_analysis(
+        self,
+        symbol_name: str,
+    ) -> Dict[str, Any]:
+        """
+        Analyze symbol for potential reuse from existing code.
+        Uses explorer_search to find similar symbols.
+
+        Args:
+            symbol_name: Name of symbol to analyze for reuse
+
+        Returns:
+            Dict with:
+            - symbol: The symbol analyzed
+            - suggestions: List of similar symbols found
+            - cached: Whether result was from cache
+        """
+        await self._ensure_cache()
+
+        # Build cache key
+        cache_key = f"{self.project_path}:reuse:{symbol_name}"
+        query_hash = _hash_query(cache_key)
+
+        # Check Redis cache (reuse analysis uses search TTL)
+        if self._cache and self._cache.redis:
+            cached = await self._cache.get_search_result(self.project_path, query_hash)
+            if cached is not None:
+                return {
+                    "symbol": symbol_name,
+                    "suggestions": cached,
+                    "cached": True,
+                }
+
+        # Use explorer_search to find similar symbols
+        try:
+            from src.api.tools.explorer_tools import get_explorer_tools
+
+            explorer = get_explorer_tools(self.project_path)
+
+            # Search for the symbol in the codebase
+            search_result = await explorer.explorer_search(
+                query=symbol_name,
+                file_pattern="*.py"
+            )
+
+            suggestions = []
+            for result in search_result.get("results", []):
+                # Filter out the symbol itself
+                if result.get("name") != symbol_name:
+                    suggestions.append({
+                        "file": result.get("file"),
+                        "line": result.get("line"),
+                        "name": result.get("name"),
+                        "type": result.get("type"),
+                        "context": result.get("context"),
+                    })
+
+            result_data = {
+                "symbol": symbol_name,
+                "suggestions": suggestions[:10],  # Limit to 10 suggestions
+                "count": len(suggestions),
+            }
+
+            # Cache result in Redis
+            if self._cache and self._cache.redis:
+                await self._cache.set_search_result(self.project_path, query_hash, suggestions)
+
+            result_data["cached"] = False
+            return result_data
+
+        except Exception as e:
+            logger.error(f"Reuse analysis error: {e}")
+            return {
+                "symbol": symbol_name,
+                "suggestions": [],
+                "error": str(e),
+                "cached": False,
             }
 
     def _complexity_grade(self, complexity: int) -> str:

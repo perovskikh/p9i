@@ -99,6 +99,9 @@ from src.infrastructure.browser import register_browser_tools
 # Import Deduplication Guard
 from src.domain.services.prompt_guard import get_prompt_guard
 
+# Import Reviewer tools
+from src.api.tools.reviewer_tools import get_reviewer_tools
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -998,6 +1001,197 @@ async def p9i(
 # END OF UNIFIED ROUTER
 # ==========================================
 
+
+# ==========================================
+# REVIEWER AGENT MCP TOOLS (ADR-017)
+# ==========================================
+
+@mcp.tool()
+async def reviewer_diff(
+    scope: str = "unstaged",
+    file_path: str = None,
+    project_path: str = "."
+) -> dict:
+    """
+    Get git diff for code review.
+
+    Args:
+        scope: "unstaged", "staged", "HEAD", or "branch"
+        file_path: Optional specific file to diff
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with diff output, changed files, and line counts
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_diff(scope=scope, file_path=file_path)
+    except Exception as e:
+        logger.error(f"reviewer_diff error: {e}")
+        return {"error": str(e), "success": False}
+
+
+@mcp.tool()
+async def reviewer_search(
+    query: str,
+    file_pattern: str = "*.py",
+    project_path: str = "."
+) -> dict:
+    """
+    Search code for vulnerability patterns or anti-patterns.
+
+    Args:
+        query: Pattern type (sql_injection, hardcoded_secrets, command_injection,
+               path_traversal, auth_bypass) or custom search regex
+        file_pattern: File pattern to search (default: *.py)
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with search results and count
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_search(query=query, file_pattern=file_pattern)
+    except Exception as e:
+        logger.error(f"reviewer_search error: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def reviewer_security(
+    file_path: str,
+    project_path: str = "."
+) -> dict:
+    """
+    Security vulnerability scan for a specific file.
+
+    Args:
+        file_path: Path to file to scan
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with security issues, score (0-100), and recommendations
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_security(file_path=file_path)
+    except Exception as e:
+        logger.error(f"reviewer_security error: {e}")
+        return {"error": str(e), "issues": [], "score": 100}
+
+
+@mcp.tool()
+async def reviewer_quality(
+    file_path: str,
+    project_path: str = "."
+) -> dict:
+    """
+    Quality metrics for a file (complexity, duplication, etc.).
+
+    Args:
+        file_path: Path to file to analyze
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with quality issues and metrics (LOC, functions, classes, complexity)
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_quality(file_path=file_path)
+    except Exception as e:
+        logger.error(f"reviewer_quality error: {e}")
+        return {"error": str(e), "issues": [], "metrics": {}}
+
+
+@mcp.tool()
+async def reviewer_metrics(
+    file_path: str,
+    project_path: str = "."
+) -> dict:
+    """
+    Code complexity metrics for a file.
+
+    Args:
+        file_path: Path to file
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with cyclomatic complexity, fan-out, and letter grade
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_metrics(file_path=file_path)
+    except Exception as e:
+        logger.error(f"reviewer_metrics error: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def reviewer_verify(
+    test_command: str,
+    expected: str,
+    adversarial: bool = False,
+    project_path: str = "."
+) -> dict:
+    """
+    Run verification test with adversarial probing.
+
+    Args:
+        test_command: Command to run
+        expected: Expected output substring
+        adversarial: Whether this is an adversarial probe
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with PASS/FAIL/PARTIAL verdict and actual vs expected output
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_verify(
+            test_command=test_command,
+            expected=expected,
+            adversarial=adversarial
+        )
+    except Exception as e:
+        logger.error(f"reviewer_verify error: {e}")
+        return {
+            "command": test_command,
+            "expected": expected,
+            "actual": f"ERROR: {str(e)}",
+            "passed": False,
+            "verdict": "FAIL",
+            "adversarial": adversarial,
+            "error": str(e),
+        }
+
+
+@mcp.tool()
+async def reviewer_reuse_analysis(
+    symbol_name: str,
+    project_path: str = "."
+) -> dict:
+    """
+    Analyze symbol for potential reuse from existing code.
+    Uses explorer_search to find similar symbols.
+
+    Args:
+        symbol_name: Name of symbol to analyze for reuse
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with symbol analyzed and suggestions for reusable alternatives
+    """
+    try:
+        reviewer = get_reviewer_tools(project_path)
+        return await reviewer.reviewer_reuse_analysis(symbol_name=symbol_name)
+    except Exception as e:
+        logger.error(f"reviewer_reuse_analysis error: {e}")
+        return {"symbol": symbol_name, "suggestions": [], "error": str(e)}
+
+
+# ==========================================
+# END OF REVIEWER AGENT TOOLS
+# ==========================================
 
 
 @mcp.tool()
@@ -3150,6 +3344,14 @@ async def startup_event():
                 logger.info("Explorer cache initialized (Redis-based)")
             except Exception as e:
                 logger.warning(f"Failed to initialize Explorer cache: {e}")
+
+            # Initialize Reviewer cache with Redis
+            try:
+                from src.services.reviewer_cache import init_reviewer_cache
+                await init_reviewer_cache(rate_limiter.redis)
+                logger.info("Reviewer cache initialized (Redis-based)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Reviewer cache: {e}")
         else:
             logger.info("Rate limiting: enabled (in-memory fallback)")
     except Exception as e:
