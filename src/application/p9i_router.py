@@ -167,6 +167,16 @@ class P9iRouter:
             "что зависит от": (IntentType.AGENT_TASK, "explorer"),
             "затронет": (IntentType.AGENT_TASK, "explorer"),
             "impact analysis": (IntentType.AGENT_TASK, "explorer"),
+            # === EXPLORER NEW ===
+            "изучи": (IntentType.AGENT_TASK, "explorer"),
+            "анализируй": (IntentType.AGENT_TASK, "explorer"),
+            "проанализируй": (IntentType.AGENT_TASK, "explorer"),
+            "консолидируй": (IntentType.AGENT_TASK, "explorer"),
+            "консолидация": (IntentType.AGENT_TASK, "explorer"),
+            "analyze": (IntentType.AGENT_TASK, "explorer"),
+            "analysis": (IntentType.AGENT_TASK, "explorer"),
+            "consolidate": (IntentType.AGENT_TASK, "explorer"),
+            "consolidation": (IntentType.AGENT_TASK, "explorer"),
 
             # === DEVELOPER ===
             "создай": (IntentType.AGENT_TASK, "developer"),

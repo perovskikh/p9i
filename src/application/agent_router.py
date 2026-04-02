@@ -154,6 +154,12 @@ AGENT_KEYWORDS = {
         "impact analysis", "call graph", "dependency graph",
         # English - Extended
         "reindex", "refresh index", "deep search", "analyze module",
+        # Analysis & Study (NEW)
+        "изучи", "анализ", "анализируй", "проанализируй",
+        "консолидируй", "консолидация", "объедини adr",
+        "analyze", "analysis", "study", "consolidate", "consolidation",
+        # ADR-specific - use architect (has higher priority)
+        # "adr", "архитектурное решение",
     ],
     "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
     # Full cycle keywords - активируют полный цикл с арбитражом
@@ -177,8 +183,8 @@ AGENT_KEYWORDS = {
 # Prompt keywords for selection
 PROMPT_KEYWORDS = {
     # Explorer prompts
-    "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure", "найди где", "где находится", "найди все", "трассируй", "покажи структуру", "архитектура кода", "что делает", "найди файл", "навигац"],
-    "promt-explorer-extended": ["глубокий поиск", "проиндексируй", "переиндексируй", "reindex", "refresh index", "deep search", "analyze module", "построить граф", "call graph", "dependency graph", "анализ связей", "что зависит от", "затронет", "impact analysis"],
+    "promt-explorer-mvp": ["структура", "связи", "зависимости", "trace", "как работает", "вызовы", "модуль", "файлы", "explore", "dependencies", "structure", "найди где", "где находится", "найди все", "трассируй", "покажи структуру", "архитектура кода", "что делает", "найди файл", "навигац", "изучи", "анализ", "анализируй"],
+    "promt-explorer-extended": ["глубокий поиск", "проиндексируй", "переиндексируй", "reindex", "refresh index", "deep search", "analyze module", "построить граф", "call graph", "dependency graph", "анализ связей", "что зависит от", "затронет", "impact analysis", "проанализируй", "консолидируй", "consolidate"],
     "promt-verification": ["verify", "верифицируй", "проверь реализацию", "verification"],
     # Migration prompts
     "promt-migration-planner": ["миграц", "миграция", "migrat", "план миграции", "migrate plan", "monolith", "microservices", "переход с", "на микросервисы"],
