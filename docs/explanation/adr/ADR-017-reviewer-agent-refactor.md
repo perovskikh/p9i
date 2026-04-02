@@ -191,21 +191,23 @@ Rules:
 
 ## Implementation Status
 
-### ✅ Implemented (Phase 1-6)
+### ✅ Implemented (Phase 1-7)
 1. `promt-reviewer-mvp.md` — haiku, 3 tools, git diff focused
-2. `promt-reviewer-enhanced.md` — 3-phase review (sequential, not parallel)
-3. `promt-verification.md` — adversarial testing, VERDICT output
-4. `reviewer_tools.py` — MCP wrapper (diff, search, security, quality, metrics)
-5. Routing updates in `agent_router.py` — new keywords
+2. `promt-reviewer-enhanced.md` — 3-phase **sequential** review (Reuse → Quality → Efficiency)
+3. `promt-reviewer-security.md` — dedicated security audit (80% threshold, all categories)
+4. `promt-verification.md` — adversarial testing, VERDICT output
+5. `reviewer_tools.py` — utility class (diff, search, security, quality, metrics, verify)
+6. **In-memory cache layer** — implemented `_cache_get/set` with TTL per operation type
+7. Routing updates in `agent_router.py` — new keywords + security prompt
 
-### 🔜 TODO (Phase 7+)
-1. `promt-reviewer-security.md` — dedicated security audit prompt (80% threshold)
-2. Интеграция с `explorer_tools` — reuse analysis использует `explorer_search`
-3. Cache layer — добавить Redis caching как у explorer agent
+### 🔜 TODO (Phase 8+)
+1. **MCP Tool Registration** — `reviewer_tools.py` methods need wrapper functions with `@mcp.tool()` in `server.py` to be actual callable MCP tools (currently utility class only)
+2. **Redis cache layer** — replace in-memory cache with Redis (like explorer agent) for multi-instance support
+3. **Интеграция с `explorer_tools`** — reuse analysis should call `explorer_search` internally (referenced in prompt but not wired)
 
 ### ❌ Rejected / Deferred
-1. **Параллельные sub-agents** — не поддерживается в read-only режиме p9i
-2. `promt-llm-review` — JSON формат заменен markdown
-3. `promt-enhanced-reviewer.md` (old) — deprecated, replaced by new structure
-4. `promt-quality-test` — merged into enhanced review
-5. **promt-verification в explorer** — перемещен в reviewer agent
+1. **Параллельные sub-agents** — не поддерживается в read-only режиме p9i (correctly documented as sequential)
+2. `promt-llm-review` — JSON формат заменен markdown (удалён)
+3. `promt-enhanced-reviewer.md` (old) — deprecated, replaced (удалён)
+4. `promt-quality-test` — merged into enhanced review (удалён)
+5. **promt-verification в explorer** — перемещен в reviewer agent (удалён из explorer)

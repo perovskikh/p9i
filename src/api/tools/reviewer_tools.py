@@ -15,6 +15,7 @@ import hashlib
 import logging
 import re
 import subprocess
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,54 @@ logger = logging.getLogger(__name__)
 def _hash_query(query: str) -> str:
     """Create short hash of query for cache key."""
     return hashlib.md5(query.encode()).hexdigest()[:16]
+
+
+# === Cache Layer ===
+# In-memory cache with TTL for reviewer tools
+# TTLs defined per operation type
+
+CACHE_TTL = {
+    "diff": 300,      # 5 minutes - git diff changes frequently
+    "search": 3600,   # 1 hour - vulnerability patterns don't change often
+    "security": 3600, # 1 hour - security scan results stable
+    "quality": 3600,  # 1 hour - quality metrics stable
+    "metrics": 3600,  # 1 hour - complexity metrics stable
+}
+
+# Global cache: {cache_key: {"data": ..., "expires_at": ...}}
+_review_cache: Dict[str, Dict[str, Any]] = {}
+
+
+def _cache_get(key: str) -> Optional[Any]:
+    """Get value from cache if not expired."""
+    if key in _review_cache:
+        entry = _review_cache[key]
+        if entry["expires_at"] > time.time():
+            logger.debug(f"Cache HIT: {key}")
+            return entry["data"]
+        else:
+            # Expired
+            del _review_cache[key]
+            logger.debug(f"Cache EXPIRED: {key}")
+    return None
+
+
+def _cache_set(key: str, data: Any, ttl: int) -> None:
+    """Set value in cache with TTL."""
+    _review_cache[key] = {
+        "data": data,
+        "expires_at": time.time() + ttl,
+    }
+    logger.debug(f"Cache SET: {key} (TTL: {ttl}s)")
+
+
+def _cache_clear_project(project_path: str) -> int:
+    """Clear all cache entries for a project."""
+    prefix = f"{project_path}:"
+    keys_to_delete = [k for k in _review_cache if k.startswith(prefix)]
+    for k in keys_to_delete:
+        del _review_cache[k]
+    return len(keys_to_delete)
 
 
 # Common vulnerability patterns for security scanning
@@ -106,7 +155,18 @@ class ReviewerTools:
             - files: List of changed files
             - lines: Total lines changed
             - scope: The scope used
+            - cached: Whether result was from cache
         """
+        # Build cache key
+        cache_key = f"{self.project_path}:diff:{scope}:{file_path or ''}"
+        cache_key = _hash_query(cache_key)
+
+        # Check cache (diff changes frequently, short TTL)
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            cached["cached"] = True
+            return cached
+
         try:
             if scope == "unstaged":
                 cmd = ["git", "diff"]
@@ -145,7 +205,7 @@ class ReviewerTools:
                         lines_added += added
                         lines_deleted += deleted
 
-            return {
+            result_data = {
                 "diff": diff_text,
                 "files": list(files),
                 "files_count": len(files),
@@ -154,6 +214,12 @@ class ReviewerTools:
                 "scope": scope,
                 "success": True,
             }
+
+            # Cache result
+            _cache_set(cache_key, result_data, CACHE_TTL["diff"])
+
+            result_data["cached"] = False
+            return result_data
 
         except subprocess.TimeoutExpired:
             return {"error": "Git command timeout", "success": False}
@@ -177,7 +243,18 @@ class ReviewerTools:
             Dict with:
             - results: List of {file, line, pattern, context}
             - count: Number of findings
+            - cached: Whether result was from cache
         """
+        # Build cache key
+        cache_key = f"{self.project_path}:search:{query}:{file_pattern}"
+        cache_key = _hash_query(cache_key)
+
+        # Check cache
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            cached["cached"] = True
+            return cached
+
         import glob
 
         results = []
@@ -222,12 +299,18 @@ class ReviewerTools:
             except Exception:
                 continue
 
-        return {
+        result_data = {
             "results": results[:100],  # Limit results
             "count": len(results),
             "query": query,
             "files_searched": len(search_files),
         }
+
+        # Cache result
+        _cache_set(cache_key, result_data, CACHE_TTL["search"])
+        result_data["cached"] = False
+
+        return result_data
 
     async def reviewer_security(
         self,
@@ -244,7 +327,18 @@ class ReviewerTools:
             - issues: List of {severity, category, line, description, confidence}
             - score: Overall security score (0-100)
             - recommendations: List of fixes
+            - cached: Whether result was from cache
         """
+        # Build cache key
+        cache_key = f"{self.project_path}:security:{file_path}"
+        cache_key = _hash_query(cache_key)
+
+        # Check cache
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            cached["cached"] = True
+            return cached
+
         issues = []
 
         try:
@@ -286,13 +380,19 @@ class ReviewerTools:
             high = sum(1 for i in issues if i["severity"] == "HIGH")
             score = max(0, 100 - (critical * 20) - (high * 10))
 
-        return {
+        result_data = {
             "file": file_path,
             "issues": issues,
             "issue_count": len(issues),
             "score": score,
             "recommendations": [i["recommendation"] for i in issues],
         }
+
+        # Cache result
+        _cache_set(cache_key, result_data, CACHE_TTL["security"])
+        result_data["cached"] = False
+
+        return result_data
 
     async def reviewer_quality(
         self,
@@ -308,7 +408,18 @@ class ReviewerTools:
             Dict with:
             - issues: List of quality issues
             - metrics: Quality metrics (complexity, duplication, etc.)
+            - cached: Whether result was from cache
         """
+        # Build cache key
+        cache_key = f"{self.project_path}:quality:{file_path}"
+        cache_key = _hash_query(cache_key)
+
+        # Check cache
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            cached["cached"] = True
+            return cached
+
         issues = []
 
         try:
@@ -353,12 +464,18 @@ class ReviewerTools:
         except Exception as e:
             return {"error": str(e), "issues": [], "metrics": {}}
 
-        return {
+        result_data = {
             "file": file_path,
             "issues": issues,
             "issue_count": len(issues),
             "metrics": metrics,
         }
+
+        # Cache result
+        _cache_set(cache_key, result_data, CACHE_TTL["quality"])
+        result_data["cached"] = False
+
+        return result_data
 
     async def reviewer_metrics(
         self,
@@ -375,7 +492,18 @@ class ReviewerTools:
             - complexity: Cyclomatic complexity score
             - coupling: Fan-in/fan-out estimate
             - cohesion: Module cohesion estimate
+            - cached: Whether result was from cache
         """
+        # Build cache key
+        cache_key = f"{self.project_path}:metrics:{file_path}"
+        cache_key = _hash_query(cache_key)
+
+        # Check cache
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            cached["cached"] = True
+            return cached
+
         try:
             with open(f"{self.project_path}/{file_path}", "r", encoding="utf-8") as f:
                 content = f.read()
@@ -395,7 +523,7 @@ class ReviewerTools:
             # Count function definitions as internal complexity
             functions = len(re.findall(r'def \w+\(', content))
 
-            return {
+            result_data = {
                 "file": file_path,
                 "cyclomatic_complexity": complexity,
                 "fan_out": imports,
@@ -403,6 +531,12 @@ class ReviewerTools:
                 "lines": len(lines),
                 "grade": self._complexity_grade(complexity),
             }
+
+            # Cache result
+            _cache_set(cache_key, result_data, CACHE_TTL["metrics"])
+            result_data["cached"] = False
+
+            return result_data
 
         except Exception as e:
             return {"error": str(e)}
