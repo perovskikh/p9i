@@ -218,6 +218,23 @@ class P9iRouter:
             "standard": (IntentType.AGENT_TASK, "reviewer"),
             "standards": (IntentType.AGENT_TASK, "reviewer"),
 
+            # === REVIEWER: SECURITY (SQL injection, XSS, etc.) ===
+            "sql": (IntentType.AGENT_TASK, "reviewer"),
+            "sql injection": (IntentType.AGENT_TASK, "reviewer"),
+            "инъекц": (IntentType.AGENT_TASK, "reviewer"),
+            "xss": (IntentType.AGENT_TASK, "reviewer"),
+            "csrf": (IntentType.AGENT_TASK, "reviewer"),
+            "security": (IntentType.AGENT_TASK, "reviewer"),
+            "безопасност": (IntentType.AGENT_TASK, "reviewer"),
+            "уязвимост": (IntentType.AGENT_TASK, "reviewer"),
+            "vulnerability": (IntentType.AGENT_TASK, "reviewer"),
+            "vulnerabilities": (IntentType.AGENT_TASK, "reviewer"),
+            "scan": (IntentType.AGENT_TASK, "reviewer"),
+            "cve": (IntentType.AGENT_TASK, "reviewer"),
+            "exploit": (IntentType.AGENT_TASK, "reviewer"),
+            "penetration": (IntentType.AGENT_TASK, "reviewer"),
+            "защита": (IntentType.AGENT_TASK, "reviewer"),
+
             # === DESIGNER ===
             "ui": (IntentType.AGENT_TASK, "designer"),
             "ux": (IntentType.AGENT_TASK, "designer"),

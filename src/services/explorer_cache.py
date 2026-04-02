@@ -5,6 +5,7 @@ Part of ADR-016b Explorer Agent Extended.
 Uses Redis for fast caching (SQLite backup for persistence).
 """
 
+import hashlib
 import json
 import logging
 from datetime import datetime
@@ -12,6 +13,11 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
+
+
+def hash_query(query: str) -> str:
+    """Create hash of search query for cache key."""
+    return hashlib.md5(query.encode()).hexdigest()[:16]
 
 
 @dataclass
