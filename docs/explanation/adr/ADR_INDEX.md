@@ -20,7 +20,6 @@
 | **ADR-018** | **[Architect Agent Refactoring](ADR-018-architect-agent-refactoring.md)** | **Proposed** 📋 | 2026-04-02 | State machine, progress tracking | ADR-016 |
 | **ADR-019** | **[Parallel Research Phase](ADR-019-parallel-research-phase.md)** | **Proposed** 📋 | 2026-04-02 | Three-explorer parallel research | ADR-018 |
 | **ADR-020** | **[Coordinator Pattern & Volume Mounts](ADR-020-coordinator-pattern-and-volume-mounts.md)** | **Phase 1 Done** 🔄 | 2026-04-02 | Volume mounts ✅, Coordinator pending | ADR-018, ADR-019 |
-
 ## Legend
 
 - **Implemented:** ADR has been fully implemented
