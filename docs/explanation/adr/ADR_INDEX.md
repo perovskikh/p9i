@@ -9,6 +9,7 @@
 | ADR-005 | [UI/UX Integration Strategy](ADR-005-ui-ux-integration.md) | **Implemented** ✅ | 2026-03-22 | TailwindCSS, shadcn, Textual, Tauri | ADR-006 |
 | ADR-006 | [Figma Integration Strategy](ADR-006-figma-integration.md) | **Implemented** ✅ | 2026-03-22 | Figma API, design-to-code, tokens | ADR-005 |
 | ADR-007 | [Multi-Agent Orchestrator](ADR-007-multi-agent-orchestrator.md) | **Implemented** ✅ | 2026-03-24 | 7 agents, Siri voice, browser, dedup guard | ADR-004 |
+| ADR-011 | [Pack Architecture Standard](ADR-011-pack-architecture-standard.md) | **Implemented** ✅ | 2026-04-03 | Pack standard, github-pack, browser-pack | ADR-002 |
 | ADR-012 | [Pre-commit Hook Installation Requirement](ADR-012-pre-commit-installation.md) | **Implemented** ✅ | 2026-03-30 | pre-commit installation, ADR validation | ADR-001 |
 | ADR-014 | [LLM-based Prompt Selection with Embeddings](ADR-014-llm-prompt-selection.md) | **Partial** 🔄 | 2026-04-02 | HybridRouter ✅, Embeddings ❌ | ADR-007, ADR-013 |
 | ADR-015 | [Code Explorer Agent (Original)](ADR-015-code-explorer-agent.md) | **Superseded** 📋 | 2026-04-01 | Superseded by ADR-016 | ADR-007 |
@@ -17,9 +18,9 @@
 | ADR-016b | [Code Explorer Agent — Extended](ADR-016b-explorer-agent-extended.md) | **Superseded** 📋 | 2026-04-02 | Merged into ADR-016 | ADR-016 |
 | ADR-016c | [Verification Agent](ADR-016c-verification-agent.md) | **Superseded** 📋 | 2026-04-02 | Merged into ADR-016 | ADR-016 |
 | **ADR-017** | **[Reviewer Agent Refactor](ADR-017-reviewer-agent-refactor.md)** | **Proposed** 📋 | 2026-04-02 | 4-layer review system, parallel rejected | ADR-016 |
-| **ADR-018** | **[Architect Agent Refactoring](ADR-018-architect-agent-refactoring.md)** | **Proposed** 📋 | 2026-04-02 | State machine, progress tracking | ADR-016 |
+| **ADR-018** | **[Architect Agent Refactoring](ADR-018-architect-agent-refactoring.md)** | **Implemented** ✅ | 2026-04-03 | State machine, progress tracking, 3-phase model | ADR-016 |
 | **ADR-019** | **[Parallel Research Phase](ADR-019-parallel-research-phase.md)** | **Proposed** 📋 | 2026-04-02 | Three-explorer parallel research | ADR-018 |
-| **ADR-020** | **[Coordinator Pattern & Volume Mounts](ADR-020-coordinator-pattern-and-volume-mounts.md)** | **Phase 1 Done** 🔄 | 2026-04-02 | Volume mounts ✅, Coordinator pending | ADR-018, ADR-019 |
+| **ADR-020** | **[Coordinator Pattern & Volume Mounts](ADR-020-coordinator-pattern-and-volume-mounts.md)** | **Phase 2 Done** 🔄 | 2026-04-03 | Volume mounts ✅, Coordinator ✅, Tool Permissions ✅ | ADR-018, ADR-019 |
 ## Legend
 
 - **Implemented:** ADR has been fully implemented
@@ -27,7 +28,7 @@
 - **Proposed:** ADR is drafted and awaiting review
 - **Deprecated:** ADR is no longer applicable (superseded by newer ADR)
 - **Superseded:** ADR has been merged into another ADR
-- **Phase 1 Done:** First phase completed, subsequent phases pending
+- **Phase 2 Done:** First phase completed, subsequent phases pending
 
 ### Related Documentation
 
@@ -55,12 +56,14 @@
 
 | Check | Status |
 |-------|--------|
+| ADR-011 (Pack Standard) | ✅ Implemented - 6 packs |
 | ADR-014 (LLM Prompt Selection) | ✅ Valid - Partial Implementation |
 | ADR-016 (Code Explorer) | ✅ Valid - Accepted (Partial) |
 | ADR-017 (Reviewer) | ✅ Fixed - Proposed (was wrong supersedes) |
-| ADR-018 (Architect) | ✅ Valid - Proposed |
+| ADR-018 (Architect) | ✅ Implemented |
 | ADR-019 (Parallel Research) | ✅ Valid - Proposed |
-| ADR-020 (Coordinator) | ✅ Valid - Phase 1 Done |
+| ADR-020 (Coordinator) | ✅ Valid - Phase 2 Done |
+| ADR-021 (Code Review Fixes) | ✅ Implemented |
 
 ### ADR Files vs Index
 
@@ -73,6 +76,7 @@
 | ADR-005 | ✅ | ✅ | Implemented ✅ |
 | ADR-006 | ✅ | ✅ | Implemented ✅ |
 | ADR-007 | ✅ | ✅ | Implemented ✅ |
+| ADR-011 | ✅ | ✅ | Implemented ✅ |
 | ADR-012 | ✅ | ✅ | Implemented ✅ |
 | ADR-014 | ✅ | ✅ | Partial ✅ |
 | ADR-015 | ✅ | ❌ File merged | Superseded ✅ |
@@ -81,6 +85,7 @@
 | ADR-016b | ✅ | ❌ File merged | Superseded ✅ |
 | ADR-016c | ✅ | ❌ File merged | Superseded ✅ |
 | ADR-017 | ✅ | ✅ | Proposed ✅ |
-| ADR-018 | ✅ | ✅ | Proposed ✅ |
+| ADR-018 | ✅ | ✅ | Implemented ✅ |
 | ADR-019 | ✅ | ✅ | Proposed ✅ |
-| ADR-020 | ✅ | ✅ | Phase 1 Done ✅ |
+| ADR-020 | ✅ | ✅ | Phase 2 Done ✅ |
+| ADR-021 | ✅ | ✅ | Implemented ✅ |

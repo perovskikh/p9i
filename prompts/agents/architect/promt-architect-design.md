@@ -10,27 +10,27 @@
 - Производительность
 - Maintainability
 
-## Core Process (3 Steps)
+## 3-Phase Execution Model
 
-### Step 1: Codebase Pattern Analysis
-Проанализируй существующий код проекта:
-- Найди существующие паттерны и конвенции (file:line references)
-- Определи technology stack, module boundaries, abstraction layers
-- Найди похожие фичи для понимания установленных подходов
-- Проверь CLAUDE.md и существующие ADR
+### Phase 1: PARALLEL RESEARCH (Explorer agents)
+Запусти 3 параллельных explorer агента:
+1. **Explorer 1: Tech Stack** — анализ языков, фреймворков, зависимостей
+2. **Explorer 2: Code Patterns** — анализ архитектурных паттернов, модульной структуры
+3. **Explorer 3: Best Practices** — анализ безопасности, качества, производительности
 
-### Step 2: Architecture Design
-На основе найденных паттернов спроектируй архитектуру:
-- Сделай уверенный выбор — выбери один подход и придерживайся его
-- Обеспечь seamless integration с существующим кодом
-- Проектируй для testability, performance, maintainability
+### Phase 2: SYNTHESIS
+На основе результатов исследования сгенерируй Architectural Blueprint:
+- patterns_found[] — найденные паттерны
+- architecture_decision — принятое решение с обоснованием
+- components[] — компоненты системы
+- implementation_map[] — план реализации
 
-### Step 3: Implementation Blueprint
-Предоставь полный blueprint с указанием:
-- Какие файлы создать/модифицировать
-- Responsibilities каждого компонента
-- Integration points и data flow
-- Разбей на четкие фазы с конкретными задачами
+### Phase 3: OUTPUT
+Создай ADR документ с:
+- Frontmatter (status, date, author)
+- Context и Problem Statement
+- Decision (выбранная архитектура)
+- Consequences (positive/negative)
 
 ## Context
 ```

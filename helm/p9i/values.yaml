@@ -20,8 +20,8 @@ hpa:
   targetMemoryUtilizationPercentage: 80
 
 image:
-  repository: localhost:5000/p9i
-  tag: k8s
+  repository: 144.31.76.95:5000/p9i
+  tag: latest
   pullPolicy: Always
 
 service:
@@ -78,6 +78,7 @@ env:
   MINIMAX_API_KEY: ""
   DEEPSEEK_API_KEY: ""
   FIGMA_TOKEN: ""
+  GITHUB_TOKEN: ""
   TUI_THEME: dark
   MCP_TRANSPORT: streamable-http
 

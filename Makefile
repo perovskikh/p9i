@@ -2,13 +2,19 @@
 # Usage: make <target>
 
 # Configuration
-REGISTRY ?= localhost:5000
+REGISTRY ?= 144.31.76.95:5000
 IMAGE_NAME ?= p9i
-IMAGE_TAG ?= k8s
+IMAGE_TAG ?= latest
 FULL_IMAGE ?= $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 K8S_DIR := $(shell pwd)/k8s
 NAMESPACE ?= p9i
 HELM_CHART := $(shell pwd)/helm/p9i
+
+# Load .env if exists (for build args)
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
 
 # Kubernetes command (use $(KUBECTL) on K3s)
 KUBECTL := $(shell (sudo -n kubectl --help >/dev/null 2>&1 && echo "sudo kubectl") || echo "kubectl")
@@ -67,7 +73,7 @@ help:
 	@echo "  make k3s-install-server Install K3s server (cluster)"
 	@echo "  make k3s-install-agent  Install K3s agent (worker)"
 	@echo "  make k3s-uninstall      Uninstall K3s"
-	@echo "  make k3s-deploy         Deploy to K3s"
+	@echo "  make k3s-deploy         Deploy to K3s (builds, pushes, cleans old pods)"
 	@echo "  make k3s-delete         Delete from K3s"
 	@echo "  make k3s-logs           View K3s pod logs"
 	@echo "  make k3s-restart        Restart K3s deployment"
@@ -142,11 +148,23 @@ build:
 		fi; \
 	fi
 	@echo "$(YELLOW)Building p9i Docker image (no cache)...$(NC)"
+	@. ./.env 2>/dev/null || true; \
 	docker build --no-cache \
 		-f docker/Dockerfile \
 		-t $(IMAGE_NAME):latest \
 		-t $(FULL_IMAGE) \
-		$(foreach key,MINIMAX_API_KEY ZAI_API_KEY OPENROUTER_API_KEY DEEPSEEK_API_KEY ANTHROPIC_API_KEY P9I_API_KEY JWT_SECRET JWT_ENABLED DOMAIN,$(if $(strip $($(key))),--build-arg $(key)="$($(key))")) \
+		--build-arg MINIMAX_API_KEY="$$MINIMAX_API_KEY" \
+		--build-arg ZAI_API_KEY="$$ZAI_API_KEY" \
+		--build-arg OPENROUTER_API_KEY="$$OPENROUTER_API_KEY" \
+		--build-arg DEEPSEEK_API_KEY="$$DEEPSEEK_API_KEY" \
+		--build-arg ANTHROPIC_API_KEY="$$ANTHROPIC_API_KEY" \
+		--build-arg P9I_API_KEY="$$P9I_API_KEY" \
+		--build-arg JWT_SECRET="$$JWT_SECRET" \
+		--build-arg JWT_ENABLED="$$JWT_ENABLED" \
+		--build-arg DOMAIN="$$DOMAIN" \
+		--build-arg GITHUB_TOKEN="$$GITHUB_TOKEN" \
+		--build-arg FIGMA_TOKEN="$$FIGMA_TOKEN" \
+		--build-arg CONTEXT7_API_KEY="$$CONTEXT7_API_KEY" \
 		.
 	@echo "$(GREEN)Built: $(IMAGE_NAME):latest$(NC)"
 
@@ -263,26 +281,38 @@ k3s-status-nodes: ## Show K3s nodes status
 	$(KUBECTL) get nodes -o wide
 
 .PHONY: k3s-deploy
-k3s-deploy: build-push
+k3s-deploy:
+	@echo "$(YELLOW)Cleaning up Docker resources to prevent disk pressure...$(NC)"
+	@docker system prune -af --filter "until=72h" 2>/dev/null || true
+	@echo "$(YELLOW)Building and pushing Docker image...$(NC)"
+	$(MAKE) build-push
+	@echo "$(YELLOW)Cleaning up old/evicted pods before deploy...$(NC)"
+	@$(KUBECTL) get pods -n $(NAMESPACE) -l app=p9i-p9i --no-headers 2>/dev/null | \
+		grep -v "Running" | awk '{print $$1}' | \
+		xargs -r $(KUBECTL) delete pod -n $(NAMESPACE) 2>/dev/null || true
 	@echo "$(YELLOW)Deploying to K3s via Helm...$(NC)"
 	$(KUBECTL) create namespace $(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
-	@# Load API keys from .env if it exists
-	@if [ -f .env ]; then \
-		export $$(cat .env | grep -E '^(MINIMAX_API_KEY|ZAI_API_KEY|OPENROUTER_API_KEY|DEEPSEEK_API_KEY|ANTHROPIC_API_KEY)=' | xargs) 2>/dev/null; \
-		helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace \
-			-f $(HELM_CHART)/values.yaml \
-			--set env.MINIMAX_API_KEY=$$MINIMAX_API_KEY \
-			--set env.ZAI_API_KEY=$$ZAI_API_KEY \
-			--set env.OPENROUTER_API_KEY=$$OPENROUTER_API_KEY \
-			--set env.DEEPSEEK_API_KEY=$$DEEPSEEK_API_KEY \
-			--set env.ANTHROPIC_API_KEY=$$ANTHROPIC_API_KEY \
-			--wait --timeout 5m; \
-	else \
-		helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace \
-			-f $(HELM_CHART)/values.yaml \
-			--wait --timeout 5m; \
-	fi
+	@# Load ALL env vars from .env (including GITHUB_TOKEN, FIGMA_TOKEN)
+	@. ./.env 2>/dev/null || true; \
+	helm upgrade --install p9i $(HELM_CHART) --namespace $(NAMESPACE) --create-namespace \
+		-f $(HELM_CHART)/values.yaml \
+		--set env.MINIMAX_API_KEY="$$MINIMAX_API_KEY" \
+		--set env.ZAI_API_KEY="$$ZAI_API_KEY" \
+		--set env.OPENROUTER_API_KEY="$$OPENROUTER_API_KEY" \
+		--set env.DEEPSEEK_API_KEY="$$DEEPSEEK_API_KEY" \
+		--set env.ANTHROPIC_API_KEY="$$ANTHROPIC_API_KEY" \
+		--set env.GITHUB_TOKEN="$$GITHUB_TOKEN" \
+		--set env.FIGMA_TOKEN="$$FIGMA_TOKEN" \
+		--set env.CONTEXT7_API_KEY="$$CONTEXT7_API_KEY" \
+		--wait --timeout 5m
+	@echo "$(YELLOW)Cleaning up old pods after deploy...$(NC)"
+	@sleep 5 && $(KUBECTL) get pods -n $(NAMESPACE) -l app=p9i-p9i --no-headers 2>/dev/null | \
+		grep -v "Running" | awk '{print $$1}' | \
+		xargs -r $(KUBECTL) delete pod -n $(NAMESPACE) 2>/dev/null || true
 	@echo "$(GREEN)Deployed to K3s namespace: $(NAMESPACE)$(NC)"
+	@echo "$(GREEN)Pod status:"
+	@$(KUBECTL) get pods -n $(NAMESPACE) -l app=p9i-p9i
+
 
 .PHONY: k3s-delete
 k3s-delete:

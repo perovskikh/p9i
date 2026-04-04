@@ -1,63 +1,94 @@
-# MCP Servers Configuration
+# MCP Server Configuration
 
 ## Claude Code Integration
 
-Добавь в `~/.claude/settings.json` или настройки проекта:
+### HTTP Connection (Recommended for Remote)
 
 ```json
 {
   "mcpServers": {
     "p9i": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "perovskikh/p9i"]
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@context7/mcp-server"]
-    },
-    "github": {
-      "command": "uvx",
-      "args": ["mcp-server-github", "--token", "${GITHUB_TOKEN}"],
-      "env": {
-        "GITHUB_TOKEN": "your-token-here"
+      "type": "http",
+      "url": "https://mcp.coderweb.ru/mcp",
+      "headers": {
+        "X-API-Key": "sk-p9i-codeshift-mcp.coderweb.ru"
       }
     }
   }
 }
 ```
 
-## Доступные MCP инструменты
+### Local Development with p9i_stdio_bridge
 
-### AI Prompt System (локальный)
-- `run_prompt` — выполнить промт
-- `run_prompt_chain` — выполнить цепочку
-- `list_prompts` — список промтов
-- `get_project_memory` — память проекта
-- `save_project_memory` — сохранить память
+For Claude Code stdio compatibility with remote server:
 
-### Context7 (документация)
-- `resolve-library-id` — найти библиотеку
-- `query-docs` — получить документацию
+```json
+{
+  "mcpServers": {
+    "p9i": {
+      "command": "python3",
+      "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
+      "env": {
+        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+      }
+    }
+  }
+}
+```
 
-### GitHub (опционально)
-- `get_issues` — получить issues
-- `create_issue` — создать issue
-- `search_code` — искать в коде
+### Environment Variables
+
+```bash
+export MCP_PROXY_URL=https://mcp.coderweb.ru/mcp
+export P9I_API_KEY=sk-p9i-codeshift-mcp.coderweb.ru
+```
+
+## K3s Deployment Architecture
+
+```
+Internet → Traefik (ingress) → p9i-p9i-xxx:8000 → PostgreSQL + Redis
+```
+
+Access via:
+- MCP: `https://mcp.coderweb.ru/mcp`
+- Health: `https://mcp.coderweb.ru/nginx-health`
+
+## Available MCP Tools
+
+### Core
+- `p9i` — Unified router
+- `run_prompt` / `run_prompt_chain` — Execute prompts
+- `list_prompts` / `get_prompt` — List/retrieve prompts
+
+### Project Management
+- `create_project` / `get_project` / `list_projects`
+- `adapt_to_project` — Auto-detect stack
+
+### Memory
+- `get_project_memory` / `save_project_memory`
+
+### Authentication
+- `generate_jwt_token` / `validate_jwt_token` / `revoke_jwt_token`
+- `create_api_key` / `list_api_keys` / `revoke_api_key`
+
+### Design
+- `generate_tailwind` / `generate_shadcn` / `generate_textual`
 
 ## Troubleshooting
 
-### MCP не подключается
-```bash
-# Проверить статус
-docker ps | grep p9i
+### "Session not found" error
+This is normal on first request. The proxy handles session creation automatically.
 
-# Перезапустить
-docker compose restart mcp-server
+### Connection refused
+Check that the MCP server is running:
+```bash
+kubectl get pods -n p9i
+kubectl logs -n p9i deployment/p9i --tail=50
 ```
 
-### Конфликт портов
+### Check K3s Status
 ```bash
-# Изменить порт в docker-compose.yml
-ports:
-  - "8001:8000"
+make status   # kubectl get all -n p9i
+make watch    # kubectl logs -n p9i -f
 ```

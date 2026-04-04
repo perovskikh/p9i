@@ -1,0 +1,33 @@
+{
+  "name": "project-pack",
+  "version": "1.0.0",
+  "description": "Multi-project SaaS management - create projects, manage API keys, connect remote projects via SFTP",
+  "author": "p9i team",
+  "tags": ["project", "saas", "multi-tenant", "sftp", "api-keys"],
+  "triggers": [
+    "создай проект",
+    "подключи проект",
+    "управление проектами",
+    "api ключи проекта",
+    "connect project",
+    "create project"
+  ],
+  "prompts": [
+    {
+      "name": "promt-project-create",
+      "description": "Create a new project with SFTP configuration"
+    },
+    {
+      "name": "promt-project-connect",
+      "description": "Connect to an existing project via SFTP"
+    },
+    {
+      "name": "promt-project-api-keys",
+      "description": "Manage API keys for a project"
+    }
+  ],
+  "requires": {
+    "p9i_version": ">=1.0.0",
+    "features": ["database", "sftp"]
+  }
+}

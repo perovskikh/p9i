@@ -15,13 +15,9 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from src.services.explorer_service import get_explorer_service, ExplorerService
+from src.services.explorer_cache import hash_query
 
 logger = logging.getLogger(__name__)
-
-
-def _hash_query(query: str) -> str:
-    """Create short hash of query for cache key."""
-    return hashlib.md5(query.encode()).hexdigest()[:16]
 
 
 class ExplorerTools:
@@ -65,7 +61,7 @@ class ExplorerTools:
             - count: Number of results
         """
         # Use hash for cache key
-        cache_key = _hash_query(f"{query}:{file_pattern}")
+        cache_key = hash_query(f"{query}:{file_pattern}")
 
         # Get from cache if available
         cached = await self.service.cache.get_search_result(

@@ -213,14 +213,11 @@ class JWTService:
         except ExpiredSignatureError:
             logger.warning("Token expired")
             return None
-        except (JWTClaimsError, Exception) as e:
-            if isinstance(e, JWTClaimsError):
-                logger.warning(f"Invalid claims: {e}")
-            else:
-                logger.warning(f"JWT claims error: {e}")
-            return None
         except JWSSignatureError:
             logger.warning("Invalid token signature")
+            return None
+        except JWTClaimsError as e:
+            logger.warning(f"Invalid claims: {e}")
             return None
         except JWTError as e:
             logger.error(f"JWT error: {e}")
@@ -241,8 +238,13 @@ class JWTService:
             )
             exp = payload.get("exp", 0)
             ttl = max(0, exp - int(time.time()))
-        except Exception:
-            ttl = self.default_expiry
+        except JWTError:
+            # Reject malformed/tampered tokens - don't revoke
+            logger.warning(f"Cannot revoke invalid token: {token[:20]}...")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error revoking token: {e}")
+            return False
 
         self._revoke_token(token, ttl)
         return True

@@ -19,13 +19,9 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.services.reviewer_cache import get_reviewer_cache_manager, ReviewerCacheManager
+from src.services.explorer_cache import hash_query
 
 logger = logging.getLogger(__name__)
-
-
-def _hash_query(query: str) -> str:
-    """Create short hash of query for cache key."""
-    return hashlib.md5(query.encode()).hexdigest()[:16]
 
 
 # Common vulnerability patterns for security scanning
@@ -124,7 +120,7 @@ class ReviewerTools:
 
         # Build cache key
         cache_key = f"{self.project_path}:diff:{scope}:{file_path or ''}"
-        query_hash = _hash_query(cache_key)
+        query_hash = hash_query(cache_key)
 
         # Check Redis cache (diff changes frequently, short TTL)
         if self._cache and self._cache.redis:
@@ -216,7 +212,7 @@ class ReviewerTools:
 
         # Build cache key
         cache_key = f"{self.project_path}:search:{query}:{file_pattern}"
-        query_hash = _hash_query(cache_key)
+        query_hash = hash_query(cache_key)
 
         # Check Redis cache
         if self._cache and self._cache.redis:
@@ -610,7 +606,7 @@ class ReviewerTools:
 
         # Build cache key
         cache_key = f"{self.project_path}:reuse:{symbol_name}"
-        query_hash = _hash_query(cache_key)
+        query_hash = hash_query(cache_key)
 
         # Check Redis cache (reuse analysis uses search TTL)
         if self._cache and self._cache.redis:

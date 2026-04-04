@@ -17,6 +17,10 @@ spec:
     spec:
       serviceAccountName: {{ include "p9i.fullname" . }}
       automountServiceAccountToken: false
+      tolerations:
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
       containers:
         - name: p9i
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -87,6 +91,8 @@ spec:
               value: {{ .Values.env.TUI_THEME | quote }}
             - name: MCP_TRANSPORT
               value: {{ .Values.env.MCP_TRANSPORT | default "streamable-http" | quote }}
+            - name: GITHUB_TOKEN
+              value: {{ .Values.env.GITHUB_TOKEN | quote }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           livenessProbe:

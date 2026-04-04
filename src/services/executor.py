@@ -9,6 +9,7 @@ from typing import Optional
 import logging
 
 from .llm_client import get_llm_client, LLMClient
+from src.domain.services.prompt_guard import sanitize_dict
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,9 @@ class PromptExecutor:
             If stream=True, returns dict with 'stream' containing async generator
         """
         logger.info(f"[EXECUTOR] Starting execution: model={self.model}, stream={stream}, input_keys={list(input_data.keys())}")
+
+        # Sanitize input_data to prevent prompt injection
+        input_data = sanitize_dict(input_data)
 
         # Substitute variables in prompt template before parsing
         prompt_content = self._substitute_vars(prompt_content, input_data)

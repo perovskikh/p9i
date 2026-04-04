@@ -7,13 +7,15 @@ This service ensures:
 2. No duplicate keywords in routing
 3. No duplicate agents referencing same prompts
 4. Suggestions for existing functionality
+5. Prompt injection sanitization
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass
 import json
 import logging
+import re
 
 from src.domain.exceptions import DuplicatePromptError, DuplicateKeywordError, DuplicateAgentError
 
@@ -21,6 +23,99 @@ logger = logging.getLogger(__name__)
 
 # Base directory for prompts
 PROMPTS_DIR = Path("./prompts")
+
+# Dangerous patterns for prompt injection
+INJECTION_PATTERNS = [
+    r'\{\{',  # Template injection: {{
+    r'\}\}',  # Template injection: }}
+    r'\$\{',  # Shell-like variable: ${
+    r'\$\(',  # Command substitution: $(
+    r'`',     # Backticks for command substitution
+    r'\{',    # Single brace (part of template)
+    r'\}',    # Single brace (part of template)
+    r'\\n',   # Newline injection
+    r'<script',  # XSS
+    r'</script>',  # XSS
+]
+
+# Compiled regex for performance
+_INJECTION_REGEX = re.compile('|'.join(INJECTION_PATTERNS), re.IGNORECASE)
+
+
+def sanitize_for_prompt(value: Any) -> str:
+    """
+    Sanitize user input to prevent prompt injection.
+
+    Removes dangerous patterns that could be used for:
+    - Template injection ({{, }})
+    - Shell injection (${, $(, `)
+    - XSS attacks (<script>)
+    - Newline injection
+
+    Args:
+        value: Any input value to sanitize
+
+    Returns:
+        Sanitized string safe for use in prompts
+
+    Examples:
+        >>> sanitize_for_prompt("normal text")
+        'normal text'
+        >>> sanitize_for_prompt("{{variable}}")
+        'variable'
+        >>> sanitize_for_prompt("$(whoami)")
+        ''
+    """
+    if value is None:
+        return ""
+
+    if not isinstance(value, str):
+        value = str(value)
+
+    # Remove dangerous patterns
+    sanitized = _INJECTION_REGEX.sub('', value)
+
+    # Strip and limit length (prevent DoS via huge inputs)
+    sanitized = sanitized.strip()[:2000]
+
+    # Log if we sanitized something
+    if sanitized != value:
+        logger.warning(f"Prompt injection attempt detected and sanitized: {value[:50]}...")
+
+    return sanitized
+
+
+def sanitize_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Sanitize all string values in a dictionary.
+
+    Args:
+        data: Dictionary with values to sanitize
+
+    Returns:
+        New dictionary with sanitized string values
+    """
+    return {k: sanitize_for_prompt(v) for k, v in data.items()}
+
+
+def check_for_injection(value: Any) -> bool:
+    """
+    Check if value contains potential prompt injection patterns.
+
+    Args:
+        value: Value to check
+
+    Returns:
+        True if injection patterns detected, False otherwise
+    """
+    if value is None:
+        return False
+
+    if not isinstance(value, str):
+        value = str(value)
+
+    return bool(_INJECTION_REGEX.search(value))
+
 
 
 @dataclass

@@ -12,7 +12,10 @@ Now uses Clean Architecture:
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 
 from src.services.executor import PromptExecutor
 from src.services.checkpoint_executor import get_checkpoint_executor, CheckpointExecutor
@@ -82,6 +85,30 @@ def load_prompt(prompt_name: str) -> str:
     return ""
 
 
+class WorkerStatus(Enum):
+    """Worker lifecycle status."""
+    PENDING = "pending"
+    RUNNING = "running"
+    WAITING = "waiting"  # Waiting for more input
+    STOPPED = "stopped"
+    ABORTED = "aborted"
+
+
+@dataclass
+class WorkerState:
+    """State of a worker agent."""
+    worker_id: str
+    team_name: str
+    agent_type: str
+    directive: str
+    status: WorkerStatus = WorkerStatus.PENDING
+    session_id: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.now)
+    last_active: datetime = field(default_factory=datetime.now)
+    messages: List[Dict[str, str]] = field(default_factory=list)  # inbox messages
+    context: Dict[str, Any] = field(default_factory=dict)
+
+
 class AgentOrchestrator:
     """
     Central router (Natural Language) for multi-agent system.
@@ -95,6 +122,8 @@ class AgentOrchestrator:
         self.memory: Dict[str, Any] = {}
         self._checkpoint_executor: Optional[CheckpointExecutor] = None
         self._use_checkpoint = use_checkpoint
+        # Worker state tracking for coordinator pattern
+        self._workers: Dict[str, WorkerState] = {}
 
     def _detect_agents(self, request: str, intent_agent: Optional[str] = None) -> list[str]:
         """Detect which agents are needed based on request.
@@ -341,6 +370,235 @@ class AgentOrchestrator:
 
         return processed_results
 
+    # ==========================================
+    # COORDINATOR PATTERN: Worker Lifecycle
+    # ==========================================
+
+    async def spawn_worker(
+        self,
+        team_name: str,
+        directive: str,
+        agent_type: str = "worker",
+    ) -> Dict[str, Any]:
+        """
+        Spawn a persistent worker agent with directive.
+
+        Claude Code pattern: creates a worker that can be continued
+        with additional messages, simulating sub-agent behavior.
+
+        Args:
+            team_name: Name of the team (for grouping workers)
+            directive: Task description for the worker
+            agent_type: Type of agent to spawn (default: "worker")
+
+        Returns:
+            Dict with worker_id, team_name, status
+        """
+        import uuid
+        from datetime import datetime
+
+        worker_id = str(uuid.uuid4())[:8]
+
+        # Create worker state
+        worker = WorkerState(
+            worker_id=worker_id,
+            team_name=team_name,
+            agent_type=agent_type,
+            directive=directive,
+            status=WorkerStatus.RUNNING,
+            session_id=str(uuid.uuid4()),
+            created_at=datetime.now(),
+            last_active=datetime.now(),
+        )
+
+        self._workers[worker_id] = worker
+
+        # Execute the worker with its directive
+        try:
+            result = await self.execute_agent(
+                agent_name=agent_type if agent_type != "worker" else "developer",
+                request=directive,
+            )
+
+            # Update worker state
+            worker.last_active = datetime.now()
+            worker.status = WorkerStatus.WAITING
+
+            return {
+                "worker_id": worker_id,
+                "team_name": team_name,
+                "status": "spawned",
+                "agent": result.agent if hasattr(result, 'agent') else agent_type,
+                "output": result.output if hasattr(result, 'output') else str(result),
+            }
+        except Exception as e:
+            worker.status = WorkerStatus.STOPPED
+            logger.error(f"Worker {worker_id} spawn failed: {e}")
+            return {
+                "worker_id": worker_id,
+                "team_name": team_name,
+                "status": "error",
+                "error": str(e),
+            }
+
+    async def continue_worker(
+        self,
+        worker_id: str,
+        message: str,
+    ) -> Dict[str, Any]:
+        """
+        Send message to worker and get response.
+
+        Workers maintain context between calls, enabling
+        multi-turn conversations with persistent state.
+
+        Args:
+            worker_id: ID of worker to continue
+            message: Message to send to worker
+
+        Returns:
+            Dict with worker_id, response, status
+        """
+        from datetime import datetime
+
+        worker = self._workers.get(worker_id)
+        if not worker:
+            return {"error": f"Worker {worker_id} not found", "worker_id": worker_id}
+
+        # Append message to inbox
+        worker.messages.append({"role": "user", "content": message})
+        worker.status = WorkerStatus.RUNNING
+        worker.last_active = datetime.now()
+
+        try:
+            # Continue execution - build context from previous messages
+            context = worker.context.copy() if worker.context else {}
+            context["worker_messages"] = worker.messages[:-1]  # Exclude current message
+
+            result = await self.execute_agent(
+                agent_name=worker.agent_type,
+                request=message,
+                context=context,
+            )
+
+            # Store response in inbox
+            worker.messages.append({"role": "assistant", "content": result.output if hasattr(result, 'output') else str(result)})
+            worker.last_active = datetime.now()
+            worker.status = WorkerStatus.WAITING
+
+            return {
+                "worker_id": worker_id,
+                "response": result.output if hasattr(result, 'output') else str(result),
+                "status": "success",
+            }
+        except Exception as e:
+            worker.status = WorkerStatus.STOPPED
+            logger.error(f"Worker {worker_id} continue failed: {e}")
+            return {
+                "worker_id": worker_id,
+                "status": "error",
+                "error": str(e),
+            }
+
+    async def abort_worker(self, worker_id: str) -> Dict[str, Any]:
+        """
+        Gracefully terminate a worker.
+
+        Args:
+            worker_id: ID of worker to abort
+
+        Returns:
+            Dict with success status
+        """
+        worker = self._workers.get(worker_id)
+        if not worker:
+            return {"error": f"Worker {worker_id} not found", "worker_id": worker_id}
+
+        worker.status = WorkerStatus.ABORTED
+        del self._workers[worker_id]
+
+        logger.info(f"Worker {worker_id} aborted")
+        return {
+            "worker_id": worker_id,
+            "status": "aborted",
+            "success": True,
+        }
+
+    async def create_team(self, team_name: str, description: str = None) -> Dict[str, Any]:
+        """
+        Create a team for coordinator pattern.
+
+        Teams group related workers together.
+
+        Args:
+            team_name: Name of the team
+            description: Optional team description
+
+        Returns:
+            Dict with team_name, worker_ids
+        """
+        team_workers = [
+            w.worker_id for w in self._workers.values()
+            if w.team_name == team_name
+        ]
+        return {
+            "team_name": team_name,
+            "description": description,
+            "worker_ids": team_workers,
+            "status": "created",
+        }
+
+    async def delete_team(self, team_name: str) -> Dict[str, Any]:
+        """
+        Clean up team and all its workers.
+
+        Args:
+            team_name: Name of team to delete
+
+        Returns:
+            Dict with cleanup status
+        """
+        workers_to_delete = [
+            w.worker_id for w in self._workers.values()
+            if w.team_name == team_name
+        ]
+
+        for worker_id in workers_to_delete:
+            del self._workers[worker_id]
+
+        logger.info(f"Team {team_name} deleted, {len(workers_to_delete)} workers cleaned up")
+        return {
+            "team_name": team_name,
+            "workers_deleted": len(workers_to_delete),
+            "status": "deleted",
+        }
+
+    def list_workers(self, team_name: str = None) -> List[Dict[str, Any]]:
+        """
+        List workers, optionally filtered by team.
+
+        Args:
+            team_name: Optional team name to filter by
+
+        Returns:
+            List of worker info dicts
+        """
+        workers = self._workers.values()
+        if team_name:
+            workers = [w for w in workers if w.team_name == team_name]
+
+        return [
+            {
+                "worker_id": w.worker_id,
+                "team_name": w.team_name,
+                "agent_type": w.agent_type,
+                "status": w.status.value,
+                "created_at": w.created_at.isoformat(),
+                "last_active": w.last_active.isoformat(),
+            }
+            for w in workers
+        ]
+
     async def route(self, request: str) -> Dict[str, Any]:
         """
         Main routing method - Natural Language interface.
@@ -354,21 +612,29 @@ class AgentOrchestrator:
 
         results = []
 
-        # Execute each agent sequentially
-        for agent_name in needed_agents:
-            result = await self.execute_agent(agent_name, request)
-            logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")
-            results.append({
-                "agent": result.agent,
-                "status": result.status,
-                "output": result.output,
-                "error": result.error,
-                "metadata": result.metadata
-            })
+        # Execute agents - parallel if multiple, sequential if single
+        if len(needed_agents) > 1:
+            # Parallel execution for multiple independent agents (Claude Code pattern)
+            agent_requests = [(agent, request) for agent in needed_agents]
+            results = await self.execute_parallel_agents(agent_requests)
+            for r in results:
+                logger.info(f"Agent {r['agent']} result: status={r['status']}, output_len={len(r['output']) if r['output'] else 0}")
+        else:
+            # Single agent - direct sequential execution
+            for agent_name in needed_agents:
+                result = await self.execute_agent(agent_name, request)
+                logger.info(f"Agent {agent_name} result: status={result.status}, output_len={len(result.output) if result.output else 0}")
+                results.append({
+                    "agent": result.agent,
+                    "status": result.status,
+                    "output": result.output,
+                    "error": result.error,
+                    "metadata": result.metadata
+                })
 
-            # If agent failed, stop the chain
-            if result.status == "error":
-                break
+                # If agent failed, stop the chain
+                if result.status == "error":
+                    break
 
         # Compile final response
         all_outputs = [r["output"] for r in results if r["output"]]

@@ -1,4 +1,4 @@
-# ADR-014: Fix Critical Failover and JWT Validation Issues
+# ADR-021: Fix Critical Failover and JWT Validation Issues
 
 ## Status
 **Proposed** | 2026-04-01

@@ -518,7 +518,5 @@ class ExplorerFileIndexer:
             return f"Error reading file: {e}"
 
 
-# Helper function for quick hashing
-def hash_query(query: str) -> str:
-    """Create hash of search query for cache key."""
-    return hashlib.md5(query.encode()).hexdigest()[:16]
+# Helper function for quick hashing (imported from explorer_cache)
+from src.services.explorer_cache import hash_query

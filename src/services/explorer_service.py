@@ -151,9 +151,51 @@ class ExplorerService:
             logger.info(f"Search cache hit for '{query}'")
             return cached
 
-        # Execute search via indexer (simplified - uses grep in real implementation)
-        # For now, return empty list as actual grep is done by agent
-        return []
+        # Ensure index is built
+        await self.ensure_index()
+
+        # Search through indexed files
+        results = []
+        search_lower = query.lower()
+
+        # Normalize file pattern for matching (e.g., "*.py" -> "py")
+        pattern_parts = file_pattern.replace("*", "").split(".")
+
+        for indexed_file in self.indexer._cache.values():
+            # Check if file matches pattern
+            file_path_lower = indexed_file.relative_path.lower()
+            if not any(fp in file_path_lower for fp in pattern_parts if fp):
+                continue
+
+            # Search in symbols
+            for symbol in indexed_file.symbols:
+                symbol_name_lower = symbol.get("name", "").lower()
+                if search_lower in symbol_name_lower:
+                    results.append({
+                        "file": indexed_file.relative_path,
+                        "line": symbol.get("line", 0),
+                        "type": symbol.get("type", "unknown"),
+                        "name": symbol.get("name", ""),
+                        "context": f"{symbol.get('type', 'unknown')} {symbol.get('name', '')}"
+                    })
+
+            # Search in imports
+            for imp in indexed_file.imports:
+                if search_lower in imp.lower():
+                    results.append({
+                        "file": indexed_file.relative_path,
+                        "line": 0,
+                        "type": "import",
+                        "name": imp,
+                        "context": f"import {imp}"
+                    })
+
+        # Cache results
+        if results:
+            await self.cache.set_search_result(str(self.project_path), cache_key, results)
+            logger.info(f"Search '{query}' found {len(results)} results")
+
+        return results
 
     async def get_call_graph(self, entry_point: str, max_depth: int = 5) -> Dict[str, Any]:
         """

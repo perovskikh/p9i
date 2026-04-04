@@ -134,63 +134,11 @@ AGENTS = {
 }
 
 
-# Keywords for agent detection (in priority order)
-# More specific patterns FIRST
-AGENT_KEYWORDS = {
-    "explorer": [
-        # Russian - MVP
-        "как работает", "как работают", "структура", "связи", "зависимости",
-        "вызовы", "вызов", "модуль", "файлы", "найди все", "найди где",
-        "трассируй", "покажи структуру", "архитектура кода",
-        "что делает", "где находится", "найди файл", "навигац",
-        "верифицируй", "верификация",
-        # English - MVP
-        "explore", "trace", "dependencies", "structure", "связи",
-        "find all", "where is", "how does", "call chain", "entry point",
-        "architectur", "module", "files", "verify", "verification",
-        # Russian - Extended
-        "глубокий поиск", "проиндексируй", "переиндексируй",
-        "построить граф", "анализ связей", "что зависит от", "затронет",
-        "impact analysis", "call graph", "dependency graph",
-        # English - Extended
-        "reindex", "refresh index", "deep search", "analyze module",
-        # Analysis & Study (NEW)
-        "изучи", "анализ", "анализируй", "проанализируй",
-        "консолидируй", "консолидация", "объедини adr",
-        "analyze", "analysis", "study", "consolidate", "consolidation",
-        # ADR-specific - use architect (has higher priority)
-        # "adr", "архитектурное решение",
-    ],
-    "migration": ["мигрируй", "миграц", "migrat", "переход", "migrate", "от old", "на domain", "миграция"],
-    # Full cycle keywords - активируют полный цикл с арбитражом
-    "full_cycle": ["реализуй", "внедри", "сделай", "e2e", "полный цикл", "end-to-end", "implement", "build"],
-    "architect": ["спроектируй", "архитектура", "adr", "design", "architect", "проектирование"],
-    "reviewer": [
-        # Claude Code simplify.ts patterns
-        "simplify", "simplify code", "code review", "review changes",
-        # Verification patterns
-        "verify", "верифицируй", "verification", "adversarial", "тестирование",
-        # Quality patterns
-        "quality", "efficiency", "efficiency review", "performance",
-        # Reuse patterns
-        "reuse", "refactor", "рефакторинг", "улучши код",
-        # Existing Russian patterns
-        "проверь", "исправь", "приведи", "исправить", "привести", "фикс", "fix",
-        "ревью", "аудит", "тест", "review", "check", "audit", "test",
-        "standard", "standards",
-    ],
-    "developer": ["создай", "добавь", "напиши", "код", "feature", "create", "add", "code"],
-    "designer": [
-        # English
-        "ui", "ux", "design", "button", "card", "component",
-        "color", "palette", "typography", "font", "icon",
-        "layout", "responsive", "accessibility", "a11y",
-        # Russian
-        "дизайн", "интерфейс", "компонент", "кнопка", "карточка",
-        "цвет", "палитра", "шрифт", "иконка", "верстка",
-    ],
-    "devops": ["ci", "cd", "deploy", "docker", "kubernetes", "pipeline", "деплой"]
-}
+
+# Import keywords from unified source (eliminates duplication with p9i_router.py)
+from src.application.keywords import AGENT_KEYWORDS, PROMPT_KEYWORDS
+
+
 
 
 # Prompt keywords for selection

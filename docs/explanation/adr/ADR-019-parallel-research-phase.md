@@ -183,5 +183,5 @@ After receiving all explorer results:
 ## Related ADRs
 
 - ADR-001: Initial Architect Agent Design
-- ADR-015: Explorer Agent Architecture
+- ADR-016: Code Explorer Agent
 - ADR-018: Multi-Agent Orchestration Patterns

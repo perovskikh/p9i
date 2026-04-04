@@ -428,7 +428,8 @@ class LLMClient:
                         # Continue to next provider
                         continue
                     except (ValueError, IndexError):
-                        pass
+                        # Provider not in list or last one - continue to next iteration
+                        continue
 
             # Return successful result
             return result

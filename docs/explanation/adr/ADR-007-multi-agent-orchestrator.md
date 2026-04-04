@@ -18,11 +18,15 @@ We will implement a multi-agent orchestration system with:
 
 | Agent | Prompts | Function |
 |-------|---------|----------|
+| **p9i** | p9i (unified router) | Intent detection, routing |
 | **Architect** | promt-architect-design, create_adr, promt-architect-review | System design, ADRs |
 | **Developer** | promt-feature-add, promt-bug-fix, promt-refactoring | Code generation |
 | **Reviewer** | promt-llm-review, promt-security-audit, promt-quality-test | Code review, security |
 | **Designer** | promt-ui-generator, generate_tailwind, generate_shadcn | UI/UX generation |
 | **DevOps** | promt-ci-cd-pipeline, promt-onboarding | CI/CD, deployment |
+| **Explorer** | promt-explorer-mvp, promt-explorer-extended | Deep code analysis |
+| **Migration** | promt-migration-* | System migration |
+| **full_cycle** | — | Complete pipeline (idea→impl→test→docs) |
 
 ### Architecture
 

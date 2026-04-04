@@ -1,0 +1,23 @@
+{
+  "name": "browser-pack",
+  "version": "1.0.0",
+  "description": "Browser automation pack using Playwright - E2E testing, web scraping, and UI automation",
+  "tier": 3,
+  "author": "9Mirrors-Lab",
+  "mcp_requires": ["playwright-mcp"],
+  "prompts": [
+    "promt-browser-e2e-test.md",
+    "promt-browser-screenshot.md",
+    "promt-browser-scrape.md",
+    "promt-browser-form-fill.md"
+  ],
+  "triggers": {
+    "e2e, end-to-end, playwright, test, testing": "promt-browser-e2e-test.md",
+    "screenshot, capture, screen": "promt-browser-screenshot.md",
+    "scrape, crawl, extract": "promt-browser-scrape.md",
+    "form, fill, input, automate": "promt-browser-form-fill.md"
+  },
+  "dependencies": [],
+  "tags": ["browser", "playwright", "e2e", "testing", "automation", "web", "scrape"],
+  "created_at": "2026-04-03"
+}

@@ -1,44 +1,42 @@
-# Pack Loader for AI Prompt System
+# Plugin Packs
 
 **Version:** 1.0
-**Date:** 2026-03-31
-**Purpose:** Plugin pack management for AI Prompt System.
+**Date:** 2026-04-03
 
-The PackLoader manages plugin packs in the AI Prompt System.
+Plugin packs extend p9i with specialized prompts for different domains.
+
+## Available Packs
+
+| Pack | Description | Triggers |
+|------|-------------|----------|
+| `k8s-pack` | Kubernetes operations | deploy, k8s, pod, helm |
+| `ci-cd-pack` | CI/CD pipelines | github, actions, ci, cd |
+| `github-pack` | GitHub integration | issues, pr, repo |
+| `uiux-pack` | Design System | tailwind, shadcn, colors |
+| `browser-pack` | Browser automation | browser, playwright |
+| `pinescript-v6` | TradingView scripts | pinescript, tradingview |
+| `project-pack` | Project management | project, memory |
 
 ## Structure
 
 ```
 prompts/packs/
-├── pack.schema.json      # JSON Schema for pack validation
+├── pack.schema.json       # JSON Schema for validation
 ├── k8s-pack/
-│   ├── pack.json        # Pack manifest
-│   └── *.md             # Pack prompts
-└── ci-cd-pack/
-    ├── pack.json
-    └── *.md
-```
-
-## Usage
-
-```python
-from src.storage.packs import PackLoader
-
-loader = PackLoader()
-
-# List all packs
-packs = loader.list_packs()
-
-# Load pack by name
-k8s_pack = loader.load_pack("k8s-pack")
-
-# Find prompt by trigger
-prompt = loader.find_by_trigger("deploy to k8s")
+│   ├── pack.json
+│   └── promt-k8s-*.md
+├── ci-cd-pack/
+│   ├── pack.json
+│   └── promt-ci-*.md
+├── github-pack/
+│   ├── pack.json
+│   └── promt-github-*.md
+└── ...
 ```
 
 ## Pack Manifest
 
-Each pack must have `pack.json`:
+Each pack has `pack.json`:
 
 ```json
 {
@@ -51,3 +49,7 @@ Each pack must have `pack.json`:
   }
 }
 ```
+
+## Usage
+
+Packs are automatically loaded when triggers match user requests.

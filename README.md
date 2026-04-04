@@ -1,6 +1,6 @@
 # p9i — AI Prompt System
 
-> **p9i** (p=prompt, 9=#, i=index) — MCP-сервер для управления AI-промтами через полный жизненный цикл: от идеи до production-реализации. 18+ MCP инструментов для выполнения, связывания и версионирования промтов.
+> **p9i** (p=prompt, 9=#, i=index) — MCP-сервер для управления AI-промтами через полный жизненный цикл: от идеи до production-реализации.
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.1+-green.svg)](https://github.com/jlowin/fastmcp)
@@ -8,38 +8,19 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![Multi-Agent](https://img.shields.io/badge/Agents-7-orange.svg)](#multi-agent-orchestrator)
 
-## О проекте
-
-p9i — это MCP (Model Context Protocol) сервер для управления AI-промтами через полный жизненный цикл: от идеи до production-реализации. Система включает 18+ MCP инструментов для выполнения промтов, их связывания, версионирования, JWT-аутентификации и управления памятью проекта.
-
-## Содержание
-
-- [Возможности](#возможности)
-- [Быстрый старт](#быстрый-старт)
-- [Установка](#установка)
-- [Настройка разработки](#настройка-разработки)
-- [Использование](#использование)
-- [Конфигурация](#конфигурация)
-- [MCP Инструменты](#mcp-инструменты)
-- [Архитектура](#архитектура)
-- [Деплой](#деплой)
-- [Тестирование](#тестирование)
-- [Лицензия](#лицензия)
-
 ## Возможности
 
 | Возможность | Описание |
 |-------------|----------|
-| **Prompt Factory** | Генерация промтов из любой идеи через 7-этапную цепочку |
+| **Prompt Factory** | Генерация промтов через 7-этапную цепочку |
 | **Self-Verification** | Автоматическая проверка качества промтов |
 | **Versioning** | PostgreSQL для хранения версий и rollback |
-| **Baseline Verification** | SHA256 контроль целостности промтов |
-| **JWT Auth** | Токены с refresh mechanism + Redis persistence |
-| **Tier-based RBAC** | Роли: admin, developer, user, guest |
-| **Multi-Agent Orchestrator** | 7 AI агентов с интеллектуальной маршрутизацией |
-| **Browser Integration** | Playwright для автоматизации браузера |
-| **Deduplication Guard** | Защита от дублирования промтов и ключевых слов |
-| **Web Dashboard** | Мониторинг и управление через браузер |
+| **JWT Auth** | Токены с refresh + Redis persistence |
+| **RBAC** | Роли: admin, developer, user, guest |
+| **Multi-Agent** | 7 AI агентов с интеллектуальной маршрутизацией |
+| **Browser** | Playwright для автоматизации браузера |
+| **Deduplication** | Защита от дублирования промтов |
+| **UI Generation** | Tailwind, shadcn/ui, Tauri |
 
 ## Быстрый старт
 
@@ -50,155 +31,45 @@ cd p9i
 
 # Создай конфигурацию
 cp .env.example .env
-# Добавь API ключи в .env (MINIMAX_API_KEY, ZAI_API_KEY и т.д.)
+# Добавь API ключи в .env
 
-# Запусти сервер (рекомендуется)
+# Docker (рекомендуется)
 docker compose up -d
 
-# Или через Makefile
-make dev
+# K3s Production
+make deploy
 ```
 
-## Установка
-
-### Docker (рекомендуется)
+## Команды Makefile
 
 ```bash
-# Сборка образа
-docker build -f docker/Dockerfile -t p9i .
-
-# Запуск с Web UI + MCP (port 8000 + 8080)
-docker run --rm -d -p 8000:8000 -p 8080:8080 \
-  -v $PWD/.env:/app/.env \
-  p9i
+make dev        # docker compose up (локальная разработка)
+make deploy     # build-push + helm upgrade (K3s)
+make watch      # kubectl logs -f
+make status     # kubectl get all -n p9i
+make scale REPLICAS=5
 ```
 
-### Локальная разработка
-
-```bash
-# Установка зависимостей
-pip install -e .
-
-# Запуск сервера
-MCP_TRANSPORT=streamable-http python -m src.api.server
-```
-
-### K3s (Production)
-
-```bash
-# Через Makefile (рекомендуется)
-make deploy          # build-push + helm upgrade
-make k3s-logs       # посмотреть логи
-make k3s-restart     # перезапустить pod
-make scale REPLICAS=3  # масштабировать
-```
-
-## Настройка разработки
-
-### Pre-commit Hooks
-
-Проект использует pre-commit хуки для автоматической валидации ADR файлов при коммите.
-
-```bash
-# Установить pre-commit
-pip install -r .pre-commit-requirements.txt
-
-# Активировать хуки
-pre-commit install --install-hooks
-
-# Запустить вручную
-pre-commit run --all-files
-```
-
-**Валидация ADR:** hook проверяет формат именования (ADR-NNN-title.md), уникальность номеров и тем.
-
-### Запуск без хуков (не рекомендуется)
-
-```bash
-git commit --no-verify -m "message"
-```
-
-## Использование
-
-### Claude Code
+## Claude Code Integration
 
 ```json
 {
   "mcpServers": {
     "p9i": {
-      "type": "http",
-      "url": "http://mcp.coderweb.ru/mcp",
-      "headers": { "X-API-Key": "sk-p9i-codeshift-mcp.coderweb.ru" }
+      "command": "python3",
+      "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
+      "env": {
+        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+      }
     }
   }
 }
 ```
 
-### p9i Prefix Commands
-
-p9i supports the `p9i ` prefix for explicit routing:
-
-| Command | Description |
-|---------|-------------|
-| `p9i /help` | Show help |
-| `p9i /status` | Check status |
-| `p9i создай функцию` | Generate code |
-| `p9i спроектируй архитектуру` | Design architecture |
-| `p9i проверь код` | Code review |
-
-### Команды
-
-| Команда | Описание |
-|---------|----------|
-| `init p9i` | Адаптировать к проекту |
-| `создай функцию` | Сгенерировать код |
-| `проверь код` | Code review |
-| `приведи к стандарту` | Привести к стандартам |
-| `миграция` | Запустить миграцию |
-| `deploy` | Деплой в K8s |
-
-### HTTP API
-
-```bash
-curl -X POST http://localhost:8000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -H "X-API-Key: sk-p9i-codeshift-dev" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"p9i","arguments":{"request":"создай функцию"}}}'
-```
-
-## Конфигурация
-
-Скопируйте `.env.example` в `.env` и настройте:
-
-```bash
-# Primary Provider
-LLM_PROVIDER=auto
-
-# API Keys
-MINIMAX_API_KEY=sk-xxx
-ZAI_API_KEY=xxx
-
-# Database
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-
-# Redis
-REDIS_HOST=redis
-REDIS_PORT=6379
-
-# JWT
-JWT_SECRET=your-secret
-JWT_ENABLED=true
-
-# API Key
-P9I_API_KEY=sk-p9i-your-key
-```
-
 ## MCP Инструменты
 
-### Основные
-
+### Core
 | Инструмент | Назначение |
 |------------|------------|
 | `p9i` | Unified router — естественноязыковый интерфейс |
@@ -207,23 +78,35 @@ P9I_API_KEY=sk-p9i-your-key
 | `list_prompts` | Список доступных промтов |
 | `get_prompt` | Получить промт по имени |
 
-### Управление памятью
+### Проекты
+| Инструмент | Назначение |
+|------------|------------|
+| `create_project` | Создать проект |
+| `get_project` | Получить проект |
+| `list_projects` | Список проектов |
+| `adapt_to_project` | Адаптировать к стеку проекта |
 
+### Память
 | Инструмент | Назначение |
 |------------|------------|
 | `get_project_memory` | Получить память проекта |
 | `save_project_memory` | Сохранить память проекта |
 
 ### Аутентификация
-
 | Инструмент | Назначение |
 |------------|------------|
 | `generate_jwt_token` | Сгенерировать JWT токен |
 | `validate_jwt_token` | Проверить JWT токен |
 | `revoke_jwt_token` | Отозвать JWT токен |
 
-### Генерация UI/UX
+### API Keys
+| Инструмент | Назначение |
+|------------|------------|
+| `create_api_key` | Создать API ключ |
+| `list_api_keys` | Список API ключей |
+| `revoke_api_key` | Отозвать API ключ |
 
+### UI/UX
 | Инструмент | Фреймворк |
 |------------|-----------|
 | `generate_tailwind` | TailwindCSS |
@@ -234,83 +117,88 @@ P9I_API_KEY=sk-p9i-your-key
 ## Архитектура
 
 ```
-p9i/
-├── src/
-│   ├── agents/               # p9i Agent (WebSocket client + shell)
-│   ├── api/                  # FastMCP сервер
-│   ├── application/          # Use cases, Agent routing
-│   ├── domain/               # Entities, Business rules
-│   ├── infrastructure/       # LLM adapters, External services
-│   ├── services/             # Business logic
-│   ├── storage/              # Data access layer
-│   └── middleware/           # JWT, RBAC
-├── prompts/                  # 85+ markdown промтов
-│   ├── core/                 # Baseline (SHA256 locked)
-│   ├── universal/            # 40+ agent prompts
-│   └── packs/                # Plugin packs (k8s, ci-cd)
-└── memory/                   # Project memory
+src/
+├── api/server.py          # FastMCP сервер (20+ tools)
+├── agents/                # WebSocket клиент
+├── application/           # Use cases, routing
+│   └── p9i_router.py     # Unified router
+├── domain/                # Entities, Business rules
+├── infrastructure/         # LLM adapters
+├── services/              # Business logic
+│   ├── executor.py        # Prompt execution
+│   ├── llm_client.py      # Multi-provider LLM
+│   └── orchestrator.py    # Multi-agent orchestration
+├── storage/               # Data access
+└── middleware/            # JWT, RBAC
 ```
 
 ### Multi-Agent Оркестрация
 
 | Agent | Назначение | Keywords |
 |-------|-----------|----------|
-| `p9i` | **Unified router** | Все запросы |
+| `p9i` | Unified router | Все запросы |
 | `architect` | Архитектура | архитектура, спроектируй |
 | `developer` | Код | создай, добавь, напиши |
 | `reviewer` | Ревью | проверь, приведи |
 | `designer` | UI/UX | дизайн, кнопка |
 | `devops` | CI/CD | deploy, k8s, ci-cd |
-| `migration` | Миграция | миграция, переход |
+| `explorer` | Анализ кода | как работает, explore |
 
-### Endpoints
+### LLM Провайдеры
+
+```
+minimax → glm-4-7 → hunter → deepseek → anthropic
+```
+
+Автоматический failover при ошибках (401, 403, 429, 500+).
+
+### Prompt Tiers
+
+1. `core/` — Baseline (SHA256 locked)
+2. `universal/` — Universal prompts
+3. `packs/` — Plugin packs (k8s, ci-cd, uiux)
+
+## Plugin Packs
+
+| Pack | Description | Triggers |
+|------|-------------|----------|
+| k8s-pack | Kubernetes | deploy, k8s, pod, helm |
+| ci-cd-pack | CI/CD | github, actions, ci, cd |
+| uiux-pack | Design | tailwind, shadcn |
+| github-pack | GitHub | issues, pr |
+
+## Конфигурация
+
+```bash
+# .env
+LLM_PROVIDER=auto
+MINIMAX_API_KEY=sk-xxx
+ZAI_API_KEY=xxx
+DATABASE_URL=postgresql+asyncpg://...
+REDIS_URL=redis://...
+JWT_SECRET=your-secret
+JWT_ENABLED=true
+P9I_API_KEY=sk-p9i-your-key
+```
+
+## Endpoints
 
 | Endpoint | Описание |
 |----------|----------|
 | `http://localhost:8000/mcp` | Local MCP |
-| `http://mcp.coderweb.ru/mcp` | External MCP (HTTP) |
-
-## Деплой
-
-### Makefile команды
-
-```bash
-make dev         # docker compose up (локальная разработка)
-make deploy      # build-push + helm upgrade (K3s)
-make watch       # kubectl logs -f
-make status      # kubectl get all -n p9i
-make scale REPLICAS=5
-make hpa
-make k3s-redeploy   # полный передеплой
-```
-
-### Helm (ручной)
-
-```bash
-helm upgrade --install p9i ./helm/p9i \
-  --namespace p9i \
-  --create-namespace \
-  --wait \
-  --timeout 15m
-```
+| `http://mcp.coderweb.ru/mcp` | External MCP |
 
 ## Тестирование
 
 ```bash
-# Все тесты
 pytest
-
-# specific
 pytest tests/test_storage.py
-
-# С покрытием
 pytest --cov=src
 ```
 
-## Лицензия
+## Документация
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-Built with FastMCP, PostgreSQL, Redis, and AI agents.
+- [CLAUDE.md](CLAUDE.md) — Claude Code интеграция
+- [MCP-CONFIG.md](docs/MCP-CONFIG.md) — MCP конфигурация
+- [docs/how-to/](docs/how-to/) — How-to гайды
+- [docs/explanation/adr/](docs/explanation/adr/) — Architecture Decision Records

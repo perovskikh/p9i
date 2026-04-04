@@ -7,6 +7,7 @@ and makes it available for JWT validation in MCP tools.
 """
 
 import logging
+from contextvars import ContextVar
 from typing import Callable
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -15,16 +16,15 @@ from starlette.responses import Response
 
 logger = logging.getLogger(__name__)
 
-# Module-level variable to store current request's auth header
-_current_authorization = None
+# Context variables for async-safe request-local storage
+_current_authorization: ContextVar[str | None] = ContextVar("current_authorization", default=None)
+_current_api_key: ContextVar[str | None] = ContextVar("current_api_key", default=None)
 
 
 class AuthHeaderMiddleware(BaseHTTPMiddleware):
     """Middleware to extract Authorization header from requests."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        global _current_authorization
-
         # Extract Authorization header
         auth_header = request.headers.get("authorization")
         api_key = request.headers.get("x-api-key")
@@ -34,8 +34,9 @@ class AuthHeaderMiddleware(BaseHTTPMiddleware):
             masked = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
             logger.info(f"Auth header detected: Bearer {masked}")
 
-        # Store in module-level variable for access by MCP tools
-        _current_authorization = auth_header
+        # Store in context variables for access by MCP tools
+        _current_authorization.set(auth_header)
+        _current_api_key.set(api_key)
 
         # Also store X-API-Key if present
         if api_key:
@@ -44,18 +45,14 @@ class AuthHeaderMiddleware(BaseHTTPMiddleware):
         # Continue to the actual request handler
         response = await call_next(request)
 
-        # Clear after request (not really needed for MCP, but good practice)
-        _current_authorization = None
-
         return response
 
 
-def get_current_auth_header() -> str:
+def get_current_auth_header() -> str | None:
     """Get Authorization header from current request context."""
-    return _current_authorization
+    return _current_authorization.get()
 
 
-def get_current_api_key() -> str:
+def get_current_api_key() -> str | None:
     """Get X-API-Key from current request context."""
-    # Would need to store this similarly - for now returning None
-    return None
+    return _current_api_key.get()

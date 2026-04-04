@@ -75,7 +75,7 @@ from src.middleware import (
     verify_baseline_on_startup,
     configure_baseline_verification
 )
-from src.middleware.auth_middleware import AuthHeaderMiddleware, get_current_auth_header
+from src.middleware.auth_middleware import AuthHeaderMiddleware, get_current_auth_header, get_current_api_key
 
 # Import distributed rate limiting
 from src.services.redis_rate_limiter import (
@@ -101,6 +101,15 @@ from src.domain.services.prompt_guard import get_prompt_guard
 
 # Import Reviewer tools
 from src.api.tools.reviewer_tools import get_reviewer_tools
+
+# Import Explorer tools
+from src.api.tools.explorer_tools import get_explorer_tools
+
+# Import extracted MCP tools (auth, memory, prompt, project, session)
+from src.api.tools import register_all_tools
+
+# Import Project Service
+from src.services.project_service import get_project_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -170,14 +179,18 @@ if JWT_ENABLED:
         if not JWT_ENABLED:
             return {"status": "error", "error": "JWT authentication is not enabled"}
 
-        # SECURITY: Require admin key for token generation
         jwt_admin_key = os.getenv("JWT_ADMIN_KEY")
-        if jwt_admin_key and admin_key != jwt_admin_key:
-            return {"status": "error", "error": "Invalid admin key"}
 
         # SECURITY: Prevent privilege escalation - only admin can create admin tokens
-        if role == "admin" and admin_key != jwt_admin_key:
-            return {"status": "error", "error": "Admin role requires valid admin key"}
+        if role == "admin":
+            if not jwt_admin_key:
+                return {"status": "error", "error": "JWT_ADMIN_KEY not configured on server"}
+            if admin_key != jwt_admin_key:
+                return {
+                    "status": "error",
+                    "error": "Invalid admin key",
+                    "hint": "Admin key must match JWT_ADMIN_KEY environment variable on server"
+                }
 
         try:
             token = _jwt_service.generate_token(
@@ -379,7 +392,9 @@ def validate_auth(api_key: str = None, jwt_token: str = None, auth_header: str =
                     "tier_access": payload.tier_access
                 }
 
-    # Check API key
+    # Check API key from parameter or header
+    if not api_key:
+        api_key = get_current_api_key()
     if api_key:
         # Will be validated by APIKeyManager later
         return True, {"type": "api_key", "key": api_key}
@@ -1190,6 +1205,131 @@ async def reviewer_reuse_analysis(
 
 
 # ==========================================
+# EXPLORER AGENT TOOLS
+# ==========================================
+
+@mcp.tool()
+async def explorer_search(query: str, file_pattern: str = "*.py", project_path: str = ".") -> dict:
+    """
+    Search code using cached index.
+
+    Args:
+        query: Search query (symbol name, keyword)
+        file_pattern: File pattern to search (default: *.py)
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with results list, cached flag, and count
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_search(query=query, file_pattern=file_pattern)
+    except Exception as e:
+        logger.error(f"explorer_search error: {e}")
+        return {"results": [], "cached": False, "count": 0, "error": str(e)}
+
+
+@mcp.tool()
+async def explorer_index(force: bool = False, project_path: str = ".") -> dict:
+    """
+    Get or rebuild project index.
+
+    Args:
+        force: Force full rescan even if cached (default: False)
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with total_files, total_symbols, entry_points, indexed_at, cached
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_index(force=force)
+    except Exception as e:
+        logger.error(f"explorer_index error: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def explorer_call_graph(entry_point: str, max_depth: int = 5, project_path: str = ".") -> dict:
+    """
+    Get call graph for entry point.
+
+    Args:
+        entry_point: Entry point function/method name
+        max_depth: Maximum traversal depth (default: 5)
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with call graph data or error
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_call_graph(entry_point=entry_point, max_depth=max_depth)
+    except Exception as e:
+        logger.error(f"explorer_call_graph error: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def explorer_module(module: str = None, project_path: str = ".") -> dict:
+    """
+    Analyze module structure.
+
+    Args:
+        module: Module name to analyze (optional)
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with module analysis or error
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_module(module=module)
+    except Exception as e:
+        logger.error(f"explorer_module error: {e}")
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def explorer_whereis(symbol_name: str, project_path: str = ".") -> dict:
+    """
+    Find where symbol is defined.
+
+    Args:
+        symbol_name: Name of symbol to find
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with found flag and symbol location or error
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_whereis(symbol_name=symbol_name)
+    except Exception as e:
+        logger.error(f"explorer_whereis error: {e}")
+        return {"found": False, "error": str(e)}
+
+
+@mcp.tool()
+async def explorer_stats(project_path: str = ".") -> dict:
+    """
+    Get cache statistics.
+
+    Args:
+        project_path: Path to the project (default: ".")
+
+    Returns:
+        Dict with cache stats (total_keys, index_size_bytes, last_updated, etc.)
+    """
+    try:
+        explorer = get_explorer_tools(project_path)
+        return await explorer.explorer_stats()
+    except Exception as e:
+        logger.error(f"explorer_stats error: {e}")
+        return {"error": str(e)}
+
+
+# ==========================================
 # END OF REVIEWER AGENT TOOLS
 # ==========================================
 
@@ -1505,6 +1645,7 @@ def adapt_to_project(
     sftp_username: str = "root",
     sftp_password: str = None,
     sftp_key_file: str = None,
+    jwt_token: str = None,
 ) -> dict:
     """
     Auto-detect stack and adapt prompts.
@@ -1517,12 +1658,23 @@ def adapt_to_project(
         sftp_username: SFTP username (default: root)
         sftp_password: SFTP password (optional if using key)
         sftp_key_file: Path to SSH private key file
+        jwt_token: JWT token for authentication (optional if API key header provided)
 
     Returns:
         dict: Detected stack and adaptations
     """
     import os
     from src.services.sftp_filesystem import get_sftp_connection
+
+    # JWT Authentication (optional if JWT not enabled or API key provided)
+    if JWT_ENABLED:
+        is_valid, auth_data = validate_auth(jwt_token=jwt_token)
+        if not is_valid:
+            return {
+                "status": "error",
+                "error": "Authentication required",
+                "hint": "Provide valid jwt_token or X-API-Key header"
+            }
 
     stack = {"language": None, "framework": None, "database": None}
     remote_access = False
@@ -1685,6 +1837,432 @@ def adapt_to_project(
             f"Framework: {stack.get('framework', 'not detected')}"
         ]
     }
+
+
+# ==========================================
+# PROJECT MANAGEMENT MCP TOOLS
+# ==========================================
+
+@mcp.tool()
+async def create_project(
+    name: str,
+    owner_id: str,
+    description: str = "",
+    sftp_host: str = None,
+    sftp_port: int = 22,
+    sftp_username: str = None,
+    sftp_key_fingerprint: str = None,
+    sftp_project_path: str = None,
+    default_project_path: str = "/project",
+) -> dict:
+    """
+    Create a new project for multi-project SaaS.
+
+    Args:
+        name: Project name (unique identifier)
+        owner_id: Owner user/organization ID
+        description: Project description
+        sftp_host: Remote SFTP host (optional)
+        sftp_port: SFTP port (default: 22)
+        sftp_username: SFTP username (optional)
+        sftp_key_fingerprint: SSH key fingerprint (optional)
+        sftp_project_path: Remote path on SFTP server (optional)
+        default_project_path: Default project path (default: /project)
+
+    Returns:
+        dict: Created project with ID and API key
+    """
+    try:
+        from src.services.project_service import CreateProjectDTO
+
+        service = get_project_service()
+
+        dto = CreateProjectDTO(
+            name=name,
+            owner_id=owner_id,
+            description=description,
+            sftp_host=sftp_host,
+            sftp_port=sftp_port,
+            sftp_username=sftp_username,
+            sftp_key_fingerprint=sftp_key_fingerprint,
+            sftp_project_path=sftp_project_path,
+            default_project_path=default_project_path,
+        )
+
+        project = await service.create_project(dto)
+
+        # Create initial API key for the project
+        api_key_model, raw_key = await service.create_api_key(
+            project_id=str(project.id),
+            name=f"{name} Default Key",
+            permissions=["read_prompts", "run_prompt"],
+            rate_limit=100,
+        )
+
+        return {
+            "status": "success",
+            "project": {
+                "id": str(project.id),
+                "name": project.name,
+                "description": project.description,
+                "owner_id": project.owner_id,
+                "sftp_host": project.sftp_host,
+                "default_project_path": project.default_project_path,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+            },
+            "api_key": raw_key,  # Only shown once!
+            "message": "Save the API key - it won't be shown again!",
+        }
+
+    except Exception as e:
+        logger.error(f"create_project error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def get_project(project_id: str) -> dict:
+    """
+    Get project details by ID.
+
+    Args:
+        project_id: Project UUID
+
+    Returns:
+        dict: Project details including SFTP config
+    """
+    try:
+        service = get_project_service()
+        project = await service.get_project(project_id)
+
+        if not project:
+            return {"status": "error", "error": "Project not found"}
+
+        return {
+            "status": "success",
+            "project": {
+                "id": str(project.id),
+                "name": project.name,
+                "description": project.description,
+                "owner_id": project.owner_id,
+                "sftp_host": project.sftp_host,
+                "sftp_port": project.sftp_port,
+                "sftp_username": project.sftp_username,
+                "sftp_project_path": project.sftp_project_path,
+                "default_project_path": project.default_project_path,
+                "stack": project.stack or [],
+                "project_metadata": project.project_metadata or {},
+                "is_active": project.is_active,
+                "created_at": project.created_at.isoformat() if project.created_at else None,
+                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"get_project error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def list_projects(owner_id: str) -> dict:
+    """
+    List all projects for an owner.
+
+    Args:
+        owner_id: Owner user/organization ID
+
+    Returns:
+        dict: List of projects
+    """
+    try:
+        service = get_project_service()
+        projects = await service.list_projects(owner_id)
+
+        return {
+            "status": "success",
+            "projects": [
+                {
+                    "id": str(p.id),
+                    "name": p.name,
+                    "description": p.description,
+                    "owner_id": p.owner_id,
+                    "sftp_host": p.sftp_host,
+                    "is_active": p.is_active,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in projects
+            ],
+            "count": len(projects),
+        }
+
+    except Exception as e:
+        logger.error(f"list_projects error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def update_project(
+    project_id: str,
+    name: str = None,
+    description: str = None,
+    sftp_host: str = None,
+    sftp_port: int = None,
+    sftp_username: str = None,
+    sftp_project_path: str = None,
+    default_project_path: str = None,
+) -> dict:
+    """
+    Update project configuration.
+
+    Args:
+        project_id: Project UUID
+        name: New project name (optional)
+        description: New description (optional)
+        sftp_host: New SFTP host (optional)
+        sftp_port: New SFTP port (optional)
+        sftp_username: New SFTP username (optional)
+        sftp_project_path: New remote path (optional)
+        default_project_path: New default path (optional)
+
+    Returns:
+        dict: Updated project
+    """
+    try:
+        from src.services.project_service import UpdateProjectDTO
+
+        service = get_project_service()
+
+        update_data = UpdateProjectDTO(
+            name=name,
+            description=description,
+            sftp_host=sftp_host,
+            sftp_port=sftp_port,
+            sftp_username=sftp_username,
+            sftp_project_path=sftp_project_path,
+            default_project_path=default_project_path,
+        )
+
+        project = await service.update_project(project_id, update_data)
+
+        if not project:
+            return {"status": "error", "error": "Project not found"}
+
+        return {
+            "status": "success",
+            "project": {
+                "id": str(project.id),
+                "name": project.name,
+                "description": project.description,
+                "sftp_host": project.sftp_host,
+                "updated_at": project.updated_at.isoformat() if project.updated_at else None,
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"update_project error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def delete_project(project_id: str) -> dict:
+    """
+    Delete (deactivate) a project.
+
+    Args:
+        project_id: Project UUID
+
+    Returns:
+        dict: Deletion status
+    """
+    try:
+        service = get_project_service()
+        result = await service.delete_project(project_id)
+
+        if not result:
+            return {"status": "error", "error": "Project not found"}
+
+        return {
+            "status": "success",
+            "message": f"Project {project_id} deleted",
+        }
+
+    except Exception as e:
+        logger.error(f"delete_project error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def create_project_api_key(
+    project_id: str,
+    name: str,
+    permissions: list = None,
+    rate_limit: int = 100,
+) -> dict:
+    """
+    Create an API key for a project.
+
+    Args:
+        project_id: Project UUID
+        name: API key name
+        permissions: List of permissions (default: ["read_prompts", "run_prompt"])
+        rate_limit: Requests per minute (default: 100)
+
+    Returns:
+        dict: Created API key (raw key shown only once!)
+    """
+    try:
+        service = get_project_service()
+
+        if permissions is None:
+            permissions = ["read_prompts", "run_prompt"]
+
+        api_key_model, raw_key = await service.create_api_key(
+            project_id=project_id,
+            name=name,
+            permissions=permissions,
+            rate_limit=rate_limit,
+        )
+
+        return {
+            "status": "success",
+            "api_key": {
+                "id": str(api_key_model.id),
+                "name": api_key_model.name,
+                "permissions": api_key_model.permissions or [],
+                "rate_limit": api_key_model.rate_limit,
+                "created_at": api_key_model.created_at.isoformat() if api_key_model.created_at else None,
+            },
+            "raw_key": raw_key,  # Only shown once!
+            "message": "Save the API key - it won't be shown again!",
+        }
+
+    except Exception as e:
+        logger.error(f"create_project_api_key error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def list_project_api_keys(project_id: str) -> dict:
+    """
+    List all API keys for a project.
+
+    Args:
+        project_id: Project UUID
+
+    Returns:
+        dict: List of API keys (without raw keys)
+    """
+    try:
+        service = get_project_service()
+        keys = await service.list_api_keys(project_id)
+
+        return {
+            "status": "success",
+            "api_keys": [
+                {
+                    "id": str(k.id),
+                    "name": k.name,
+                    "permissions": k.permissions or [],
+                    "rate_limit": k.rate_limit,
+                    "is_active": k.is_active,
+                    "created_at": k.created_at.isoformat() if k.created_at else None,
+                    "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                }
+                for k in keys
+            ],
+            "count": len(keys),
+        }
+
+    except Exception as e:
+        logger.error(f"list_project_api_keys error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def revoke_project_api_key(key_id: str) -> dict:
+    """
+    Revoke an API key.
+
+    Args:
+        key_id: API key UUID
+
+    Returns:
+        dict: Revocation status
+    """
+    try:
+        service = get_project_service()
+        result = await service.revoke_api_key(key_id)
+
+        if not result:
+            return {"status": "error", "error": "API key not found"}
+
+        return {
+            "status": "success",
+            "message": f"API key {key_id} revoked",
+        }
+
+    except Exception as e:
+        logger.error(f"revoke_project_api_key error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def connect_project_sftp(project_id: str) -> dict:
+    """
+    Establish SFTP connection for a project.
+
+    Args:
+        project_id: Project UUID
+
+    Returns:
+        dict: Connection status
+    """
+    try:
+        service = get_project_service()
+        sftp = await service.connect_sftp(project_id)
+
+        if not sftp:
+            return {
+                "status": "error",
+                "error": "SFTP not configured for this project or connection failed",
+            }
+
+        project = await service.get_project(project_id)
+
+        return {
+            "status": "success",
+            "message": f"Connected to SFTP: {project.sftp_host}",
+            "project_path": project.sftp_project_path or "/project",
+            "host": project.sftp_host,
+        }
+
+    except Exception as e:
+        logger.error(f"connect_project_sftp error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def disconnect_project_sftp(project_id: str) -> dict:
+    """
+    Disconnect SFTP connection for a project.
+
+    Args:
+        project_id: Project UUID
+
+    Returns:
+        dict: Disconnection status
+    """
+    try:
+        service = get_project_service()
+        await service.disconnect_sftp(project_id)
+
+        return {
+            "status": "success",
+            "message": f"SFTP disconnected for project {project_id}",
+        }
+
+    except Exception as e:
+        logger.error(f"disconnect_project_sftp error: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 @mcp.tool()
@@ -3437,6 +4015,30 @@ async def startup_event():
         logger.info("Browser automation tools registered")
     except Exception as e:
         logger.warning(f"Failed to register Browser tools: {e}")
+
+    # Register extracted MCP tools (auth, memory, prompt, project, session)
+    try:
+        dependencies = {
+            "jwt_service": _jwt_service,
+            "jwt_enabled": JWT_ENABLED,
+            "memory_dir": MEMORY_DIR,
+            "prompts_dir": PROMPTS_DIR,
+            "prompt_executor": get_prompt_executor(),
+            "validate_auth": validate_auth,
+            "load_prompt": load_prompt,
+            "load_registry": load_registry,
+            "audit_logger": audit_logger,
+            "get_project_service": get_project_service,
+            "get_memory": get_memory,
+            "save_memory": save_memory,
+            "get_session_manager": get_session_manager,
+        }
+        register_all_tools(mcp, dependencies)
+        logger.info("Extracted MCP tools registered")
+    except Exception as e:
+        logger.error(f"Failed to register extracted tools: {e}")
+        import traceback
+        traceback.print_exc()
 
     # Configure baseline verification
     verify_enabled = os.getenv("BASELINE_VERIFY_ENABLED", "true").lower() == "true"

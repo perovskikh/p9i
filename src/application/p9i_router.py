@@ -90,193 +90,34 @@ class P9iRouter:
         self._init_keywords()
 
     def _init_keywords(self):
-        """Инициализировать единую карту ключевых слов."""
-        self.KEYWORD_MAP = {
-            # === SYSTEM COMMANDS (highest priority) ===
+        """Инициализировать единую карту ключевых слов.
+
+        KEYWORD_MAP генерируется из keywords.py (AGENT_KEYWORDS) + статические команды.
+        Это устраняет дублирование между p9i_router.py и agent_router.py.
+        """
+        # Импортируем AGENT_KEYWORDS из единого источника
+        from src.application.keywords import AGENT_KEYWORDS
+
+        # Генерируем KEYWORD_MAP из AGENT_KEYWORDS
+        self.KEYWORD_MAP = {}
+        for agent_name, keywords in AGENT_KEYWORDS.items():
+            for kw in keywords:
+                self.KEYWORD_MAP[kw] = (IntentType.AGENT_TASK, agent_name)
+
+        # === SYSTEM COMMANDS (highest priority) ===
+        self.KEYWORD_MAP.update({
             "/help": IntentType.COMMAND,
             "/exit": IntentType.COMMAND,
             "/clear": IntentType.COMMAND,
             "/status": IntentType.COMMAND,
             "/?": IntentType.COMMAND,
+        })
 
-            # === PROMPT COMMANDS ===
-            "/prompt": IntentType.PROMPT_CMD,
+        # === PROMPT COMMANDS ===
+        self.KEYWORD_MAP["/prompt"] = IntentType.PROMPT_CMD
 
-            # === FULL CYCLE (multi-agent orchestration) ===
-            "реализуй": (IntentType.AGENT_TASK, "full_cycle"),
-            "внедри": (IntentType.AGENT_TASK, "full_cycle"),
-            "сделай": (IntentType.AGENT_TASK, "full_cycle"),
-            "e2e": (IntentType.AGENT_TASK, "full_cycle"),
-            "полный цикл": (IntentType.AGENT_TASK, "full_cycle"),
-            "end-to-end": (IntentType.AGENT_TASK, "full_cycle"),
-            "implement": (IntentType.AGENT_TASK, "full_cycle"),
-            "build": (IntentType.AGENT_TASK, "full_cycle"),
-
-            # === ARCHITECT ===
-            "спроектируй": (IntentType.AGENT_TASK, "architect"),
-            "архитектура": (IntentType.AGENT_TASK, "architect"),
-            "adr": (IntentType.AGENT_TASK, "architect"),
-            "design": (IntentType.AGENT_TASK, "architect"),
-            "architect": (IntentType.AGENT_TASK, "architect"),
-            "architectural": (IntentType.AGENT_TASK, "architect"),
-            "architecture": (IntentType.AGENT_TASK, "architect"),
-            "проектирование": (IntentType.AGENT_TASK, "architect"),
-
-            # === EXPLORER ===
-            "как работает": (IntentType.AGENT_TASK, "explorer"),
-            "как работают": (IntentType.AGENT_TASK, "explorer"),
-            "как работать": (IntentType.AGENT_TASK, "explorer"),
-            "explore": (IntentType.AGENT_TASK, "explorer"),
-            "навигац": (IntentType.AGENT_TASK, "explorer"),
-            "найди все": (IntentType.AGENT_TASK, "explorer"),
-            "найди где": (IntentType.AGENT_TASK, "explorer"),
-            "trace": (IntentType.AGENT_TASK, "explorer"),
-            "трассируй": (IntentType.AGENT_TASK, "explorer"),
-            "связи": (IntentType.AGENT_TASK, "explorer"),
-            "dependencies": (IntentType.AGENT_TASK, "explorer"),
-            "зависимости": (IntentType.AGENT_TASK, "explorer"),
-            "вызовы": (IntentType.AGENT_TASK, "explorer"),
-            "вызов": (IntentType.AGENT_TASK, "explorer"),
-            "найди вызовы": (IntentType.AGENT_TASK, "explorer"),
-            "покажи структуру": (IntentType.AGENT_TASK, "explorer"),
-            "структура кода": (IntentType.AGENT_TASK, "explorer"),
-            "архитектура кода": (IntentType.AGENT_TASK, "explorer"),
-            "что делает": (IntentType.AGENT_TASK, "explorer"),
-            "где находится": (IntentType.AGENT_TASK, "explorer"),
-            "найди файл": (IntentType.AGENT_TASK, "explorer"),
-            "файлы": (IntentType.AGENT_TASK, "explorer"),
-            "модуль": (IntentType.AGENT_TASK, "explorer"),
-            "entry point": (IntentType.AGENT_TASK, "explorer"),
-            "call chain": (IntentType.AGENT_TASK, "explorer"),
-            "верифицируй": (IntentType.AGENT_TASK, "explorer"),
-            "верификация": (IntentType.AGENT_TASK, "explorer"),
-            "verify": (IntentType.AGENT_TASK, "explorer"),
-            "verification": (IntentType.AGENT_TASK, "explorer"),
-            # === EXPLORER EXTENDED ===
-            "глубокий поиск": (IntentType.AGENT_TASK, "explorer"),
-            "проиндексируй": (IntentType.AGENT_TASK, "explorer"),
-            "переиндексируй": (IntentType.AGENT_TASK, "explorer"),
-            "reindex": (IntentType.AGENT_TASK, "explorer"),
-            "refresh index": (IntentType.AGENT_TASK, "explorer"),
-            "deep search": (IntentType.AGENT_TASK, "explorer"),
-            "analyze module": (IntentType.AGENT_TASK, "explorer"),
-            "построить граф": (IntentType.AGENT_TASK, "explorer"),
-            "call graph": (IntentType.AGENT_TASK, "explorer"),
-            "dependency graph": (IntentType.AGENT_TASK, "explorer"),
-            "анализ связей": (IntentType.AGENT_TASK, "explorer"),
-            "что зависит от": (IntentType.AGENT_TASK, "explorer"),
-            "затронет": (IntentType.AGENT_TASK, "explorer"),
-            "impact analysis": (IntentType.AGENT_TASK, "explorer"),
-            # === EXPLORER NEW ===
-            "изучи": (IntentType.AGENT_TASK, "explorer"),
-            "анализируй": (IntentType.AGENT_TASK, "explorer"),
-            "проанализируй": (IntentType.AGENT_TASK, "explorer"),
-            "консолидируй": (IntentType.AGENT_TASK, "explorer"),
-            "консолидация": (IntentType.AGENT_TASK, "explorer"),
-            "analyze": (IntentType.AGENT_TASK, "explorer"),
-            "analysis": (IntentType.AGENT_TASK, "explorer"),
-            "consolidate": (IntentType.AGENT_TASK, "explorer"),
-            "consolidation": (IntentType.AGENT_TASK, "explorer"),
-
-            # === DEVELOPER ===
-            "создай": (IntentType.AGENT_TASK, "developer"),
-            "добавь": (IntentType.AGENT_TASK, "developer"),
-            "напиши": (IntentType.AGENT_TASK, "developer"),
-            "код": (IntentType.AGENT_TASK, "developer"),
-            "feature": (IntentType.AGENT_TASK, "developer"),
-            "create": (IntentType.AGENT_TASK, "developer"),
-            "add": (IntentType.AGENT_TASK, "developer"),
-            "code": (IntentType.AGENT_TASK, "developer"),
-            "фича": (IntentType.AGENT_TASK, "developer"),
-            "новую возможность": (IntentType.AGENT_TASK, "developer"),
-            "add feature": (IntentType.AGENT_TASK, "developer"),
-            "new feature": (IntentType.AGENT_TASK, "developer"),
-            "создать компонент": (IntentType.AGENT_TASK, "developer"),
-            "создать": (IntentType.AGENT_TASK, "developer"),
-            "добавить": (IntentType.AGENT_TASK, "developer"),
-            "добавить функт": (IntentType.AGENT_TASK, "developer"),
-
-            # === REVIEWER ===
-            "проверь": (IntentType.AGENT_TASK, "reviewer"),
-            # Combined keywords for actions that should go to developer (bash execution)
-            "проведи рефакторинг": (IntentType.AGENT_TASK, "developer"),
-            "проведи": (IntentType.AGENT_TASK, "reviewer"),
-            "исправь": (IntentType.AGENT_TASK, "reviewer"),
-            "приведи": (IntentType.AGENT_TASK, "reviewer"),
-            "исправить": (IntentType.AGENT_TASK, "reviewer"),
-            "привести": (IntentType.AGENT_TASK, "reviewer"),
-            "фикс": (IntentType.AGENT_TASK, "reviewer"),
-            "fix": (IntentType.AGENT_TASK, "reviewer"),
-            "ревью": (IntentType.AGENT_TASK, "reviewer"),
-            "аудит": (IntentType.AGENT_TASK, "reviewer"),
-            "анализ": (IntentType.AGENT_TASK, "reviewer"),
-            "тест": (IntentType.AGENT_TASK, "reviewer"),
-            "review": (IntentType.AGENT_TASK, "reviewer"),
-            "check": (IntentType.AGENT_TASK, "reviewer"),
-            "audit": (IntentType.AGENT_TASK, "reviewer"),
-            "test": (IntentType.AGENT_TASK, "reviewer"),
-            "standard": (IntentType.AGENT_TASK, "reviewer"),
-            "standards": (IntentType.AGENT_TASK, "reviewer"),
-
-            # === REVIEWER: SECURITY (SQL injection, XSS, etc.) ===
-            "sql": (IntentType.AGENT_TASK, "reviewer"),
-            "sql injection": (IntentType.AGENT_TASK, "reviewer"),
-            "инъекц": (IntentType.AGENT_TASK, "reviewer"),
-            "xss": (IntentType.AGENT_TASK, "reviewer"),
-            "csrf": (IntentType.AGENT_TASK, "reviewer"),
-            "security": (IntentType.AGENT_TASK, "reviewer"),
-            "безопасност": (IntentType.AGENT_TASK, "reviewer"),
-            "уязвимост": (IntentType.AGENT_TASK, "reviewer"),
-            "vulnerability": (IntentType.AGENT_TASK, "reviewer"),
-            "vulnerabilities": (IntentType.AGENT_TASK, "reviewer"),
-            "scan": (IntentType.AGENT_TASK, "reviewer"),
-            "cve": (IntentType.AGENT_TASK, "reviewer"),
-            "exploit": (IntentType.AGENT_TASK, "reviewer"),
-            "penetration": (IntentType.AGENT_TASK, "reviewer"),
-            "защита": (IntentType.AGENT_TASK, "reviewer"),
-
-            # === DESIGNER ===
-            "ui": (IntentType.AGENT_TASK, "designer"),
-            "ux": (IntentType.AGENT_TASK, "designer"),
-            "дизайн": (IntentType.AGENT_TASK, "designer"),
-            "интерфейс": (IntentType.AGENT_TASK, "designer"),
-            "button": (IntentType.AGENT_TASK, "designer"),
-            "card": (IntentType.AGENT_TASK, "designer"),
-            "component": (IntentType.AGENT_TASK, "designer"),
-            "кнопка": (IntentType.AGENT_TASK, "designer"),
-            "карточка": (IntentType.AGENT_TASK, "designer"),
-            "стиль": (IntentType.AGENT_TASK, "designer"),
-            "палитра": (IntentType.AGENT_TASK, "designer"),
-            "шрифт": (IntentType.AGENT_TASK, "designer"),
-            "иконка": (IntentType.AGENT_TASK, "designer"),
-            "ui component": (IntentType.AGENT_TASK, "designer"),
-            "ux design": (IntentType.AGENT_TASK, "designer"),
-            "ui design": (IntentType.AGENT_TASK, "designer"),
-            "generate ui": (IntentType.AGENT_TASK, "designer"),
-            "create ui": (IntentType.AGENT_TASK, "designer"),
-            "компонент": (IntentType.AGENT_TASK, "designer"),
-
-            # === DEVOPS ===
-            # Note: k8s, kubernetes, ci-cd, pipeline pack -> use PACK intent instead
-            # Only docker, deploy (without k8s context) go to devops agent
-            "docker": (IntentType.AGENT_TASK, "devops"),
-            "dockerfile": (IntentType.AGENT_TASK, "devops"),
-            "container": (IntentType.AGENT_TASK, "devops"),
-            "ci": (IntentType.AGENT_TASK, "devops"),
-            "cd": (IntentType.AGENT_TASK, "devops"),
-            "pipeline": (IntentType.AGENT_TASK, "devops"),
-            "deploy": (IntentType.AGENT_TASK, "devops"),
-            "деплой": (IntentType.AGENT_TASK, "devops"),
-
-            # === MIGRATION ===
-            "миграция": (IntentType.AGENT_TASK, "migration"),
-            "мигрируй": (IntentType.AGENT_TASK, "migration"),
-            "миграц": (IntentType.AGENT_TASK, "migration"),
-            "migrate": (IntentType.AGENT_TASK, "migration"),
-            "migration": (IntentType.AGENT_TASK, "migration"),
-            "переход": (IntentType.AGENT_TASK, "migration"),
-
-            # === SYSTEM ADAPTATION ===
+        # === SYSTEM ADAPTATION ===
+        self.KEYWORD_MAP.update({
             "init p9i": IntentType.SYSTEM,
             "p9i init": IntentType.SYSTEM,
             "инициализация p9i": IntentType.SYSTEM,
@@ -287,8 +128,11 @@ class P9iRouter:
             "adapt": IntentType.SYSTEM,
             "onboard": IntentType.SYSTEM,
             "адаптац": IntentType.SYSTEM,
+            "подключи": IntentType.SYSTEM,
+        })
 
-            # === PACK TRIGGERS ===
+        # === PACK TRIGGERS ===
+        self.KEYWORD_MAP.update({
             "k8s": IntentType.PACK,
             "kubernetes pack": IntentType.PACK,
             "ci-cd": IntentType.PACK,
@@ -296,61 +140,13 @@ class P9iRouter:
             "pinescript": IntentType.PACK,
             "tradingview": IntentType.PACK,
             "pinescript-v6": IntentType.PACK,
+        })
 
-            # === UI/UX GENERATION ===
-            "ui component": (IntentType.AGENT_TASK, "designer"),
-            "ux design": (IntentType.AGENT_TASK, "designer"),
-            "ui design": (IntentType.AGENT_TASK, "designer"),
-            "generate ui": (IntentType.AGENT_TASK, "designer"),
-            "create ui": (IntentType.AGENT_TASK, "designer"),
-
-            # === BROWSER INTEGRATION ===
-            "browser": (IntentType.AGENT_TASK, "developer"),
-            "браузер": (IntentType.AGENT_TASK, "developer"),
-            "автоматизация браузера": (IntentType.AGENT_TASK, "developer"),
-            "playwright": (IntentType.AGENT_TASK, "developer"),
-            "puppeteer": (IntentType.AGENT_TASK, "developer"),
-
-            # === SECURITY ===
-            "уязвим": (IntentType.AGENT_TASK, "reviewer"),
-            "уязвимост": (IntentType.AGENT_TASK, "reviewer"),
-            "security": (IntentType.AGENT_TASK, "reviewer"),
-            "безопасност": (IntentType.AGENT_TASK, "reviewer"),
-            "audit": (IntentType.AGENT_TASK, "reviewer"),
-
-            # === BUG FIX ===
-            "баг": (IntentType.AGENT_TASK, "developer"),
-            "исправить ошибку": (IntentType.AGENT_TASK, "developer"),
-            "fix bug": (IntentType.AGENT_TASK, "developer"),
-            "найди": (IntentType.AGENT_TASK, "developer"),
-            "bug": (IntentType.AGENT_TASK, "developer"),
-
-            # === TESTING ===
-            "напиши тест": (IntentType.AGENT_TASK, "reviewer"),
-            "quality": (IntentType.AGENT_TASK, "reviewer"),
-            "тест": (IntentType.AGENT_TASK, "reviewer"),
-            "test": (IntentType.AGENT_TASK, "reviewer"),
-
-            # === REFACTORING === (routes to developer for bash execution)
-            "упрости код": (IntentType.AGENT_TASK, "developer"),
-            "улучшить код": (IntentType.AGENT_TASK, "developer"),
-            "рефакторинг": (IntentType.AGENT_TASK, "developer"),
-            "модернизируй": (IntentType.AGENT_TASK, "developer"),
-            "оптимизируй": (IntentType.AGENT_TASK, "developer"),
-            "перепиши": (IntentType.AGENT_TASK, "developer"),
-            "упрости": (IntentType.AGENT_TASK, "developer"),
-            "улучшить": (IntentType.AGENT_TASK, "developer"),
-            "улучши": (IntentType.AGENT_TASK, "developer"),
-            "refactor": (IntentType.AGENT_TASK, "developer"),
-
-            # === VERSIONING ===
+        # === VERSIONING ===
+        self.KEYWORD_MAP.update({
             "версион": IntentType.NL_QUERY,
             "version": IntentType.NL_QUERY,
-
-            # === ONBOARDING ===
-            "подключи": IntentType.SYSTEM,
-            "onboard": IntentType.SYSTEM,
-        }
+        })
 
     def classify(self, request: str) -> Intent:
         """
@@ -411,7 +207,17 @@ class P9iRouter:
                 metadata={"command": request_lower}
             )
 
-        # 3. Проверка pack triggers FIRST (explicit pack names take precedence)
+        # 3. Check p9i SYSTEM commands FIRST (before pack triggers)
+        # "init p9i", "adapt to project" etc. should be recognized as system commands
+        if self._is_system_command(request_lower):
+            return Intent(
+                type=IntentType.SYSTEM,
+                confidence=0.80,
+                matched_keyword="system",
+                metadata={"command": request_lower}
+            )
+
+        # 4. Проверка pack triggers (explicit pack names like k8s, pinescript)
         pack_match = self._check_packs(request_lower)
         if pack_match:
             return Intent(
@@ -422,7 +228,7 @@ class P9iRouter:
                 metadata=pack_match
             )
 
-        # 4. Проверка agent tasks (generic agent keywords)
+        # 5. Проверка agent tasks (generic agent keywords)
         agent_match = self._check_agents(request_lower)
         if agent_match:
             return Intent(
@@ -433,7 +239,7 @@ class P9iRouter:
                 metadata={"agent": agent_match}
             )
 
-        # 5. Check NL queries
+        # 6. Check NL queries
         if self._is_nl_query(request_lower):
             return Intent(
                 type=IntentType.NL_QUERY,
@@ -442,22 +248,13 @@ class P9iRouter:
                 metadata={"query": request_lower}
             )
 
-        # 6. Check for bare "p9i" command - show capabilities
+        # 7. Check for bare "p9i" command - show capabilities
         if request_lower.strip() == "p9i":
             return Intent(
                 type=IntentType.NL_QUERY,
                 confidence=1.0,
                 matched_keyword="p9i",
                 metadata={"query": "what can you do"}
-            )
-
-        # 7. Check system commands
-        if self._is_system_command(request_lower):
-            return Intent(
-                type=IntentType.SYSTEM,
-                confidence=0.80,
-                matched_keyword="system",
-                metadata={"command": request_lower}
             )
 
         # 7. Fallback

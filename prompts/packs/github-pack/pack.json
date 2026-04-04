@@ -1,0 +1,25 @@
+{
+  "name": "github-pack",
+  "version": "1.0.0",
+  "description": "GitHub integration pack - Actions workflows, API automation, PR management, and repository operations",
+  "tier": 3,
+  "author": "9Mirrors-Lab",
+  "mcp_requires": ["github-mcp"],
+  "prompts": [
+    "promt-github-actions-ci.md",
+    "promt-github-actions-deploy.md",
+    "promt-github-pr-review.md",
+    "promt-github-repo-setup.md",
+    "promt-github-api-automation.md"
+  ],
+  "triggers": {
+    "github, github actions, ci-cd, workflow": "promt-github-actions-ci.md",
+    "deploy, github deploy, release": "promt-github-actions-deploy.md",
+    "pull request, pr, code review, merge": "promt-github-pr-review.md",
+    "repo, repository, setup, init": "promt-github-repo-setup.md",
+    "github api, api automation, graphql": "promt-github-api-automation.md"
+  },
+  "dependencies": ["ci-cd-pack"],
+  "tags": ["github", "github-actions", "ci", "cd", "pr", "pull-request", "repository", "devops"],
+  "created_at": "2026-04-03"
+}
