@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-MCP HTTP-to-STDIO Proxy for Claude Code - Streaming SSE support
+p9i HTTP-to-STDIO Proxy for Claude Code - Streaming SSE support
 
 Usage:
-    MCP_PROXY_URL=http://localhost:8000/mcp P9I_API_KEY=xxx python3 mcp_proxy_simple.py
+    # Option 1: Environment variables
+    MCP_PROXY_URL=http://localhost:8000/mcp P9I_API_KEY=xxx python3 p9i_stdio_bridge.py
+
+    # Option 2: Command line arguments
+    python3 p9i_stdio_bridge.py --url https://p9i.ru/mcp --api-key xxx
+
+    # Option 3: Config file (~/.config/p9i/bridge.conf)
+    python3 p9i_stdio_bridge.py --config ~/.config/p9i/bridge.conf
 
 Claude Code will communicate with this script via stdin/stdout JSON-RPC.
 """
@@ -14,8 +21,9 @@ import json
 import ssl
 import urllib.request
 import urllib.error
-import threading
-import time
+import argparse
+import configparser
+from pathlib import Path
 
 
 def create_ssl_context():
@@ -26,7 +34,74 @@ def create_ssl_context():
     return ctx
 
 
-def urlopen_with_ssl(request, timeout=None):
+def load_config(config_path=None):
+    """Load configuration from file or default locations.
+
+    Priority:
+    1. Command line --config argument
+    2. ~/.config/p9i/bridge.conf
+    3. Environment variables (MCP_PROXY_URL, P9I_API_KEY)
+    """
+    url = os.getenv("MCP_PROXY_URL", "")
+    api_key = os.getenv("P9I_API_KEY", "")
+    profile = os.getenv("P9I_PROFILE", "default")
+
+    # Try to find config file
+    if config_path:
+        config_file = Path(config_path)
+    else:
+        config_file = Path.home() / ".config" / "p9i" / "bridge.conf"
+
+    if config_file.exists():
+        config = configparser.ConfigParser()
+        config.read(config_file)
+
+        # Get profile section, fallback to "default"
+        section = profile if config.has_section(profile) else "default"
+        if config.has_section(section):
+            if not url:
+                url = config.get(section, "url", fallback="")
+            if not api_key:
+                api_key = config.get(section, "api_key", fallback="")
+
+    return {
+        "url": url or "http://localhost:8000/mcp",
+        "api_key": api_key,
+        "profile": profile
+    }
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="p9i HTTP-to-STDIO Proxy for Claude Code",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    # Using environment variables
+    MCP_PROXY_URL=https://p9i.ru/mcp P9I_API_KEY=xxx python3 p9i_stdio_bridge.py
+
+    # Using command line arguments
+    python3 p9i_stdio_bridge.py --url https://p9i.ru/mcp --api-key xxx
+
+    # Using config file
+    python3 p9i_stdio_bridge.py --config ~/.config/p9i/bridge.conf
+
+    # Using profile from config
+    P9I_PROFILE=production python3 p9i_stdio_bridge.py --config ~/.config/p9i/bridge.conf
+        """
+    )
+    parser.add_argument("--url", "-u", help="MCP server URL (e.g., https://p9i.ru/mcp)")
+    parser.add_argument("--api-key", "-k", help="API key for authentication")
+    parser.add_argument("--config", "-c", help="Path to config file (~/.config/p9i/bridge.conf by default)")
+    parser.add_argument("--profile", "-p", default=os.getenv("P9I_PROFILE", "default"),
+                       help="Profile name in config file (default: default)")
+    parser.add_argument("--skip-ssl-verify", action="store_true",
+                       help="Skip SSL certificate verification (for self-signed certs)")
+    return parser.parse_args()
+
+
+def urlopen_with_ssl(request, timeout=None, skip_ssl_verify=False):
     """Make HTTP request with SSL bypass for HTTPS URLs."""
     if request.full_url.startswith("https://"):
         ctx = create_ssl_context()
@@ -66,8 +141,18 @@ def stream_response(response, session_store):
 
 def main():
     """Run proxy - read JSON-RPC from stdin, forward to HTTP MCP, write response to stdout."""
-    url = os.getenv("MCP_PROXY_URL", "http://localhost:8000/mcp")
-    api_key = os.getenv("P9I_API_KEY", "")
+    args = parse_args()
+
+    # Load configuration from file/env/args (priority: args > env > config file)
+    if args.config:
+        os.environ["P9I_PROFILE"] = args.profile
+
+    config = load_config(args.config)
+
+    # Command line args override config
+    url = args.url or os.getenv("MCP_PROXY_URL", config["url"])
+    api_key = args.api_key or os.getenv("P9I_API_KEY", config["api_key"])
+    skip_ssl_verify = args.skip_ssl_verify or os.getenv("P9I_SKIP_SSL_VERIFY", "").lower() == "true"
 
     # Extract base URL (without /mcp path) for initialize request
     base_url = url.rsplit("/mcp", 1)[0] if "/mcp" in url else url.rsplit("/", 1)[0]
@@ -76,6 +161,7 @@ def main():
         init_url = "http://" + init_url
 
     print(f"MCP Proxy: {url}", file=sys.stderr, flush=True)
+    print(f"Profile: {config['profile']}", file=sys.stderr, flush=True)
     print(f"Init URL: {init_url}", file=sys.stderr, flush=True)
 
     headers = {

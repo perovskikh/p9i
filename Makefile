@@ -112,10 +112,17 @@ help:
 	@echo "  make prune             Docker prune (remove unused images)"
 	@echo ""
 	@echo "$(GREEN)Claude Code MCP targets:$(NC)"
-	@echo "  make mcp-setup        Configure Claude Code MCP client"
+	@echo "  make mcp-setup        Configure Claude Code MCP client (legacy)"
 	@echo "  make mcp-test         Test MCP connection to server"
 	@echo "  make mcp-status       Show MCP client status"
 	@echo "  make mcp-remove       Remove Claude Code MCP settings"
+	@echo ""
+	@echo "$(GREEN)p9i Client (portable, global install):$(NC)"
+	@echo "  make p9i-client-install  Install p9i client to ~/.local/bin"
+	@echo "  make p9i-init         Initialize p9i client configuration"
+	@echo "  make p9i-connect      Connect to p9i server (remote mode)"
+	@echo "  make p9i-disconnect   Disconnect p9i client"
+	@echo "  make p9i-status       Show p9i client status"
 	@echo ""
 	@echo "$(GREEN)SSL/TLS certificate targets:$(NC)"
 	@echo "  make install-certbot  Install certbot for SSL certificates"
@@ -273,6 +280,40 @@ mcp-remove: ## Remove Claude Code MCP settings
 		echo "$(YELLOW)No MCP settings found in ~/.claude/settings.json$(NC)"; \
 	fi
 	@echo "$(GREEN)Done.$(NC)"
+
+# =============================================================================
+# P9I CLIENT - Global portable MCP client
+# =============================================================================
+
+.PHONY: p9i-client-install
+p9i-client-install: ## Install p9i client globally (~/.local/bin/p9i)
+	@echo "$(YELLOW)Installing p9i client globally...$(NC)"
+	@mkdir -p "$(HOME)/.local/bin"
+	@cp "$(PWD)/cli/p9i_client.py" "$(HOME)/.local/bin/p9i"
+	@cp "$(PWD)/p9i_stdio_bridge.py" "$(HOME)/.local/bin/p9i-bridge"
+	@chmod +x "$(HOME)/.local/bin/p9i" "$(HOME)/.local/bin/p9i-bridge"
+	@echo "$(GREEN)p9i client installed to ~/.local/bin/p9i$(NC)"
+	@echo "$(GREEN)p9i bridge installed to ~/.local/bin/p9i-bridge$(NC)"
+	@echo "$(YELLOW)Add ~/.local/bin to PATH if not already there$(NC)"
+	@echo "$(YELLOW)Run: p9i init --url https://p9i.ru/mcp --api-key YOUR_KEY$(NC)"
+
+.PHONY: p9i-init
+p9i-init: ## Initialize p9i client configuration
+	@. ./.env 2>/dev/null || true; \
+	echo "$(YELLOW)Initializing p9i client...$(NC)"; \
+	python3 "$(PWD)/cli/p9i_client.py" init --url "https://$${DOMAIN:-p9i.ru}/mcp" --api-key "$${P9I_API_KEY:-}"
+
+.PHONY: p9i-connect
+p9i-connect: ## Connect to p9i server (remote mode)
+	@python3 "$(PWD)/cli/p9i_client.py" connect remote
+
+.PHONY: p9i-disconnect
+p9i-disconnect: ## Disconnect p9i client
+	@python3 "$(PWD)/cli/p9i_client.py" disconnect
+
+.PHONY: p9i-status
+p9i-status: ## Show p9i client status
+	@python3 "$(PWD)/cli/p9i_client.py" status
 
 # =============================================================================
 # SSL/TLS - Certificate setup for HTTPS
