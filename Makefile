@@ -48,6 +48,7 @@ NC := \033[0m
 .PHONY: lint test clean prune info ci-check
 .PHONY: install-docker install-k3s install-helm install-all
 .PHONY: mcp-setup mcp-remove mcp-test mcp-status
+.PHONY: cert-setup cert-create-secret install-certbot
 
 # =============================================================================
 # HELP
@@ -115,6 +116,11 @@ help:
 	@echo "  make mcp-test         Test MCP connection to server"
 	@echo "  make mcp-status       Show MCP client status"
 	@echo "  make mcp-remove       Remove Claude Code MCP settings"
+	@echo ""
+	@echo "$(GREEN)SSL/TLS certificate targets:$(NC)"
+	@echo "  make install-certbot  Install certbot for SSL certificates"
+	@echo "  make cert-setup      Get SSL certificates (Let's Encrypt)"
+	@echo "  make cert-create-secret  Create K8s TLS secret from certificates"
 	@echo ""
 
 # =============================================================================
@@ -267,6 +273,64 @@ mcp-remove: ## Remove Claude Code MCP settings
 		echo "$(YELLOW)No MCP settings found in ~/.claude/settings.json$(NC)"; \
 	fi
 	@echo "$(GREEN)Done.$(NC)"
+
+# =============================================================================
+# SSL/TLS - Certificate setup for HTTPS
+# =============================================================================
+
+.PHONY: install-certbot
+install-certbot: ## Install certbot for SSL certificates
+	@echo "$(YELLOW)Installing certbot...$(NC)"
+	@if command -v certbot >/dev/null 2>&1; then \
+		echo "$(GREEN)certbot already installed: $$(certbot --version 2>/dev/null)$(NC)"; \
+	else \
+		sudo apt-get update -qq; \
+		sudo apt-get install -y -qq certbot; \
+		echo "$(GREEN)certbot installed: $$(certbot --version)$(NC)"; \
+	fi
+
+.PHONY: cert-setup
+cert-setup: install-certbot ## Get SSL certificates via Let's Encrypt
+	@echo "$(YELLOW)Setting up SSL certificates...$(NC)"
+	@. ./.env 2>/dev/null || true; \
+	DOMAIN="$${DOMAIN:-p9i.ru}"; \
+	EMAIL="$${SSL_EMAIL:-admin@$$DOMAIN}"; \
+	SSL_DIR="./nginx/ssl"; \
+	echo "Domain: $$DOMAIN"; \
+	echo "Email: $$EMAIL"; \
+	echo "SSL directory: $$SSL_DIR"; \
+	mkdir -p "$$SSL_DIR" "./nginx/certbot-www"; \
+	if [ ! -f "$$SSL_DIR/privkey.pem" ] || [ ! -f "$$SSL_DIR/fullchain.pem" ]; then \
+		echo "Getting certificate from Let's Encrypt... "; \
+		sudo certbot certonly --standalone -d "$$DOMAIN" \
+			--email "$$EMAIL" --agree-tos --non-interactive --keep-until-expiring; \
+		sudo cp "/etc/letsencrypt/live/$$DOMAIN/fullchain.pem" "$$SSL_DIR/"; \
+		sudo cp "/etc/letsencrypt/live/$$DOMAIN/privkey.pem" "$$SSL_DIR/"; \
+		sudo chmod 644 "$$SSL_DIR/fullchain.pem"; \
+		sudo chmod 600 "$$SSL_DIR/privkey.pem"; \
+		echo "$(GREEN)Certificates installed in $$SSL_DIR$(NC)"; \
+	else \
+		echo "$(GREEN)Certificates already exist in $$SSL_DIR$(NC)"; \
+	fi; \
+	echo "$(GREEN)Certificate setup complete. Run 'make cert-create-secret' to create K8s TLS secret.$(NC)"
+
+.PHONY: cert-create-secret
+cert-create-secret: ## Create K8s TLS secret from SSL certificates
+	@echo "$(YELLOW)Creating K8s TLS secret...$(NC)"
+	@. ./.env 2>/dev/null || true; \
+	DOMAIN="$${DOMAIN:-p9i.ru}"; \
+	SSL_DIR="./nginx/ssl"; \
+	if [ ! -f "$$SSL_DIR/privkey.pem" ] || [ ! -f "$$SSL_DIR/fullchain.pem" ]; then \
+		echo "$(RED)Error: Certificates not found in $$SSL_DIR. Run 'make cert-setup' first.$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "Creating TLS secret 'p9i-tls' in namespace p9i..."; \
+	sudo kubectl create secret tls p9i-tls \
+		--cert="$$SSL_DIR/fullchain.pem" \
+		--key="$$SSL_DIR/privkey.pem" \
+		-n p9i --dry-run=client -o yaml | sudo kubectl apply -f -; \
+	echo "$(GREEN)TLS secret 'p9i-tls' created/updated in namespace p9i$(NC)"; \
+	echo "$(YELLOW)Now restart the ingress controller or redeploy to apply.$(NC)"
 
 # =============================================================================
 # SIMPLE ALIASES - Quick access for daily development
