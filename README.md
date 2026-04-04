@@ -59,8 +59,8 @@ make scale REPLICAS=5
       "command": "python3",
       "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
       "env": {
-        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
-        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "MCP_PROXY_URL": "https://p9i.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -186,7 +186,7 @@ P9I_API_KEY=sk-p9i-your-key
 | Endpoint | Описание |
 |----------|----------|
 | `http://localhost:8000/mcp` | Local MCP |
-| `http://mcp.coderweb.ru/mcp` | External MCP |
+| `http://p9i.ru/mcp` | External MCP |
 
 ## Тестирование
 

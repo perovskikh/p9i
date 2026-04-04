@@ -22,7 +22,7 @@ Usage:
     python -m cli.main deploy cleanup                 # Remove deployment
 
 For HTTP access, use JWT with:
-    {"url": "https://mcp.coderweb.ru/mcp", "headers": {"Authorization": "Bearer <token>"}}
+    {"url": "https://<DOMAIN>/mcp", "headers": {"Authorization": "Bearer <token>"}}
 """
 
 import argparse

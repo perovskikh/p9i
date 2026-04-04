@@ -68,8 +68,9 @@ def generate_token(args):
     print(f"Expires: {exp.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"\nToken:")
     print(token)
+    domain = env_vars.get("DOMAIN", os.getenv("DOMAIN", "p9i.ru"))
     print(f"\nUsage in Claude Code:")
-    print(f'{{"url": "https://mcp.coderweb.ru/mcp", "headers": {{"Authorization": "Bearer {token}"}}}}')
+    print(f'{{"url": "https://{domain}/mcp", "headers": {{"Authorization": "Bearer {token}"}}}}')
 
 
 def validate_token(args):

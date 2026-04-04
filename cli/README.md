@@ -38,7 +38,7 @@ python3 -m cli.jwt generate --subject my-project --role developer
 {
   "mcpServers": {
     "p9i": {
-      "url": "https://mcp.coderweb.ru/mcp",
+      "url": "https://p9i.ru/mcp",
       "headers": {
         "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
       }

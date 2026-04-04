@@ -17,7 +17,7 @@ services:
     networks:
       - p9i-net
     environment:
-      - DOMAIN=${DOMAIN:-mcp.coderweb.ru}
+      - DOMAIN=${DOMAIN:-p9i.ru}
     env_file:
       - .env
     ports:
@@ -63,8 +63,8 @@ services:
     environment:
       # Server configuration
       - SERVER_HOST=0.0.0.0
-      - P9I_API_KEY=sk-p9i-codeshift-${DOMAIN:-mcp.coderweb.ru}
-      - ALLOWED_ORIGINS=https://${DOMAIN:-mcp.coderweb.ru},https://coderweb.ru,http://localhost:8000
+      - P9I_API_KEY=sk-p9i-codeshift-${DOMAIN:-p9i.ru}
+      - ALLOWED_ORIGINS=https://${DOMAIN:-p9i.ru},http://localhost:8000
       # PostgreSQL
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/ai_prompts
       - POSTGRES_HOST=db

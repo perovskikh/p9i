@@ -24,8 +24,8 @@ resources:
 # Production environment variables
 env:
   SERVER_HOST: 0.0.0.0
-  P9I_API_KEY: sk-p9i-codeshift-mcp.coderweb.ru
-  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru
+  P9I_API_KEY: sk-p9i-codeshift-p9i.ru
+  ALLOWED_ORIGINS: https://p9i.ru
   LOG_LEVEL: INFO
   LLM_PROVIDER: auto
   JWT_ENABLED: true

@@ -20,7 +20,7 @@ hpa:
   targetMemoryUtilizationPercentage: 80
 
 image:
-  repository: 144.31.76.95:5000/p9i
+  repository: 176.108.255.121:5000/p9i
   tag: latest
   pullPolicy: Always
 
@@ -38,14 +38,14 @@ ingress:
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts:
-    - host: mcp.coderweb.ru
+    - host: p9i.ru
       paths:
         - path: /mcp
           pathType: Prefix
   tls:
     - secretName: p9i-tls
       hosts:
-        - mcp.coderweb.ru
+        - p9i.ru
 
 resources:
   limits:
@@ -57,8 +57,8 @@ resources:
 
 env:
   SERVER_HOST: 0.0.0.0
-  P9I_API_KEY: sk-p9i-codeshift-mcp.coderweb.ru
-  ALLOWED_ORIGINS: https://mcp.coderweb.ru,https://coderweb.ru,http://localhost:8000
+  P9I_API_KEY: sk-p9i-codeshift-p9i.ru
+  ALLOWED_ORIGINS: https://p9i.ru,http://localhost:8000
   DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_prompts
   POSTGRES_HOST: p9i-postgresql
   POSTGRES_PORT: 5432

@@ -10,8 +10,8 @@
     "command": "python3",
     "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
     "env": {
-      "MCP_PROXY_URL": "http://mcp.coderweb.ru/mcp",
-      "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+      "MCP_PROXY_URL": "http://p9i.ru/mcp",
+      "P9I_API_KEY": "sk-p9i-codeshift-p9i.ru"
     }
   }
 }
@@ -25,8 +25,8 @@
 #!/bin/bash
 # mcp-client.sh - Direct HTTP MCP client
 
-API_KEY="sk-p9i-codeshift-mcp.coderweb.ru"
-URL="http://mcp.coderweb.ru/mcp"
+API_KEY="sk-p9i-codeshift-p9i.ru"
+URL="http://p9i.ru/mcp"
 
 # Initialize - get session ID
 RESPONSE=$(curl -s -i -X POST "$URL" \
@@ -52,8 +52,8 @@ curl -s -X POST "$URL" \
 import httpx
 import json
 
-API_KEY = "sk-p9i-codeshift-mcp.coderweb.ru"
-URL = "http://mcp.coderweb.ru/mcp"
+API_KEY = "sk-p9i-codeshift-p9i.ru"
+URL = "http://p9i.ru/mcp"
 
 headers = {
     "Content-Type": "application/json",

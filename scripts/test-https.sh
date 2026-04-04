@@ -3,7 +3,7 @@
 
 set -e
 
-DOMAIN="${DOMAIN:-mcp.coderweb.ru}"
+DOMAIN="${DOMAIN:-p9i.ru}"
 COLOR_GREEN='\033[0;32m'
 COLOR_RED='\033[0;31m'
 COLOR_YELLOW='\033[1;33m'

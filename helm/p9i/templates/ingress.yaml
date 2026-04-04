@@ -12,19 +12,27 @@ metadata:
 {{- if .Values.ingress.enabled }}
 spec:
   tls:
+{{- range .Values.ingress.tls }}
     - hosts:
-        - mcp.coderweb.ru
-      secretName: p9i-tls
+{{- range .hosts }}
+        - {{ . }}
+{{- end }}
+      secretName: {{ .secretName }}
+{{- end }}
   rules:
-    - host: mcp.coderweb.ru
+{{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
       http:
         paths:
-          - path: /mcp
-            pathType: Prefix
+{{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "p9i.fullname" . }}
+                name: {{ include "p9i.fullname" $ }}
                 port:
-                  number: 8000
+                  number: {{ $.Values.service.ports.mcp }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}

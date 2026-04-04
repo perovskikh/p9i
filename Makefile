@@ -2,12 +2,15 @@
 # Usage: make <target>
 
 # Configuration
-REGISTRY ?= 144.31.76.95:5000
+REGISTRY ?= 176.108.255.121:5000
 IMAGE_NAME ?= p9i
 IMAGE_TAG ?= latest
 FULL_IMAGE ?= $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 K8S_DIR := $(shell pwd)/k8s
 NAMESPACE ?= p9i
+# Detect local registry availability
+LOCAL_REGISTRY ?= localhost:5000
+K8S_REGISTRY ?= $(shell (curl -s --connect-timeout 2 -o /dev/null https://$(REGISTRY)/v2/ 2>/dev/null && echo "$(REGISTRY)") || echo "$(LOCAL_REGISTRY)")
 HELM_CHART := $(shell pwd)/helm/p9i
 
 # Load .env if exists (for build args)
@@ -43,6 +46,8 @@ NC := \033[0m
 .PHONY: helm-install helm-upgrade helm-uninstall helm-template helm-values helm-list
 .PHONY: backup restore backup-rotate backup-list
 .PHONY: lint test clean prune info ci-check
+.PHONY: install-docker install-k3s install-helm install-all
+.PHONY: mcp-setup mcp-remove mcp-test mcp-status
 
 # =============================================================================
 # HELP
@@ -67,6 +72,12 @@ help:
 	@echo "  make compose-logs        View logs from all services"
 	@echo "  make compose-restart    Restart all services"
 	@echo "  make compose-clean      Remove containers, volumes, networks"
+	@echo ""
+	@echo "$(GREEN)Setup targets:$(NC)"
+	@echo "  make install-all        Install Docker + K3s + Helm (full setup)"
+	@echo "  make install-docker     Install Docker Engine"
+	@echo "  make install-k3s        Install K3s single node"
+	@echo "  make install-helm       Install Helm 3"
 	@echo ""
 	@echo "$(GREEN)K3s/Kubernetes targets:$(NC)"
 	@echo "  make k3s-install        Install K3s single node"
@@ -99,6 +110,163 @@ help:
 	@echo "  make clean              Clean build artifacts"
 	@echo "  make prune             Docker prune (remove unused images)"
 	@echo ""
+	@echo "$(GREEN)Claude Code MCP targets:$(NC)"
+	@echo "  make mcp-setup        Configure Claude Code MCP client"
+	@echo "  make mcp-test         Test MCP connection to server"
+	@echo "  make mcp-status       Show MCP client status"
+	@echo "  make mcp-remove       Remove Claude Code MCP settings"
+	@echo ""
+
+# =============================================================================
+# SETUP - Install prerequisites (Debian/Ubuntu)
+# =============================================================================
+
+.PHONY: install-all
+install-all: install-docker install-k3s install-helm ## Install everything (Docker + K3s + Helm)
+	@echo "$(GREEN)=== All prerequisites installed ===$(NC)"
+	@echo "$(GREEN)Run: make deploy$(NC)"
+
+.PHONY: install-docker
+install-docker: ## Install Docker Engine (Debian/Ubuntu)
+	@echo "$(YELLOW)Installing Docker Engine...$(NC)"
+	@if command -v docker >/dev/null 2>&1; then \
+		echo "$(GREEN)Docker already installed: $$(docker --version)$(NC)"; \
+		exit 0; \
+	fi
+	sudo apt-get update -qq
+	sudo apt-get install -y -qq ca-certificates curl gnupg
+	sudo install -m 0755 -d /etc/apt/keyrings
+	@curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || \
+		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null
+	@echo "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $$(. /etc/os-release && echo "$$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+	sudo apt-get update -qq
+	sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+	sudo usermod -aG docker $$(whoami)
+	@echo "$(GREEN)Docker installed: $$(docker --version)$(NC)"
+	@echo "$(YELLOW)NOTE: Run 'newgrp docker' or re-login for group changes$(NC)"
+
+.PHONY: install-k3s
+install-k3s: ## Install K3s lightweight Kubernetes (single node)
+	@echo "$(YELLOW)Installing K3s...$(NC)"
+	@if command -v k3s >/dev/null 2>&1; then \
+		echo "$(GREEN)K3s already installed: $$(k3s --version)$(NC)"; \
+		exit 0; \
+	fi
+	@curl -sfL https://get.k3s.io | sudo sh -s - --write-kubeconfig-mode 644
+	@sudo chmod 644 /etc/rancher/k3s/k3s.yaml 2>/dev/null || true
+	@mkdir -p $$(HOME)/.kube
+	@sudo cp /etc/rancher/k3s/k3s.yaml $$(HOME)/.kube/config 2>/dev/null || true
+	@echo "$(GREEN)K3s installed: $$(k3s --version 2>/dev/null | head -1)$(NC)"
+	@echo "$(YELLOW)Waiting for K3s node ready...$(NC)"
+	@sudo k3s kubectl wait --for=condition=ready node/$$(hostname) --timeout=120s 2>/dev/null || echo "Node not ready yet, check: sudo k3s kubectl get nodes"
+
+.PHONY: install-helm
+install-helm: ## Install Helm 3 Kubernetes package manager
+	@echo "$(YELLOW)Installing Helm 3...$(NC)"
+	@if command -v helm >/dev/null 2>&1; then \
+		echo "$(GREEN)Helm already installed: $$(helm version --short)$(NC)"; \
+		exit 0; \
+	fi
+	@curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sudo bash
+	@echo "$(GREEN)Helm installed: $$(helm version --short)$(NC)"
+
+# =============================================================================
+# MCP CLIENT - Claude Code MCP integration
+# =============================================================================
+
+.PHONY: mcp-setup
+mcp-setup: ## Configure Claude Code MCP client (local mode)
+	@echo "$(YELLOW)Setting up Claude Code MCP client...$(NC)"
+	@. ./.env 2>/dev/null || true; \
+	echo "DOMAIN=$${DOMAIN:-p9i.ru}"; \
+	echo "P9I_API_KEY=$${P9I_API_KEY:-sk-p9i-codeshift-p9i.ru}"; \
+	mkdir -p ~/.claude; \
+	if [ -f /home/worker/p9i/.mcp.json ]; then \
+		cp /home/worker/p9i/.mcp.json ~/.claude/settings.json; \
+		echo "$(GREEN)Copied .mcp.json to ~/.claude/settings.json$(NC)"; \
+	else \
+		echo "$(RED)Error: /home/worker/p9i/.mcp.json not found$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(GREEN)MCP client configured. Restart Claude Code to use p9i server.$(NC)"; \
+	echo "$(YELLOW)To test: make mcp-test$(NC)"
+
+.PHONY: mcp-test
+mcp-test: ## Test MCP connection to p9i server
+	@echo "$(YELLOW)Testing MCP connection...$(NC)"
+	@. ./.env 2>/dev/null || true; \
+	URL="https://$${DOMAIN:-p9i.ru}/mcp"; \
+	KEY="$${P9I_API_KEY:-sk-p9i-codeshift-p9i.ru}"; \
+	echo "Testing MCP endpoint: $$URL"; \
+	echo "API Key: [configured]"; \
+	RESPONSE=$$(curl -sk -X POST "$$URL" \
+		-H "Content-Type: application/json" \
+		-H "X-API-Key: $$KEY" \
+		-H "Accept: application/json, text/event-stream" \
+		-d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}' \
+		--max-time 30 2>&1); \
+	if [ $$? -eq 0 ]; then \
+		echo "Response: $$RESPONSE" | head -c 300; \
+		echo ""; \
+		echo "$(GREEN)✓ MCP server is reachable$(NC)"; \
+	else \
+		echo "Connection failed: $$RESPONSE"; \
+		echo "$(RED)Check:$(NC)"; \
+		echo "  1. Server is running: kubectl get pods -n p9i"; \
+		echo "  2. Domain resolves: nslookup $$DOMAIN"; \
+		echo "  3. Firewall allows 443"; \
+		exit 1; \
+	fi; \
+	echo ""; \
+	echo "$(GREEN)MCP connection test complete.$(NC)"
+
+.PHONY: mcp-status
+mcp-status: ## Show MCP client status
+	@echo "$(BLUE)=== MCP Client Status ===$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Local .mcp.json:$(NC)"
+	@if [ -f /home/worker/p9i/.mcp.json ]; then \
+		echo "  Found at: /home/worker/p9i/.mcp.json"; \
+		echo "  Content:"; \
+		cat /home/worker/p9i/.mcp.json | sed 's/^/    /'; \
+	else \
+		echo "  Not found"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)Claude Code settings:$(NC)"
+	@if [ -f ~/.claude/settings.json ]; then \
+		echo "  Found at: ~/.claude/settings.json"; \
+		echo "  Content:"; \
+		cat ~/.claude/settings.json | sed 's/^/    /'; \
+	else \
+		echo "  Not configured. Run: make mcp-setup"; \
+	fi
+	@echo ""
+	@echo "$(YELLOW)Server endpoint:$(NC)"
+	@. ./.env 2>/dev/null || true; \
+	echo "  URL: https://$${DOMAIN:-p9i.ru}/mcp"; \
+	echo "  API Key: $${P9I_API_KEY:+Configured} $$(test -n "$$P9I_API_KEY" && echo "(set)" || echo "(not set)")$$"; \
+	if . ./.env 2>/dev/null && [ -n "$$MINIMAX_API_KEY" ]; then \
+		echo "  MINIMAX_API_KEY: $(GREEN)✓ configured$(NC)"; \
+	else \
+		echo "  MINIMAX_API_KEY: $(RED)✗ not configured$(NC)"; \
+	fi
+	@if . ./.env 2>/dev/null && [ -n "$$ZAI_API_KEY" ]; then \
+		echo "  ZAI_API_KEY: $(GREEN)✓ configured$(NC)"; \
+	else \
+		echo "  ZAI_API_KEY: $(RED)✗ not configured$(NC)"; \
+	fi
+
+.PHONY: mcp-remove
+mcp-remove: ## Remove Claude Code MCP settings
+	@echo "$(YELLOW)Removing Claude Code MCP settings...$(NC)"
+	@if [ -f ~/.claude/settings.json ]; then \
+		rm -v ~/.claude/settings.json; \
+		echo "$(GREEN)MCP settings removed from ~/.claude/settings.json$(NC)"; \
+	else \
+		echo "$(YELLOW)No MCP settings found in ~/.claude/settings.json$(NC)"; \
+	fi
+	@echo "$(GREEN)Done.$(NC)"
 
 # =============================================================================
 # SIMPLE ALIASES - Quick access for daily development
@@ -149,7 +317,7 @@ build:
 	fi
 	@echo "$(YELLOW)Building p9i Docker image (no cache)...$(NC)"
 	@. ./.env 2>/dev/null || true; \
-	docker build --no-cache \
+	sudo docker build --no-cache \
 		-f docker/Dockerfile \
 		-t $(IMAGE_NAME):latest \
 		-t $(FULL_IMAGE) \
@@ -170,10 +338,11 @@ build:
 
 .PHONY: build-push
 build-push: build
-	@echo "$(YELLOW)Pushing to local registry...$(NC)"
-	docker tag $(IMAGE_NAME):latest $(FULL_IMAGE)
-	docker push $(FULL_IMAGE)
-	@echo "$(GREEN)Pushed: $(FULL_IMAGE)$(NC)"
+	@echo "$(YELLOW)Pushing to registry...$(NC)"
+	@echo "Using registry: $(K8S_REGISTRY)"
+	sudo docker tag $(IMAGE_NAME):latest $(K8S_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+	sudo docker push $(K8S_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+	@echo "$(GREEN)Pushed: $(K8S_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)$(NC)"
 
 .PHONY: run
 run:
@@ -282,8 +451,32 @@ k3s-status-nodes: ## Show K3s nodes status
 
 .PHONY: k3s-deploy
 k3s-deploy:
+	@echo "$(YELLOW)Checking prerequisites...$(NC)"
+	@# Check .env exists
+	@if [ ! -f .env ]; then \
+		echo "$(RED)Error: .env file not found. Run: cp .env.example .env$(NC)"; \
+		exit 1; \
+	fi
+	@# Load env to check keys
+	@. ./.env 2>/dev/null; \
+	echo "$(YELLOW)Checking LLM API keys in .env...$(NC)"; \
+	HAS_KEY=0; \
+	for key in MINIMAX_API_KEY ZAI_API_KEY OPENROUTER_API_KEY DEEPSEEK_API_KEY; do \
+		val="$$key"; \
+		if [ -n "$$val" ]; then \
+			echo "$(GREEN)✓ $$key found$(NC)"; \
+			HAS_KEY=1; \
+		else \
+			echo "$(YELLOW)✗ $$key not set$(NC)"; \
+		fi; \
+	done; \
+	if [ $$HAS_KEY -eq 0 ]; then \
+		echo "$(RED)Error: No LLM API keys found in .env. Set at least one of:$(NC)"; \
+		echo "$(RED)  MINIMAX_API_KEY, ZAI_API_KEY, OPENROUTER_API_KEY, DEEPSEEK_API_KEY$(NC)"; \
+		exit 1; \
+	fi
 	@echo "$(YELLOW)Cleaning up Docker resources to prevent disk pressure...$(NC)"
-	@docker system prune -af --filter "until=72h" 2>/dev/null || true
+	@sudo docker system prune -af --filter "until=72h" 2>/dev/null || true
 	@echo "$(YELLOW)Building and pushing Docker image...$(NC)"
 	$(MAKE) build-push
 	@echo "$(YELLOW)Cleaning up old/evicted pods before deploy...$(NC)"
@@ -304,6 +497,11 @@ k3s-deploy:
 		--set env.GITHUB_TOKEN="$$GITHUB_TOKEN" \
 		--set env.FIGMA_TOKEN="$$FIGMA_TOKEN" \
 		--set env.CONTEXT7_API_KEY="$$CONTEXT7_API_KEY" \
+		--set env.P9I_API_KEY="$$P9I_API_KEY" \
+		--set env.ALLOWED_ORIGINS="$$ALLOWED_ORIGINS" \
+		--set ingress.hosts[0].host="$${DOMAIN:-p9i.ru}" \
+		--set ingress.tls[0].hosts[0]="$${DOMAIN:-p9i.ru}" \
+		--set image.repository="$(K8S_REGISTRY)/$(IMAGE_NAME)" \
 		--wait --timeout 5m
 	@echo "$(YELLOW)Cleaning up old pods after deploy...$(NC)"
 	@sleep 5 && $(KUBECTL) get pods -n $(NAMESPACE) -l app=p9i-p9i --no-headers 2>/dev/null | \

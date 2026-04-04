@@ -1,10 +1,10 @@
 #!/bin/bash
-# setup-ssl.sh - SSL certificate setup for mcp.coderweb.ru
+# setup-ssl.sh - SSL certificate setup for p9i
 
 set -e
 
-DOMAIN="mcp.coderweb.ru"
-EMAIL="admin@coderweb.ru"  # Change to your email
+DOMAIN="${DOMAIN:-p9i.ru}"
+EMAIL="${EMAIL:-admin@p9i.ru}"  # Change to your email
 SSL_DIR="./nginx/ssl"
 CERTBOT_DIR="./nginx/certbot-www"
 

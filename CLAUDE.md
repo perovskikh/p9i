@@ -263,8 +263,8 @@ The p9i project already has `.mcp.json` configured at `/home/worker/p9i/.mcp.jso
       "command": "python3",
       "args": ["/home/worker/p9i/p9i_stdio_bridge.py"],
       "env": {
-        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
-        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "MCP_PROXY_URL": "https://p9i.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -322,8 +322,8 @@ p9i supports connecting multiple external projects to a single p9i instance. Thi
      "mcpServers": {
        "p9i": {
          "type": "http",
-         "url": "https://coderweb.ru:8000",
-         "headers": { "X-API-Key": "sk-p9i-codeshift-coderweb.ru" }
+         "url": "https://p9i.ru:8000",
+         "headers": { "X-API-Key": "sk-p9i-codeshift-p9i.ru" }
        }
      }
    }
@@ -335,7 +335,7 @@ p9i supports connecting multiple external projects to a single p9i instance. Thi
      "mcpServers": {
        "p9i": {
          "type": "http",
-         "url": "https://coderweb.ru:8000",
+         "url": "https://p9i.ru:8000",
          "headers": { "Authorization": "Bearer YOUR_JWT_TOKEN" }
        }
      }

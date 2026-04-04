@@ -15,8 +15,8 @@ Uses `p9i_stdio_bridge.py` to bridge Claude Code (stdio) to MCP server (HTTP).
       "command": "python3",
       "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
       "env": {
-        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
-        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "MCP_PROXY_URL": "https://p9i.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -32,9 +32,9 @@ Direct connection without proxy.
   "mcpServers": {
     "p9i": {
       "type": "http",
-      "url": "https://mcp.coderweb.ru/mcp",
+      "url": "https://p9i.ru/mcp",
       "headers": {
-        "X-API-Key": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "X-API-Key": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -59,10 +59,10 @@ The server manages sessions via `Mcp-Session-Id` header. On first request, a ses
 
 ```
 Option A (Proxy):
-Claude Code (stdio) → p9i_stdio_bridge.py → HTTPS → mcp.coderweb.ru/mcp
+Claude Code (stdio) → p9i_stdio_bridge.py → HTTPS → p9i.ru/mcp
 
 Option B (Direct):
-Claude Code → HTTPS → mcp.coderweb.ru/mcp
+Claude Code → HTTPS → p9i.ru/mcp
 ```
 
 ## Files

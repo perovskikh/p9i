@@ -9,9 +9,9 @@
   "mcpServers": {
     "p9i": {
       "type": "http",
-      "url": "https://mcp.coderweb.ru/mcp",
+      "url": "https://p9i.ru/mcp",
       "headers": {
-        "X-API-Key": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "X-API-Key": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -29,8 +29,8 @@ For Claude Code stdio compatibility with remote server:
       "command": "python3",
       "args": ["/path/to/p9i/p9i_stdio_bridge.py"],
       "env": {
-        "MCP_PROXY_URL": "https://mcp.coderweb.ru/mcp",
-        "P9I_API_KEY": "sk-p9i-codeshift-mcp.coderweb.ru"
+        "MCP_PROXY_URL": "https://p9i.ru/mcp",
+        "P9I_API_KEY": "sk-p9i-codeshift-p9i.ru"
       }
     }
   }
@@ -40,8 +40,8 @@ For Claude Code stdio compatibility with remote server:
 ### Environment Variables
 
 ```bash
-export MCP_PROXY_URL=https://mcp.coderweb.ru/mcp
-export P9I_API_KEY=sk-p9i-codeshift-mcp.coderweb.ru
+export MCP_PROXY_URL=https://p9i.ru/mcp
+export P9I_API_KEY=sk-p9i-codeshift-p9i.ru
 ```
 
 ## K3s Deployment Architecture
@@ -51,8 +51,8 @@ Internet → Traefik (ingress) → p9i-p9i-xxx:8000 → PostgreSQL + Redis
 ```
 
 Access via:
-- MCP: `https://mcp.coderweb.ru/mcp`
-- Health: `https://mcp.coderweb.ru/nginx-health`
+- MCP: `https://p9i.ru/mcp`
+- Health: `https://p9i.ru/nginx-health`
 
 ## Available MCP Tools
 
