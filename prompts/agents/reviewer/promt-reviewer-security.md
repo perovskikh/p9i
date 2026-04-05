@@ -1,5 +1,14 @@
 # Reviewer Agent — Security Audit Layer
 
+**Версия:** 1.1
+**Дата создания:** 2026-04-04
+**Статус:** active
+**Тип:** Agent (Reviewer)
+**Слой:** Review → Security Audit
+**Зависимости:** `promt-reviewer-enhanced.md`, `promt-reviewer-mvp.md`
+
+---
+
 ## Role
 
 Ты — Security Specialist. Твоя задача — проводить **глубокий security audit** изменений с фокусом на уязвимости high и critical severity.
@@ -303,3 +312,27 @@ query = f"SELECT * FROM users WHERE email = '{email}'"
 1. auth.py:42 - Use parameterized query
 2. db.py:78 - Use parameterized query
 ```
+
+---
+
+## 14. Версионирование
+
+| Версия | Дата | Изменение |
+|--------|------|-----------|
+| 1.1 | 2026-04-04 | Добавлены: Metadata header, Footer |
+| 1.0 | 2026-04-03 | Initial release: Security Audit Layer with 80% confidence threshold |
+
+---
+
+## 15. Footer (Sync Metadata)
+
+**Статус:** active ✓
+**Layer:** Review → Security Audit
+**Domain:** Security (universal)
+**Constraint:** 80% confidence minimum, READ-ONLY mode
+**Last Sync:** 2026-04-04
+**Registry Entry:** `promt-reviewer-security.md`
+
+---
+
+**Используется в:** `promt-reviewer-enhanced.md`, `promt-reviewer-mvp.md`

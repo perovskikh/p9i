@@ -71,3 +71,22 @@ class MemoryService:
         if memory_file.exists():
             memory_file.unlink()
         logger.info(f"Cleared memory for project {project_id}")
+
+
+# Singleton instance
+_memory_service: Optional[MemoryService] = None
+
+
+def get_memory_service(memory_dir: str = "./memory") -> MemoryService:
+    """Get or create MemoryService singleton.
+
+    Args:
+        memory_dir: Directory for memory storage (default: ./memory)
+
+    Returns:
+        MemoryService: Singleton instance
+    """
+    global _memory_service
+    if _memory_service is None:
+        _memory_service = MemoryService(str(memory_dir))
+    return _memory_service

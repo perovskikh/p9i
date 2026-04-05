@@ -2481,102 +2481,102 @@ async def context7_query(library: str, query: str) -> dict:
     return await _context7_query_docs(library_id, query or f"How to use {library}?")
 
 
-async def _github_mcp_call(tool_name: str, arguments: dict) -> dict:
-    """Call GitHub MCP tool."""
-    import httpx
+async def _github_gh_call(command: list) -> dict:
+    """Call GitHub CLI (gh) for write operations."""
+    import asyncio
+    import os
     from dotenv import load_dotenv
-    load_dotenv()
+
+    # Try multiple paths for .env file
+    env_paths = [".env", "/app/.env", os.path.join(os.path.dirname(__file__), "../../.env")]
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+            break
 
     github_token = os.getenv("GITHUB_TOKEN")
-    github_mcp_url = os.getenv("GITHUB_MCP_URL", "https://api.githubcopilot.com/mcp/")
+    if not github_token:
+        return {"status": "error", "error": "GITHUB_TOKEN not configured"}
+
+    env = os.environ.copy()
+    env["GH_TOKEN"] = github_token
+    env["GH_NO_REMOTE_DIR"] = "1"
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "gh", *command,
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            err_msg = stderr.decode() if stderr else "Unknown error"
+            return {"status": "error", "error": f"gh command failed: {err_msg}"}
+
+        result = stdout.decode().strip()
+        return {"status": "success", "output": result}
+
+    except FileNotFoundError:
+        return {"status": "error", "error": "gh CLI not installed"}
+    except Exception as e:
+        logger.error(f"GitHub gh error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _github_api_call(method: str, endpoint: str, data: dict = None) -> dict:
+    """Call GitHub REST API directly."""
+    import httpx
+    from dotenv import load_dotenv
+
+    # Try multiple paths for .env file
+    env_paths = [".env", "/app/.env", os.path.join(os.path.dirname(__file__), "../../.env")]
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+            break
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    github_api_url = "https://api.github.com"
 
     if not github_token:
         return {"status": "error", "error": "GITHUB_TOKEN not configured"}
 
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    }
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                github_mcp_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "tools/call",
-                    "params": {
-                        "name": tool_name,
-                        "arguments": arguments
-                    },
-                    "id": 1
-                },
-                headers={
-                    "Authorization": f"Bearer {github_token}",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream"
-                }
-            )
+            url = f"{github_api_url}{endpoint}"
 
-            if resp.status_code != 200:
-                return {"status": "error", "error": f"GitHub MCP error: {resp.status_code}"}
+            if method == "GET":
+                resp = await client.get(url, headers=headers, params=data or {})
+            elif method == "POST":
+                resp = await client.post(url, headers=headers, json=data)
+            elif method == "PATCH":
+                resp = await client.patch(url, headers=headers, json=data)
+            else:
+                return {"status": "error", "error": f"Unsupported method: {method}"}
 
-            # Parse SSE response
-            text = resp.text
-            lines = text.split('\n')
+            if resp.status_code == 403:
+                return {"status": "error", "error": "Forbidden: token lacks permissions"}
+            elif resp.status_code == 404:
+                return {"status": "error", "error": "Not found: resource does not exist"}
+            elif resp.status_code >= 400:
+                try:
+                    err_data = resp.json()
+                    return {"status": "error", "error": f"GitHub API error {resp.status_code}: {err_data.get('message', resp.text)}"}
+                except:
+                    return {"status": "error", "error": f"GitHub API error {resp.status_code}: {resp.text[:200]}"}
 
-            for line in lines:
-                if line.startswith('data: '):
-                    data_str = line[6:]
-                    try:
-                        import json
-                        obj = json.loads(data_str)
-                        logger.info(f"GitHub MCP response: {obj.keys()}")
-
-                        # Check for error in response
-                        if 'error' in obj:
-                            err = obj['error']
-                            return {
-                                "status": "error",
-                                "error": f"GitHub MCP error: {err.get('message', err)}"
-                            }
-
-                        # Check for text content in result
-                        if 'result' in obj:
-                            result = obj['result']
-                            if isinstance(result, dict) and 'content' in result:
-                                # MCP tool result format
-                                results = []
-                                for item in result['content']:
-                                    if item.get('type') == 'text':
-                                        results.append(item['text'])
-                                return {
-                                    "status": "success",
-                                    "tool": tool_name,
-                                    "results": results
-                                }
-                            elif isinstance(result, dict):
-                                # Direct dict result - convert to string
-                                return {
-                                    "status": "success",
-                                    "tool": tool_name,
-                                    "results": [str(result)]
-                                }
-                            elif isinstance(result, list):
-                                # List result
-                                return {
-                                    "status": "success",
-                                    "tool": tool_name,
-                                    "results": result
-                                }
-                            else:
-                                return {
-                                    "status": "success",
-                                    "tool": tool_name,
-                                    "results": [str(result)]
-                                }
-                    except Exception as e:
-                        logger.error(f"Parse error: {e}")
-
-            return {"status": "error", "error": "No results from GitHub MCP"}
+            return {"status": "success", "data": resp.json(), "status_code": resp.status_code}
 
     except Exception as e:
-        logger.error(f"GitHub MCP error: {e}")
+        logger.error(f"GitHub API error: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -2588,8 +2588,8 @@ async def github_mcp_list_repos(query: str = "") -> dict:
         query: Search query for repositories (optional)
     """
     if query:
-        return await _github_mcp_call("search_repositories", {"query": query})
-    return await _github_mcp_call("search_repositories", {})
+        return await _github_api_call("GET", "/search/repositories", {"q": query, "per_page": 30})
+    return await _github_api_call("GET", "/user/repos", {"per_page": 30, "sort": "updated"})
 
 
 @mcp.tool()
@@ -2602,14 +2602,14 @@ async def github_mcp_create_pr(
     base: str = "main"
 ) -> dict:
     """Create a pull request on GitHub."""
-    return await _github_mcp_call("create_pull_request", {
-        "owner": owner,
-        "repo": repo,
-        "title": title,
-        "body": body,
-        "head": head,
-        "base": base
-    })
+    return await _github_gh_call([
+        "pr", "create",
+        "--repo", f"{owner}/{repo}",
+        "--title", title,
+        "--body", body,
+        "--head", head,
+        "--base", base
+    ])
 
 
 @mcp.tool()
@@ -2620,13 +2620,12 @@ async def github_mcp_create_issue(
     body: str = ""
 ) -> dict:
     """Create an issue on GitHub."""
-    return await _github_mcp_call("issue_write", {
-        "owner": owner,
-        "repo": repo,
-        "title": title,
-        "body": body,
-        "method": "create"
-    })
+    return await _github_gh_call([
+        "issue", "create",
+        "--repo", f"{owner}/{repo}",
+        "--title", title,
+        "--body", body
+    ])
 
 
 @mcp.tool()
@@ -2636,10 +2635,9 @@ async def github_mcp_list_issues(
     state: str = "open"
 ) -> dict:
     """List issues on a GitHub repository."""
-    return await _github_mcp_call("list_issues", {
-        "owner": owner,
-        "repo": repo,
-        "state": state
+    return await _github_api_call("GET", f"/repos/{owner}/{repo}/issues", {
+        "state": state,
+        "per_page": 30
     })
 
 
@@ -3477,6 +3475,162 @@ async def architect_parallel_research(
         return {"status": "error", "error": str(e)}
 
 
+# ==========================================
+# WORKFLOW COORDINATOR MCP TOOLS (ADR-020)
+# ==========================================
+
+@mcp.tool()
+async def create_workflow(
+    name: str,
+    target: str,
+    project_path: str = ".",
+    team_name: str = None,
+    jwt_token: str = None
+) -> dict:
+    """
+    Create a new 4-phase workflow task.
+
+    4-Phase Workflow Graph:
+    A[Фаза 1: Исследование] -->|Отчёты| B[Фаза 2: Синтез]
+    B -->|Спецификация| C[Фаза 3: Реализация]
+    C -->|Изменения + Коммиты| D[Фаза 4: Верификация]
+    D -- Успех --> E[Задача завершена]
+    D -- Ошибки --> C
+
+    Args:
+        name: Workflow task name (e.g., "Implement auth module")
+        target: Target module/file to work on (e.g., "src/auth")
+        project_path: Path to project (default: ".")
+        team_name: Optional team name for worker grouping
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Workflow ID and initial state
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = orchestrator.create_workflow(
+            name=name,
+            target=target,
+            project_path=project_path,
+            team_name=team_name,
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Create workflow error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+async def execute_workflow(
+    workflow_id: str,
+    directive: str = None,
+    auto_continue: bool = True,
+    jwt_token: str = None
+) -> dict:
+    """
+    Execute a 4-phase workflow.
+
+    Phase transitions:
+    - Phase 1: Research (Explorer) → Reports
+    - Phase 2: Synthesis (Architect) → Specification
+    - Phase 3: Implementation (Developer) → Changes + Commits (auto-retry on failure)
+    - Phase 4: Verification (Reviewer) → VERDICT
+
+    Args:
+        workflow_id: ID of workflow to execute
+        directive: Optional override for the main directive
+        auto_continue: If True, automatically proceed through phases
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Workflow execution results with phase outputs
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = await orchestrator.execute_workflow(
+            workflow_id=workflow_id,
+            directive=directive,
+            auto_continue=auto_continue,
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Execute workflow error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+def get_workflow(
+    workflow_id: str,
+    jwt_token: str = None
+) -> dict:
+    """
+    Get workflow status and current phase.
+
+    Args:
+        workflow_id: ID of workflow to get
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: Workflow status and phase information
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = orchestrator.get_workflow(workflow_id)
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Get workflow error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+@mcp.tool()
+def list_workflows(
+    status: str = None,
+    jwt_token: str = None
+) -> dict:
+    """
+    List all workflows, optionally filtered by status.
+
+    Args:
+        status: Optional status filter (pending, in_progress, completed, failed)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        dict: List of workflows
+    """
+    is_valid, _ = validate_auth(jwt_token=jwt_token)
+    if not is_valid:
+        return {"status": "error", "error": "Authentication required"}
+
+    try:
+        from src.services.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = orchestrator.list_workflows(status=status)
+        return {"status": "success", "workflows": result}
+    except Exception as e:
+        logger.error(f"List workflows error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 @mcp.tool()
 def read_project_files(
     project_path: str,
@@ -3770,6 +3924,11 @@ def get_available_mcp_tools() -> dict:
         {"name": "p9i", "description": "Unified router - Natural language interface with intelligent agent orchestration"},
         {"name": "architect_design", "description": "Architect agent - system design"},
         {"name": "architect_parallel_research", "description": "Architect parallel research - 3-phase analysis (tech stack, patterns, best practices)"},
+        # Workflow Coordinator tools (ADR-020 Phase 2)
+        {"name": "create_workflow", "description": "Create 4-phase workflow (Research→Synthesis→Implementation→Verification)"},
+        {"name": "execute_workflow", "description": "Execute 4-phase workflow with auto-retry"},
+        {"name": "get_workflow", "description": "Get workflow status and current phase"},
+        {"name": "list_workflows", "description": "List all workflows, optionally filtered by status"},
         {"name": "developer_code", "description": "Developer agent - code generation"},
         {"name": "reviewer_check", "description": "Reviewer agent - code review"},
         {"name": "list_agents", "description": "List all available agents"},

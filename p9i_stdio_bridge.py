@@ -19,6 +19,7 @@ import os
 import sys
 import json
 import ssl
+import time
 import urllib.request
 import urllib.error
 import argparse
@@ -113,11 +114,11 @@ def stream_response(response, session_store):
     """Stream SSE response line by line to stdout."""
     session_id = session_store.get("id")
 
-    # Extract session ID from headers
+    # Extract session ID from headers - always update if server sends new session
     new_session = response.getheader("Mcp-Session-Id")
-    if new_session and not session_id:
+    if new_session:
         session_store["id"] = new_session
-        print(f"[PROXY] Session stored: {new_session}", file=sys.stderr, flush=True)
+        print(f"[PROXY] Session updated: {new_session}", file=sys.stderr, flush=True)
 
     print(f"[PROXY] Starting response stream", file=sys.stderr, flush=True)
 
@@ -255,8 +256,8 @@ def main():
                 req_headers["Mcp-Session-Id"] = session_store["id"]
                 print(f"[PROXY] Using session: {session_store['id']}", file=sys.stderr, flush=True)
             else:
-                req_headers["Mcp-Session-Id"] = ""
-                print("[PROXY] Using empty session", file=sys.stderr, flush=True)
+                # No session - don't add header at all, let server create new session
+                print("[PROXY] No session, will let server create new", file=sys.stderr, flush=True)
 
             # Send to MCP server
             try:
@@ -283,6 +284,12 @@ def main():
             except urllib.error.HTTPError as e:
                 print(f"[PROXY] HTTP Error: {e.code} - {e.reason}", file=sys.stderr, flush=True)
                 error_body = e.read().decode("utf-8")
+                # Check if session expired (401/403) - need to re-initialize
+                if e.code in (401, 403) and session_store["id"]:
+                    print(f"[PROXY] Session expired, clearing session for re-initialize", file=sys.stderr, flush=True)
+                    session_store["id"] = None
+                    initialized = False
+                    continue  # Skip error output, next request will re-initialize
                 # Try to extract JSON from error response
                 try:
                     error_json = json.loads(error_body)

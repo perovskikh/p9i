@@ -23,6 +23,13 @@ from src.application.agent_router import AgentRouter, AGENTS
 
 logger = logging.getLogger(__name__)
 
+# Optional asyncio import for lock
+try:
+    import asyncio
+    HAS_ASYNCIO = True
+except ImportError:
+    HAS_ASYNCIO = False
+
 # Prompts directory - use relative path from current file for flexibility
 PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
 
@@ -94,6 +101,46 @@ class WorkerStatus(Enum):
     ABORTED = "aborted"
 
 
+class PhaseStatus(Enum):
+    """Workflow phase status."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+@dataclass
+class TaskPhase:
+    """Single phase in the 4-phase workflow."""
+    name: str  # research, synthesis, implementation, verification
+    status: PhaseStatus = PhaseStatus.PENDING
+    agent_type: str = ""  # explorer, architect, developer, reviewer
+    directive: str = ""
+    output: str = ""
+    error: str = ""
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class WorkflowTask:
+    """Represents a 4-phase workflow task (Claude Code pattern)."""
+    task_id: str
+    name: str
+    target: str  # Target module/file
+    project_path: str
+    status: str = "pending"  # pending, in_progress, completed, failed
+    current_phase: int = 0  # 0=Research, 1=Synthesis, 2=Implementation, 3=Verification
+    phases: List[TaskPhase] = field(default_factory=list)
+    team_name: str = ""
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+    result: Dict[str, Any] = field(default_factory=dict)
+    error: str = ""
+
+
 @dataclass
 class WorkerState:
     """State of a worker agent."""
@@ -124,6 +171,10 @@ class AgentOrchestrator:
         self._use_checkpoint = use_checkpoint
         # Worker state tracking for coordinator pattern
         self._workers: Dict[str, WorkerState] = {}
+        # Workflow task tracking for 4-phase coordinator pattern
+        self._workflows: Dict[str, WorkflowTask] = {}
+        # Thread-safety lock for shared state
+        self._lock = asyncio.Lock() if HAS_ASYNCIO else None
 
     def _detect_agents(self, request: str, intent_agent: Optional[str] = None) -> list[str]:
         """Detect which agents are needed based on request.
@@ -311,8 +362,25 @@ class AgentOrchestrator:
                 }
             )
 
+        except ValueError as e:
+            # Validation errors - should not retry
+            logger.warning(f"Agent {agent_name} validation error: {e}")
+            return AgentResult(
+                agent=agent_name,
+                status="validation_error",
+                error=str(e)
+            )
+        except TimeoutError as e:
+            # Timeout errors - could retry
+            logger.error(f"Agent {agent_name} timeout after {self.executor.timeout}s: {e}")
+            return AgentResult(
+                agent=agent_name,
+                status="timeout",
+                error=f"Timeout after {self.executor.timeout}s: {str(e)}"
+            )
         except Exception as e:
-            logger.error(f"Agent {agent_name} error: {e}")
+            # Unexpected errors - log with full traceback
+            logger.exception(f"Agent {agent_name} unexpected error: {e}")
             return AgentResult(
                 agent=agent_name,
                 status="error",
@@ -369,6 +437,163 @@ class AgentOrchestrator:
                 processed_results.append(result)
 
         return processed_results
+
+    async def execute_parallel_research(
+        self,
+        target: str,
+        project_path: str = ".",
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Execute 3-phase parallel research: Tech Stack + Code Patterns + Best Practices.
+
+        ADR-019 Pattern:
+        ┌─────────────────────────────────────────────────────────────┐
+        │              PARALLEL RESEARCH PHASE                        │
+        │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+        │  │  Explorer 1     │  │  Explorer 2     │  │ Explorer 3  │  │
+        │  │  Tech Stack     │  │  Code Patterns  │  │ Best        │  │
+        │  │  Analysis       │  │  & Structure    │  │ Practices   │  │
+        │  └────────┬────────┘  └────────┬────────┘  └──────┬──────┘  │
+        │           └────────────────────┼───────────────────┘         │
+        │                                ▼                              │
+        │                    ┌───────────────────┐                      │
+        │                    │  SYNTHESIS PHASE │                      │
+        │                    └─────────┬─────────┘                      │
+        └──────────────────────────────┼───────────────────────────────┘
+                                      │
+                                      ▼
+                        ┌─────────────────────┐
+                        │   Architecture      │
+                        │   Recommendation    │
+                        └─────────────────────┘
+
+        Args:
+            target: Target module/path to analyze (e.g., "src/services")
+            project_path: Path to the project
+            context: Optional shared context
+
+        Returns:
+            Dict with research results and synthesis
+        """
+        import asyncio
+
+        # Phase 1: Parallel Research (3 explorers simultaneously)
+        logger.info(f"Starting parallel research for target: {target}")
+
+        # Define the 3 research streams
+        research_tasks = [
+            ("explorer", f"Analyze tech stack for {target}. Use explorer-1-tech-stack.md pattern."),
+            ("explorer", f"Analyze code patterns and structure in {target}. Use explorer-2-code-patterns.md pattern."),
+            ("explorer", f"Assess best practices and quality for {target}. Use explorer-3-best-practices.md pattern."),
+        ]
+
+        # Execute all 3 explorers in parallel
+        async def execute_explorer(task_desc: str, idx: int) -> Dict[str, Any]:
+            """Execute single explorer with context."""
+            exec_context = context.copy() if context else {}
+            exec_context["target"] = target
+            exec_context["project_path"] = project_path
+            exec_context["research_stream"] = idx  # 0=Tech, 1=Patterns, 2=Quality
+
+            result = await self.execute_agent(
+                agent_name="explorer",
+                request=task_desc,
+                context=exec_context,
+                use_checkpoint=False,
+            )
+            return {
+                "stream": idx,
+                "agent": result.agent,
+                "status": result.status,
+                "output": result.output,
+                "error": result.error,
+                "metadata": result.metadata
+            }
+
+        # Launch all 3 explorers in parallel
+        explorer_tasks = [
+            execute_explorer(desc, idx)
+            for idx, (_, desc) in enumerate(research_tasks)
+        ]
+
+        logger.info("Executing 3 explorer agents in parallel...")
+        explorer_results = await asyncio.gather(*explorer_tasks, return_exceptions=True)
+
+        # Process results
+        processed_results = []
+        for i, result in enumerate(explorer_results):
+            if isinstance(result, Exception):
+                processed_results.append({
+                    "stream": i,
+                    "agent": "explorer",
+                    "status": "error",
+                    "output": "",
+                    "error": str(result),
+                    "metadata": None
+                })
+            else:
+                processed_results.append(result)
+
+        # Sort by stream order
+        processed_results.sort(key=lambda x: x.get("stream", 0))
+
+        # Extract outputs for synthesis
+        tech_stack_output = processed_results[0].get("output", "") if len(processed_results) > 0 else ""
+        code_patterns_output = processed_results[1].get("output", "") if len(processed_results) > 1 else ""
+        best_practices_output = processed_results[2].get("output", "") if len(processed_results) > 2 else ""
+
+        # Phase 2: Synthesis (combine all findings)
+        synthesis_context = context.copy() if context else {}
+        synthesis_context["target"] = target
+        synthesis_context["project_path"] = project_path
+        synthesis_context["tech_stack_output"] = tech_stack_output
+        synthesis_context["code_patterns_output"] = code_patterns_output
+        synthesis_context["best_practices_output"] = best_practices_output
+
+        # Execute architect agent for synthesis
+        synthesis_request = f"""Synthesize findings for {target}:
+
+## Tech Stack Findings:
+{tech_stack_output[:5000] if tech_stack_output else 'No data'}
+
+## Code Patterns Findings:
+{code_patterns_output[:5000] if code_patterns_output else 'No data'}
+
+## Best Practices Findings:
+{best_practices_output[:5000] if best_practices_output else 'No data'}
+
+Produce a unified research report with:
+1. Tech Stack Summary
+2. Code Patterns Found
+3. Quality Assessment
+4. Risks & Recommendations (3-5 actionable items)
+5. Next Steps
+"""
+        synthesis_result = await self.execute_agent(
+            agent_name="architect",
+            request=synthesis_request,
+            context=synthesis_context,
+            use_checkpoint=True,
+        )
+
+        # Phase 3: Output is embedded in synthesis_result
+        # CheckpointExecutor handles file creation if needed
+
+        return {
+            "status": "success",
+            "target": target,
+            "research_results": processed_results,
+            "synthesis": {
+                "agent": synthesis_result.agent,
+                "status": synthesis_result.status,
+                "output": synthesis_result.output,
+                "error": synthesis_result.error,
+                "metadata": synthesis_result.metadata,
+            },
+            "phase": "completed",
+            "research_time": "parallel (3 streams)",
+        }
 
     # ==========================================
     # COORDINATOR PATTERN: Worker Lifecycle
@@ -598,6 +823,334 @@ class AgentOrchestrator:
             }
             for w in workers
         ]
+
+    # ==========================================
+    # COORDINATOR PATTERN: 4-Phase Workflow
+    # ==========================================
+
+    def create_workflow(
+        self,
+        name: str,
+        target: str,
+        project_path: str = ".",
+        team_name: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new 4-phase workflow task.
+
+        Graph TD pattern:
+            A[Фаза 1: Исследование] -->|Отчёты| B[Фаза 2: Синтез]
+            B -->|Спецификация| C[Фаза 3: Реализация]
+            C -->|Изменения + Коммиты| D[Фаза 4: Верификация]
+            D -- Успех --> E[Задача завершена]
+            D -- Ошибки --> C
+
+        Args:
+            name: Workflow task name
+            target: Target module/file to work on
+            project_path: Path to project
+            team_name: Optional team name for worker grouping
+
+        Returns:
+            Dict with workflow_id and initial state
+        """
+        import uuid
+        from datetime import datetime
+
+        workflow_id = str(uuid.uuid4())[:8]
+        team = team_name or f"team-{workflow_id}"
+
+        # Create 4 phases
+        phases = [
+            TaskPhase(name="research", agent_type="explorer", directive=f"Analyze {target}"),
+            TaskPhase(name="synthesis", agent_type="architect", directive=f"Synthesize findings for {target}"),
+            TaskPhase(name="implementation", agent_type="developer", directive=f"Implement changes for {target}"),
+            TaskPhase(name="verification", agent_type="reviewer", directive=f"Verify implementation for {target}"),
+        ]
+
+        workflow = WorkflowTask(
+            task_id=workflow_id,
+            name=name,
+            target=target,
+            project_path=project_path,
+            team_name=team,
+            phases=phases,
+        )
+
+        self._workflows[workflow_id] = workflow
+
+        return {
+            "workflow_id": workflow_id,
+            "name": name,
+            "target": target,
+            "team_name": team,
+            "phases": [p.name for p in phases],
+            "status": "created",
+        }
+
+    async def execute_workflow(
+        self,
+        workflow_id: str,
+        directive: str = None,
+        auto_continue: bool = True,
+        max_iterations: int = 3,
+    ) -> Dict[str, Any]:
+        """
+        Execute a 4-phase workflow with feedback loop.
+
+        Phase transitions:
+            Research → Synthesis → Implementation → Verification → Complete
+              ↑___________|___________|____________|                    |
+              (on error, retry Implementation)  ←________________________|
+
+        Feedback Loop (when verification fails and auto_continue=True):
+            Verification → Research → Synthesis → Implementation → Verification
+              ↑                                                    |
+              └──────────────── New Iteration ─────────────────────┘
+
+        Args:
+            workflow_id: ID of workflow to execute
+            directive: Optional override for the main directive
+            auto_continue: If True, automatically retry on failure and follow feedback loop
+            max_iterations: Maximum number of iterations (default 3)
+
+        Returns:
+            Dict with workflow execution results
+        """
+        import uuid
+        from datetime import datetime
+
+        workflow = self._workflows.get(workflow_id)
+        if not workflow:
+            return {"error": f"Workflow {workflow_id} not found", "status": "not_found"}
+
+        workflow.status = "in_progress"
+        workflow.updated_at = datetime.now()
+
+        # Execute each phase sequentially
+        for phase_idx, phase in enumerate(workflow.phases):
+            workflow.current_phase = phase_idx
+            phase.status = PhaseStatus.IN_PROGRESS
+            phase.started_at = datetime.now()
+
+            logger.info(f"Workflow {workflow_id}: Starting phase {phase_idx} ({phase.name})")
+
+            # Build context from previous phases
+            context = {
+                "task_id": workflow.task_id,
+                "workflow_name": workflow.name,
+                "target": workflow.target,
+                "project_path": workflow.project_path,
+                "team_name": workflow.team_name,
+                "phase_index": phase_idx,
+                "phase_name": phase.name,
+            }
+
+            # Add previous phase outputs to context
+            if phase_idx > 0:
+                prev_phase = workflow.phases[phase_idx - 1]
+                context["previous_phase_output"] = prev_phase.output
+                context["previous_phase_errors"] = prev_phase.error
+
+            # Build directive
+            task_directive = directive or phase.directive
+
+            # Execute the appropriate agent
+            try:
+                if phase.name == "research":
+                    # Phase 1: Parallel research (3 explorers)
+                    result = await self.execute_parallel_research(
+                        target=workflow.target,
+                        project_path=workflow.project_path,
+                        context=context,
+                    )
+                    phase.output = result.get("synthesis", {}).get("output", "")
+                    if result.get("status") == "success":
+                        phase.status = PhaseStatus.COMPLETED
+                    else:
+                        phase.status = PhaseStatus.FAILED
+                        phase.error = result.get("error", "Unknown error")
+
+                elif phase.name == "synthesis":
+                    # Phase 2: Architecture synthesis
+                    synthesis_directive = f"""Based on research findings for {workflow.target}:
+
+{directive or 'Create a detailed architectural specification with:'}
+1. Component breakdown
+2. Data flow
+3. API contracts
+4. Implementation roadmap
+
+Focus on actionable, concrete specifications.
+"""
+                    result = await self.execute_agent(
+                        agent_name="architect",
+                        request=synthesis_directive,
+                        context=context,
+                        use_checkpoint=True,
+                    )
+                    phase.output = result.output if hasattr(result, 'output') else str(result)
+                    phase.status = PhaseStatus.COMPLETED if result.status == "success" else PhaseStatus.FAILED
+                    phase.error = result.error if hasattr(result, 'error') and result.error else ""
+
+                elif phase.name == "implementation":
+                    # Phase 3: Code implementation
+                    impl_directive = f"""Implement the following specification for {workflow.target}:
+
+{directive or 'Write production-ready code based on the architectural specification.'}
+
+Requirements:
+- Follow existing code patterns
+- Include tests
+- Update documentation if needed
+"""
+                    result = await self.execute_agent(
+                        agent_name="developer",
+                        request=impl_directive,
+                        context=context,
+                        use_checkpoint=True,
+                    )
+                    phase.output = result.output if hasattr(result, 'output') else str(result)
+                    phase.status = PhaseStatus.COMPLETED if result.status == "success" else PhaseStatus.FAILED
+                    phase.error = result.error if hasattr(result, 'error') and result.error else ""
+
+                elif phase.name == "verification":
+                    # Phase 4: Verification
+                    verify_directive = f"""Verify the implementation for {workflow.target}:
+
+{directive or 'Run verification checks including:'}
+1. Code quality
+2. Test coverage
+3. Security audit
+4. Integration testing
+
+Provide a detailed verification report.
+"""
+                    result = await self.execute_agent(
+                        agent_name="reviewer",
+                        request=verify_directive,
+                        context=context,
+                        use_checkpoint=False,
+                    )
+                    phase.output = result.output if hasattr(result, 'output') else str(result)
+                    phase.status = PhaseStatus.COMPLETED if result.status == "success" else PhaseStatus.FAILED
+                    phase.error = result.error if hasattr(result, 'error') and result.error else ""
+
+            except Exception as e:
+                logger.exception(f"Workflow {workflow_id} phase {phase.name} error: {e}")
+                phase.status = PhaseStatus.FAILED
+                phase.error = str(e)
+
+            phase.completed_at = datetime.now()
+            workflow.updated_at = datetime.now()
+
+            # Check if we should stop on failure
+            if phase.status == PhaseStatus.FAILED:
+                if phase.name == "implementation" and auto_continue:
+                    # Retry implementation once
+                    logger.warning(f"Workflow {workflow_id}: Implementation failed, retrying...")
+                    phase.status = PhaseStatus.IN_PROGRESS
+                    continue
+                elif phase.name == "verification" and auto_continue:
+                    # FEEDBACK LOOP: Verification failed → New iteration starting from Research
+                    current_iteration = getattr(workflow, 'phase_iteration', 1)
+                    if current_iteration >= max_iterations:
+                        logger.warning(f"Workflow {workflow_id}: Max iterations ({max_iterations}) reached, stopping...")
+                        workflow.status = "failed"
+                        workflow.error = f"Max iterations ({max_iterations}) reached. Last error: {phase.error}"
+                        break
+                    logger.warning(f"Workflow {workflow_id}: Verification failed, starting new iteration from Research...")
+                    # Reset phases for new iteration
+                    for p in workflow.phases:
+                        p.status = PhaseStatus.PENDING
+                        p.output = ""
+                        p.error = ""
+                    workflow.current_phase = 0  # Back to Research
+                    workflow.phase_iteration = current_iteration + 1
+                    logger.info(f"Workflow {workflow_id}: Starting iteration {workflow.phase_iteration}/{max_iterations}")
+                    continue
+                else:
+                    workflow.status = "failed"
+                    workflow.error = phase.error
+                    break
+
+        # Finalize workflow
+        if workflow.status == "in_progress":
+            failed_count = sum(1 for p in workflow.phases if p.status == PhaseStatus.FAILED)
+            if failed_count > 0:
+                workflow.status = "failed"
+            else:
+                workflow.status = "completed"
+
+        # Build result
+        workflow.result = {
+            "workflow_id": workflow.task_id,
+            "name": workflow.name,
+            "target": workflow.target,
+            "status": workflow.status,
+            "phases": [
+                {
+                    "name": p.name,
+                    "status": p.status.value,
+                    "output": p.output[:1000] if p.output else "",
+                    "error": p.error,
+                    "started_at": p.started_at.isoformat() if p.started_at else None,
+                    "completed_at": p.completed_at.isoformat() if p.completed_at else None,
+                }
+                for p in workflow.phases
+            ],
+        }
+
+        return workflow.result
+
+    def get_workflow(self, workflow_id: str) -> Dict[str, Any]:
+        """Get workflow status."""
+        workflow = self._workflows.get(workflow_id)
+        if not workflow:
+            return {"error": f"Workflow {workflow_id} not found"}
+
+        return {
+            "workflow_id": workflow.task_id,
+            "name": workflow.name,
+            "target": workflow.target,
+            "status": workflow.status,
+            "current_phase": workflow.current_phase,
+            "phase_names": [p.name for p in workflow.phases],
+            "phases": [
+                {
+                    "name": p.name,
+                    "status": p.status.value,
+                    "output_preview": p.output[:200] if p.output else "",
+                }
+                for p in workflow.phases
+            ],
+        }
+
+    def list_workflows(self, status: str = None) -> List[Dict[str, Any]]:
+        """List all workflows, optionally filtered by status."""
+        workflows = self._workflows.values()
+        if status:
+            workflows = [w for w in workflows if w.status == status]
+
+        return [
+            {
+                "workflow_id": w.task_id,
+                "name": w.name,
+                "target": w.target,
+                "status": w.status,
+                "current_phase": w.current_phase,
+                "phase_names": [p.name for p in w.phases],
+            }
+            for w in workflows
+        ]
+
+    def delete_workflow(self, workflow_id: str) -> Dict[str, Any]:
+        """Delete a workflow."""
+        if workflow_id not in self._workflows:
+            return {"error": f"Workflow {workflow_id} not found", "status": "not_found"}
+
+        del self._workflows[workflow_id]
+        return {"workflow_id": workflow_id, "status": "deleted"}
 
     async def route(self, request: str) -> Dict[str, Any]:
         """

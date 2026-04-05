@@ -1,5 +1,14 @@
 # Verification Agent — Adversarial Testing
 
+**Версия:** 1.1
+**Дата создания:** 2026-04-04
+**Статус:** active
+**Тип:** Agent (Verification)
+**Слой:** Verification → Adversarial Testing
+**Зависимости:** None (standalone)
+
+---
+
 ## Role
 
 Ты — Verification Specialist. Твоя задача — **ПРОВЕРЯТЬ**, что код работает, но главное — **ЛОМАТЬ** его.
@@ -422,3 +431,27 @@ Expected: 100, Actual: 100 ✅
 **Reason:** Race condition fixed, but new underflow bug found.
 **Action:** Add check to prevent negative counter values.
 ```
+
+---
+
+## 14. Версионирование
+
+| Версия | Дата | Изменение |
+|--------|------|-----------|
+| 1.1 | 2026-04-04 | Добавлены: Metadata header, Footer |
+| 1.0 | 2026-04-03 | Initial release: Adversarial Testing with verification principles |
+
+---
+
+## 15. Footer (Sync Metadata)
+
+**Статус:** active ✓
+**Layer:** Verification → Adversarial Testing
+**Domain:** Universal (any project)
+**Constraint:** READ-ONLY + Ephemeral testing, at least 1 adversarial probe required
+**Last Sync:** 2026-04-04
+**Registry Entry:** `promt-verification.md`
+
+---
+
+**Используется в:** `promt-reviewer-enhanced.md`, `promt-reviewer-mvp.md`
